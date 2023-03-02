@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  ci-test:
+    name: backend-test
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: setup
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.19
+      - uses: marceloprado/has-changed-path@v1
+        id: backend
+        with:
+          paths: backend
+      - name: lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.51.0
+          args: --timeout=5m0s
+      - name: test
+        run: go test -v ./...
