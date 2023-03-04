@@ -65,10 +65,10 @@ func (pr *Prover) QueryHeader(height int64) (core.HeaderI, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewHeaderProxy(pr.revisionNumber, &Header{
+	return NewHeader(pr.revisionNumber, &Header{
 		AccountProof: rlpAccountProof,
 		Headers:      ethHeaders,
-	}), nil
+	})
 }
 
 // QueryLatestHeader returns the latest header from the chain
@@ -96,7 +96,7 @@ func (pr *Prover) CreateMsgCreateClient(clientID string, dstHeader core.HeaderI,
 	header := dstHeader.(HeaderI)
 
 	// recover account data from account proof
-	account, err := header.GetAccount(pr.chain.Config().IBCHandlerAddress())
+	account, err := header.Account(pr.chain.Config().IBCHandlerAddress())
 	if err != nil {
 		return nil, err
 	}
@@ -108,10 +108,6 @@ func (pr *Prover) CreateMsgCreateClient(clientID string, dstHeader core.HeaderI,
 	}
 
 	// create initial client state
-	target, err := header.GetTarget()
-	if err != nil {
-		return nil, err
-	}
 	height := header.GetHeight()
 	latestHeight := clienttypes.NewHeight(height.GetRevisionNumber(), height.GetRevisionNumber())
 	clientState := ClientState{
@@ -131,12 +127,12 @@ func (pr *Prover) CreateMsgCreateClient(clientID string, dstHeader core.HeaderI,
 	}
 
 	// create initial consensus state
-	validatorSet, err := header.GetValidatorSet()
+	validatorSet, err := header.ValidatorSet()
 	if err != nil {
 		return nil, err
 	}
 	consensusState := ConsensusState{
-		Timestamp:    target.Time,
+		Timestamp:    header.Target().Time,
 		StateRoot:    account.Root.Bytes(),
 		ValidatorSet: validatorSet,
 	}

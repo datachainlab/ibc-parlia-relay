@@ -3,7 +3,6 @@ package module
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/big"
 
 	clienttypes "github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
@@ -53,53 +52,51 @@ func (h *Header) decodeAccountProof() ([][]byte, error) {
 
 type HeaderI interface {
 	core.HeaderI
-	GetTarget() (*types.Header, error)
-	GetAccount(path common.Address) (*types.StateAccount, error)
-	GetValidatorSet() ([][]byte, error)
+	Target() *types.Header
+	Account(path common.Address) (*types.StateAccount, error)
+	ValidatorSet() ([][]byte, error)
 }
 
-type HeaderProxy struct {
+type headerI struct {
 	*Header
 	revisionNumber uint64
 
 	// cache
-	target              *types.Header
+	decodedTargetHeader *types.Header
 	decodedAccountProof [][]byte
-	validatorSet        *[][]byte
-	height              *exported.Height
-	validated           *bool
 }
 
-func NewHeaderProxy(revisionNumber uint64, header *Header) HeaderI {
-	return &HeaderProxy{
-		revisionNumber: revisionNumber,
-		Header:         header,
-	}
-}
-
-func (h *HeaderProxy) GetTarget() (*types.Header, error) {
-	if h.target != nil {
-		return h.target, nil
-	}
-	decodedHeaders, err := h.decodeEthHeaders()
+func NewHeader(revisionNumber uint64, header *Header) (HeaderI, error) {
+	decodedHeaders, err := header.decodeEthHeaders()
 	if err != nil {
 		return nil, err
 	}
 	if len(decodedHeaders) == 0 {
 		return nil, fmt.Errorf("invalid header length")
 	}
-	h.target = decodedHeaders[0]
-	return h.target, nil
+	decodedAccountProof, err := header.decodeAccountProof()
+	if err != nil {
+		return nil, err
+	}
+	decodedTargetHeader := decodedHeaders[0]
+
+	return &headerI{
+		revisionNumber:      revisionNumber,
+		Header:              header,
+		decodedTargetHeader: decodedTargetHeader,
+		decodedAccountProof: decodedAccountProof,
+	}, nil
 }
 
-func (h *HeaderProxy) GetValidatorSet() ([][]byte, error) {
-	if h.validatorSet != nil {
-		return *h.validatorSet, nil
+func (h *headerI) Target() *types.Header {
+	return h.decodedTargetHeader
+}
+
+func (h *headerI) ValidatorSet() ([][]byte, error) {
+	extra := h.decodedTargetHeader.Extra
+	if len(extra) < extraVanity+extraSeal {
+		return nil, fmt.Errorf("invalid extra length")
 	}
-	if h.target.Number.Int64()%epochBlockPeriod != 0 {
-		return nil, fmt.Errorf("not epock block : %d", h.target.Number)
-	}
-	extra := h.target.Extra
 	var validatorSet [][]byte
 	validators := extra[extraVanity : len(extra)-extraSeal]
 	validatorCount := len(validators) % validatorBytesLength
@@ -107,24 +104,12 @@ func (h *HeaderProxy) GetValidatorSet() ([][]byte, error) {
 		start := validatorBytesLength * i
 		validatorSet = append(validatorSet, validators[start:start+validatorBytesLength])
 	}
-	h.validatorSet = &validatorSet
 	return validatorSet, nil
 }
 
-func (h *HeaderProxy) GetAccount(path common.Address) (*types.StateAccount, error) {
-	if h.decodedAccountProof == nil {
-		decoded, err := h.decodeAccountProof()
-		if err != nil {
-			return nil, err
-		}
-		h.decodedAccountProof = decoded
-	}
-	target, err := h.GetTarget()
-	if err != nil {
-		return nil, err
-	}
+func (h *headerI) Account(path common.Address) (*types.StateAccount, error) {
 	rlpAccount, err := verifyProof(
-		target.Root,
+		h.decodedTargetHeader.Root,
 		crypto.Keccak256Hash(path.Bytes()).Bytes(),
 		h.decodedAccountProof,
 	)
@@ -138,35 +123,18 @@ func (h *HeaderProxy) GetAccount(path common.Address) (*types.StateAccount, erro
 	return &account, nil
 }
 
-func (*HeaderProxy) ClientType() string {
+func (*headerI) ClientType() string {
 	return Parlia
 }
 
-func (h *HeaderProxy) GetHeight() exported.Height {
-	target, err := h.GetTarget()
-	if err != nil {
-		log.Panicf("invalid header: %v", h)
-	}
-	return clienttypes.NewHeight(h.revisionNumber, target.Number.Uint64())
+func (h *headerI) GetHeight() exported.Height {
+	return clienttypes.NewHeight(h.revisionNumber, h.decodedTargetHeader.Number.Uint64())
 }
 
-func (h *HeaderProxy) ValidateBasic() error {
-	if h.validated != nil {
-		return nil
+func (h *headerI) ValidateBasic() error {
+	if h.Header != nil || h.decodedTargetHeader == nil || h.decodedAccountProof == nil {
+		return fmt.Errorf("invalid header")
 	}
-	ok := false
-	if _, err := h.GetTarget(); err != nil {
-		h.validated = &ok
-		return err
-	}
-	decodedAccountProof, err := h.decodeAccountProof()
-	if err != nil {
-		h.validated = &ok
-		return err
-	}
-	ok = true
-	h.decodedAccountProof = decodedAccountProof
-	h.validated = &ok
 	return nil
 }
 
@@ -178,9 +146,8 @@ type headerReader struct {
 	blockByNumber func(ctx context.Context, number *big.Int) (*types.Block, error)
 }
 
-//TODO add header reader proxy to get cache
-
 func NewHeaderReader(blockByNumber func(ctx context.Context, number *big.Int) (*types.Block, error)) HeaderReader {
+	//TODO cache
 	return &headerReader{
 		blockByNumber: blockByNumber,
 	}
