@@ -17,14 +17,16 @@ import (
 	"github.com/hyperledger-labs/yui-relayer/core"
 )
 
+var _ core.ProverI = (*Prover)(nil)
+
 type Prover struct {
 	chain          *ethereum.Chain
-	config         ProverConfig
+	config         *ProverConfig
 	headerReader   HeaderReader
 	revisionNumber uint64
 }
 
-func NewProver(chain *ethereum.Chain, config ProverConfig) core.ProverI {
+func NewProver(chain *ethereum.Chain, config *ProverConfig) core.ProverI {
 	return &Prover{
 		chain:          chain,
 		config:         config,
@@ -82,16 +84,11 @@ func (pr *Prover) QueryLatestHeader() (out core.HeaderI, err error) {
 
 // GetLatestLightHeight returns the latest height on the light client
 func (pr *Prover) GetLatestLightHeight() (int64, error) {
-	//TODO LCPの方をとる
-	bn, err := pr.chain.Client().BlockNumber(context.TODO())
-	if err != nil {
-		return 0, err
-	}
-	return int64(bn), nil
+	panic("TODO get ClientState.latest_height")
 }
 
 // CreateMsgCreateClient creates a CreateClientMsg to this chain
-func (pr *Prover) CreateMsgCreateClient(clientID string, dstHeader core.HeaderI, signer sdk.AccAddress) (*clienttypes.MsgCreateClient, error) {
+func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.HeaderI, _ sdk.AccAddress) (*clienttypes.MsgCreateClient, error) {
 	// get account proof from header
 	header := dstHeader.(HeaderI)
 
@@ -150,7 +147,27 @@ func (pr *Prover) CreateMsgCreateClient(clientID string, dstHeader core.HeaderI,
 
 // SetupHeader creates a new header based on a given header
 func (pr *Prover) SetupHeader(dst core.LightClientIBCQueryierI, baseSrcHeader core.HeaderI) (core.HeaderI, error) {
-	return nil, nil
+	header := baseSrcHeader.(*headerI)
+
+	// get client state on destination chain
+	dstHeight, err := dst.GetLatestLightHeight()
+	if err != nil {
+		return nil, err
+	}
+	csRes, err := dst.QueryClientState(dstHeight)
+	if err != nil {
+		return nil, err
+	}
+	var cs exported.ClientState
+	if err = pr.chain.Codec().UnpackAny(csRes.ClientState, &cs); err != nil {
+		return nil, err
+	}
+
+	// use the latest height of the client state on the destination chain as trusted height
+	latestHeight := cs.GetLatestHeight()
+	exportedLatestHeight := clienttypes.NewHeight(latestHeight.GetRevisionNumber(), latestHeight.GetRevisionNumber())
+	header.TrustedHeight = &exportedLatestHeight
+	return header, nil
 }
 
 // UpdateLightWithHeader updates a header on the light client and returns the header and height corresponding to the chain
@@ -163,14 +180,37 @@ func (pr *Prover) UpdateLightWithHeader() (core.HeaderI, int64, int64, error) {
 	return header, height, height, nil
 }
 
-// QueryClientConsensusState returns the ClientConsensusState and its proof
+// QueryClientConsensusStateWithProof returns the ClientConsensusState and its proof
 func (pr *Prover) QueryClientConsensusStateWithProof(height int64, dstClientConsHeight exported.Height) (*clienttypes.QueryConsensusStateResponse, error) {
-	return nil, nil
+	res, err := pr.chain.QueryClientConsensusState(height, dstClientConsHeight)
+	if err != nil {
+		return nil, err
+	}
+	res.ProofHeight = pr.toHeight(height)
+	res.Proof, err = pr.getStateCommitmentProof(host.FullConsensusStateKey(
+		pr.chain.Path().ClientID,
+		dstClientConsHeight,
+	), height)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 // QueryClientStateWithProof returns the ClientState and its proof
 func (pr *Prover) QueryClientStateWithProof(height int64) (*clienttypes.QueryClientStateResponse, error) {
-	return nil, nil
+	res, err := pr.chain.QueryClientState(height)
+	if err != nil {
+		return nil, err
+	}
+	res.ProofHeight = pr.toHeight(height)
+	res.Proof, err = pr.getStateCommitmentProof(host.FullClientStateKey(
+		pr.chain.Path().ClientID,
+	), height)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 // QueryConnectionWithProof returns the Connection and its proof

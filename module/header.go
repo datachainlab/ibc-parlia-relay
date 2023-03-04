@@ -20,6 +20,7 @@ const extraVanity = 32
 const extraSeal = 65
 const validatorBytesLength = 20
 
+// Parlia TODO client_type
 const Parlia string = "99-parlia"
 
 func (h *Header) decodeEthHeaders() ([]*types.Header, error) {

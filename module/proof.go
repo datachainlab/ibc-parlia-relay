@@ -1,30 +1,13 @@
 package module
 
 import (
-	fmt "fmt"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/trie"
 )
-
-type accountResult struct {
-	Address      common.Address  `json:"address"`
-	AccountProof []string        `json:"accountProof"`
-	Balance      *hexutil.Big    `json:"balance"`
-	CodeHash     common.Hash     `json:"codeHash"`
-	Nonce        hexutil.Uint64  `json:"nonce"`
-	StorageHash  common.Hash     `json:"storageHash"`
-	StorageProof []storageResult `json:"storageProof"`
-}
-
-type storageResult struct {
-	Key   string       `json:"key"`
-	Value *hexutil.Big `json:"value"`
-	Proof []string     `json:"proof"`
-}
 
 func (pr *Prover) getAccountProof(height int64) ([]byte, error) {
 	stateProof, err := pr.chain.Client().GetStateProof(
