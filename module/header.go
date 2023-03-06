@@ -100,8 +100,8 @@ func (h *headerI) ValidatorSet() ([][]byte, error) {
 	}
 	var validatorSet [][]byte
 	validators := extra[extraVanity : len(extra)-extraSeal]
-	validatorCount := len(validators) % validatorBytesLength
-	for i := 0; i > validatorCount; i++ {
+	validatorCount := len(validators) / validatorBytesLength
+	for i := 0; i < validatorCount; i++ {
 		start := validatorBytesLength * i
 		validatorSet = append(validatorSet, validators[start:start+validatorBytesLength])
 	}
@@ -133,7 +133,7 @@ func (h *headerI) GetHeight() exported.Height {
 }
 
 func (h *headerI) ValidateBasic() error {
-	if h.Header != nil || h.decodedTargetHeader == nil || h.decodedAccountProof == nil {
+	if h.Header == nil || h.decodedTargetHeader == nil || h.decodedAccountProof == nil {
 		return fmt.Errorf("invalid header")
 	}
 	return nil
@@ -194,7 +194,7 @@ func (pr *headerReader) getETHHeaders(start int64, requiredCountToFinalize int) 
 		if err != nil {
 			return nil, err
 		}
-		header, err := pr.newETHHeader(block)
+		header, err := pr.newETHHeader(block.Header())
 		if err != nil {
 			return nil, err
 		}
@@ -203,8 +203,8 @@ func (pr *headerReader) getETHHeaders(start int64, requiredCountToFinalize int) 
 	return ethHeaders, nil
 }
 
-func (pr *headerReader) newETHHeader(block *types.Block) (*ETHHeader, error) {
-	rlpHeader, err := rlp.EncodeToBytes(block.Header())
+func (pr *headerReader) newETHHeader(header *types.Header) (*ETHHeader, error) {
+	rlpHeader, err := rlp.EncodeToBytes(header)
 	if err != nil {
 		return nil, err
 	}
