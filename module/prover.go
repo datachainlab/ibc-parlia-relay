@@ -83,7 +83,11 @@ func (pr *Prover) QueryLatestHeader() (out core.HeaderI, err error) {
 
 // GetLatestLightHeight returns the latest height on the light client
 func (pr *Prover) GetLatestLightHeight() (int64, error) {
-	panic("TODO get ClientState.latest_height")
+	bn, err := pr.chain.LatestLightHeight(context.TODO())
+	if err != nil {
+		return 0, err
+	}
+	return int64(bn), nil
 }
 
 // CreateMsgCreateClient creates a CreateClientMsg to this chain
@@ -164,7 +168,7 @@ func (pr *Prover) SetupHeader(dst core.LightClientIBCQueryierI, baseSrcHeader co
 
 	// use the latest height of the client state on the destination chain as trusted height
 	latestHeight := cs.GetLatestHeight()
-	exportedLatestHeight := clienttypes.NewHeight(latestHeight.GetRevisionNumber(), latestHeight.GetRevisionNumber())
+	exportedLatestHeight := clienttypes.NewHeight(latestHeight.GetRevisionNumber(), latestHeight.GetRevisionHeight())
 	header.TrustedHeight = &exportedLatestHeight
 	return header, nil
 }

@@ -13,6 +13,7 @@ import (
 type ChainI interface {
 	core.ChainI
 	LatestHeight(ctx context.Context) (uint64, error)
+	LatestLightHeight(ctx context.Context) (uint64, error)
 	Header(ctx context.Context, height uint64) (*types.Header, error)
 	IBCHandlerAddress() common.Address
 	CanonicalChainID(ctx context.Context) (uint64, error)
@@ -28,6 +29,11 @@ func NewChain(chain *ethereum.Chain) ChainI {
 }
 
 func (c *ethChain) LatestHeight(ctx context.Context) (uint64, error) {
+	return c.Client().BlockNumber(ctx)
+}
+
+func (c *ethChain) LatestLightHeight(ctx context.Context) (uint64, error) {
+	//TODO from LCP
 	return c.Client().BlockNumber(ctx)
 }
 
