@@ -30,7 +30,7 @@ func NewProver(chain *ethereum.Chain, config *ProverConfig) core.ProverI {
 	return &Prover{
 		chain:          chain,
 		config:         config,
-		revisionNumber: 0, //TODO upgrade
+		revisionNumber: 1, //TODO upgrade
 		headerReader:   NewHeaderReader(chain.Client().BlockByNumber),
 	}
 }
@@ -106,7 +106,7 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.HeaderI, _ sdk.
 
 	// create initial client state
 	height := header.GetHeight()
-	latestHeight := clienttypes.NewHeight(height.GetRevisionNumber(), height.GetRevisionNumber())
+	latestHeight := clienttypes.NewHeight(height.GetRevisionNumber(), height.GetRevisionHeight())
 	clientState := ClientState{
 		TrustLevel: &Fraction{
 			Numerator:   pr.config.TrustLevelNumerator,
