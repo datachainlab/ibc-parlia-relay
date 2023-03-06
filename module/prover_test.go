@@ -40,7 +40,7 @@ func (ts *ProverTestSuite) SetupTest() {
 		TrustLevelDenominator: 3,
 		TrustingPeriod:        1_000_000_000,
 	}
-	ts.prover = NewProver(chain, &config).(*Prover)
+	ts.prover = NewProver(NewChain(chain), &config).(*Prover)
 }
 
 func (ts *ProverTestSuite) TestQueryHeader() {

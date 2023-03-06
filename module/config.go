@@ -13,5 +13,5 @@ func (c *ProverConfig) Build(chain core.ChainI) (core.ProverI, error) {
 	if !ok {
 		return nil, fmt.Errorf("chain type must be %T, not %T", &ethereum.Chain{}, chain)
 	}
-	return NewProver(chain_, c), nil
+	return NewProver(NewChain(chain_), c), nil
 }

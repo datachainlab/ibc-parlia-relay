@@ -13,25 +13,24 @@ import (
 	chantypes "github.com/cosmos/ibc-go/v4/modules/core/04-channel/types"
 	host "github.com/cosmos/ibc-go/v4/modules/core/24-host"
 	"github.com/cosmos/ibc-go/v4/modules/core/exported"
-	"github.com/hyperledger-labs/yui-ibc-solidity/pkg/relay/ethereum"
 	"github.com/hyperledger-labs/yui-relayer/core"
 )
 
 var _ core.ProverI = (*Prover)(nil)
 
 type Prover struct {
-	chain          *ethereum.Chain
+	chain          ChainI
 	config         *ProverConfig
 	headerReader   HeaderReader
 	revisionNumber uint64
 }
 
-func NewProver(chain *ethereum.Chain, config *ProverConfig) core.ProverI {
+func NewProver(chain ChainI, config *ProverConfig) core.ProverI {
 	return &Prover{
 		chain:          chain,
 		config:         config,
 		revisionNumber: 1, //TODO upgrade
-		headerReader:   NewHeaderReader(chain.Client().BlockByNumber),
+		headerReader:   NewHeaderReader(chain.Header),
 	}
 }
 
@@ -58,7 +57,7 @@ func (pr *Prover) GetChainID() string {
 // QueryHeader returns the header corresponding to the height
 func (pr *Prover) QueryHeader(height int64) (core.HeaderI, error) {
 
-	ethHeaders, err := pr.headerReader.QueryETHHeaders(height)
+	ethHeaders, err := pr.headerReader.QueryETHHeaders(uint64(height))
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +74,7 @@ func (pr *Prover) QueryHeader(height int64) (core.HeaderI, error) {
 
 // QueryLatestHeader returns the latest header from the chain
 func (pr *Prover) QueryLatestHeader() (out core.HeaderI, err error) {
-	bn, err := pr.chain.Client().BlockNumber(context.TODO())
+	bn, err := pr.chain.LatestHeight(context.TODO())
 	if err != nil {
 		return nil, err
 	}
@@ -93,13 +92,13 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.HeaderI, _ sdk.
 	header := dstHeader.(HeaderI)
 
 	// recover account data from account proof
-	account, err := header.Account(pr.chain.Config().IBCHandlerAddress())
+	account, err := header.Account(pr.chain.IBCHandlerAddress())
 	if err != nil {
 		return nil, err
 	}
 
 	// get chain id
-	chainID, err := pr.chain.Client().ChainID(context.TODO())
+	chainID, err := pr.chain.CanonicalChainID(context.TODO())
 	if err != nil {
 		return nil, err
 	}
@@ -113,10 +112,10 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.HeaderI, _ sdk.
 			Denominator: pr.config.TrustLevelDenominator,
 		},
 		TrustingPeriod:  pr.config.TrustingPeriod,
-		ChainId:         chainID.Uint64(),
+		ChainId:         chainID,
 		LatestHeight:    &latestHeight,
 		Frozen:          false,
-		IbcStoreAddress: pr.chain.Config().IBCHandlerAddress().Bytes(),
+		IbcStoreAddress: pr.chain.IBCHandlerAddress().Bytes(),
 	}
 	anyClientState, err := codectypes.NewAnyWithValue(&clientState)
 	if err != nil {
@@ -147,7 +146,7 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.HeaderI, _ sdk.
 
 // SetupHeader creates a new header based on a given header
 func (pr *Prover) SetupHeader(dst core.LightClientIBCQueryierI, baseSrcHeader core.HeaderI) (core.HeaderI, error) {
-	header := baseSrcHeader.(*headerI)
+	header := baseSrcHeader.(*defaultHeader)
 
 	// get client state on destination chain
 	dstHeight, err := dst.GetLatestLightHeight()

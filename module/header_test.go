@@ -21,10 +21,10 @@ func TestHeaderTestSuite(t *testing.T) {
 }
 
 func (ts *HeaderTestSuite) SetupTest() {
-	ts.reader = NewHeaderReader(func(ctx context.Context, number *big.Int) (*types.Block, error) {
+	ts.reader = NewHeaderReader(func(ctx context.Context, number uint64) (*types.Header, error) {
 		header := &types.Header{}
-		header.Number = number
-		if header.Number.Int64()%int64(epochBlockPeriod) == 0 {
+		header.Number = big.NewInt(int64(number))
+		if header.Number.Int64()%epochBlockPeriod == 0 {
 			if header.Number.Int64() == 0 {
 				header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*4)
 			} else {
@@ -33,7 +33,7 @@ func (ts *HeaderTestSuite) SetupTest() {
 		} else {
 			header.Extra = make([]byte, extraVanity+extraSeal)
 		}
-		return types.NewBlock(header, nil, nil, nil, nil), nil
+		return header, nil
 	}).(*headerReader)
 }
 
@@ -106,7 +106,7 @@ func (ts *HeaderTestSuite) TestNewHeaderError() {
 	ts.Require().Error(err)
 }
 
-func (ts *HeaderTestSuite) assertHeader(height int64, count int) {
+func (ts *HeaderTestSuite) assertHeader(height uint64, count int) {
 	ethHeaders, err := ts.reader.QueryETHHeaders(height)
 	assert := ts.Require()
 	assert.NoError(err)
@@ -114,7 +114,7 @@ func (ts *HeaderTestSuite) assertHeader(height int64, count int) {
 	var header types.Header
 	for i := 0; i < count; i++ {
 		assert.NoError(rlp.DecodeBytes(ethHeaders[i].Header, &header))
-		assert.Equal(header.Number.Int64(), height+int64(i))
+		assert.Equal(header.Number.Int64(), height+uint64(i))
 	}
 }
 

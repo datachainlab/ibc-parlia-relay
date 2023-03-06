@@ -10,8 +10,8 @@ import (
 )
 
 func (pr *Prover) getAccountProof(height int64) ([]byte, error) {
-	stateProof, err := pr.chain.Client().GetStateProof(
-		pr.chain.Config().IBCHandlerAddress(),
+	stateProof, err := pr.chain.GetStateProof(
+		pr.chain.IBCHandlerAddress(),
 		nil,
 		big.NewInt(height),
 	)
@@ -33,8 +33,8 @@ func (pr *Prover) getStateCommitmentProof(path []byte, height int64) ([]byte, er
 	}
 
 	// call eth_getProof
-	stateProof, err := pr.chain.Client().GetStateProof(
-		pr.chain.Config().IBCHandlerAddress(),
+	stateProof, err := pr.chain.GetStateProof(
+		pr.chain.IBCHandlerAddress(),
 		[][]byte{marshaledSlot},
 		big.NewInt(height),
 	)

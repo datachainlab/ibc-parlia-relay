@@ -3,8 +3,6 @@ package module
 import (
 	"context"
 	"fmt"
-	"math/big"
-
 	clienttypes "github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -58,7 +56,7 @@ type HeaderI interface {
 	ValidatorSet() ([][]byte, error)
 }
 
-type headerI struct {
+type defaultHeader struct {
 	*Header
 	revisionNumber uint64
 
@@ -81,7 +79,7 @@ func NewHeader(revisionNumber uint64, header *Header) (HeaderI, error) {
 	}
 	decodedTargetHeader := decodedHeaders[0]
 
-	return &headerI{
+	return &defaultHeader{
 		revisionNumber:      revisionNumber,
 		Header:              header,
 		decodedTargetHeader: decodedTargetHeader,
@@ -89,11 +87,11 @@ func NewHeader(revisionNumber uint64, header *Header) (HeaderI, error) {
 	}, nil
 }
 
-func (h *headerI) Target() *types.Header {
+func (h *defaultHeader) Target() *types.Header {
 	return h.decodedTargetHeader
 }
 
-func (h *headerI) ValidatorSet() ([][]byte, error) {
+func (h *defaultHeader) ValidatorSet() ([][]byte, error) {
 	extra := h.decodedTargetHeader.Extra
 	if len(extra) < extraVanity+extraSeal {
 		return nil, fmt.Errorf("invalid extra length")
@@ -108,7 +106,7 @@ func (h *headerI) ValidatorSet() ([][]byte, error) {
 	return validatorSet, nil
 }
 
-func (h *headerI) Account(path common.Address) (*types.StateAccount, error) {
+func (h *defaultHeader) Account(path common.Address) (*types.StateAccount, error) {
 	rlpAccount, err := verifyProof(
 		h.decodedTargetHeader.Root,
 		crypto.Keccak256Hash(path.Bytes()).Bytes(),
@@ -124,15 +122,15 @@ func (h *headerI) Account(path common.Address) (*types.StateAccount, error) {
 	return &account, nil
 }
 
-func (*headerI) ClientType() string {
+func (*defaultHeader) ClientType() string {
 	return Parlia
 }
 
-func (h *headerI) GetHeight() exported.Height {
+func (h *defaultHeader) GetHeight() exported.Height {
 	return clienttypes.NewHeight(h.revisionNumber, h.decodedTargetHeader.Number.Uint64())
 }
 
-func (h *headerI) ValidateBasic() error {
+func (h *defaultHeader) ValidateBasic() error {
 	if h.Header == nil || h.decodedTargetHeader == nil || h.decodedAccountProof == nil {
 		return fmt.Errorf("invalid header")
 	}
@@ -140,14 +138,14 @@ func (h *headerI) ValidateBasic() error {
 }
 
 type HeaderReader interface {
-	QueryETHHeaders(height int64) ([]*ETHHeader, error)
+	QueryETHHeaders(height uint64) ([]*ETHHeader, error)
 }
 
 type headerReader struct {
-	blockByNumber func(ctx context.Context, number *big.Int) (*types.Block, error)
+	blockByNumber func(ctx context.Context, number uint64) (*types.Header, error)
 }
 
-func NewHeaderReader(blockByNumber func(ctx context.Context, number *big.Int) (*types.Block, error)) HeaderReader {
+func NewHeaderReader(blockByNumber func(ctx context.Context, number uint64) (*types.Header, error)) HeaderReader {
 	//TODO cache
 	return &headerReader{
 		blockByNumber: blockByNumber,
@@ -155,27 +153,27 @@ func NewHeaderReader(blockByNumber func(ctx context.Context, number *big.Int) (*
 }
 
 // QueryETHHeaders returns the header corresponding to the height
-func (pr *headerReader) QueryETHHeaders(height int64) ([]*ETHHeader, error) {
+func (pr *headerReader) QueryETHHeaders(height uint64) ([]*ETHHeader, error) {
 	epochCount := height / epochBlockPeriod
 	if epochCount > 0 {
 		previousEpochHeight := (epochCount - 1) * epochBlockPeriod
-		previousEpochBlock, err := pr.blockByNumber(context.TODO(), big.NewInt(previousEpochHeight))
+		previousEpochBlock, err := pr.blockByNumber(context.TODO(), previousEpochHeight)
 		if err != nil {
 			return nil, err
 		}
-		threshold := pr.requiredCountToFinalize(previousEpochBlock.Header())
-		if height%epochBlockPeriod < int64(threshold) {
+		threshold := pr.requiredCountToFinalize(previousEpochBlock)
+		if height%epochBlockPeriod < uint64(threshold) {
 			// before checkpoint
 			return pr.getETHHeaders(height, threshold)
 		}
 	}
 	// genesis count or after checkpoint
 	lastEpochNumber := epochCount * epochBlockPeriod
-	currentEpochBlock, err := pr.blockByNumber(context.TODO(), big.NewInt(lastEpochNumber))
+	currentEpochBlock, err := pr.blockByNumber(context.TODO(), uint64(lastEpochNumber))
 	if err != nil {
 		return nil, err
 	}
-	return pr.getETHHeaders(height, pr.requiredCountToFinalize(currentEpochBlock.Header()))
+	return pr.getETHHeaders(height, pr.requiredCountToFinalize(currentEpochBlock))
 }
 
 func (pr *headerReader) requiredCountToFinalize(header *types.Header) int {
@@ -187,14 +185,14 @@ func (pr *headerReader) requiredCountToFinalize(header *types.Header) int {
 	}
 }
 
-func (pr *headerReader) getETHHeaders(start int64, requiredCountToFinalize int) ([]*ETHHeader, error) {
+func (pr *headerReader) getETHHeaders(start uint64, requiredCountToFinalize int) ([]*ETHHeader, error) {
 	var ethHeaders []*ETHHeader
 	for i := 0; i < requiredCountToFinalize; i++ {
-		block, err := pr.blockByNumber(context.TODO(), big.NewInt(int64(i)+start))
+		block, err := pr.blockByNumber(context.TODO(), uint64(i)+start)
 		if err != nil {
 			return nil, err
 		}
-		header, err := pr.newETHHeader(block.Header())
+		header, err := pr.newETHHeader(block)
 		if err != nil {
 			return nil, err
 		}
