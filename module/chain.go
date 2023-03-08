@@ -14,6 +14,7 @@ type ChainI interface {
 	core.ChainI
 	LatestHeight(ctx context.Context) (uint64, error)
 	LatestLightHeight(ctx context.Context) (uint64, error)
+	// TODO cache
 	Header(ctx context.Context, height uint64) (*types.Header, error)
 	IBCHandlerAddress() common.Address
 	CanonicalChainID(ctx context.Context) (uint64, error)

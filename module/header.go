@@ -146,7 +146,6 @@ type headerReader struct {
 }
 
 func NewHeaderReader(blockByNumber func(ctx context.Context, number uint64) (*types.Header, error)) HeaderReader {
-	//TODO cache
 	return &headerReader{
 		blockByNumber: blockByNumber,
 	}
@@ -169,7 +168,7 @@ func (pr *headerReader) QueryETHHeaders(height uint64) ([]*ETHHeader, error) {
 	}
 	// genesis count or after checkpoint
 	lastEpochNumber := epochCount * epochBlockPeriod
-	currentEpochBlock, err := pr.blockByNumber(context.TODO(), uint64(lastEpochNumber))
+	currentEpochBlock, err := pr.blockByNumber(context.TODO(), lastEpochNumber)
 	if err != nil {
 		return nil, err
 	}
