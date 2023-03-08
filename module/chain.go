@@ -21,6 +21,8 @@ type ChainI interface {
 	GetStateProof(address common.Address, storageKeys [][]byte, blockNumber *big.Int) (*client.StateProof, error)
 }
 
+//TODO https://github.com/hyperledger-labs/yui-ibc-solidity/issues/162
+
 type ethChain struct {
 	*ethereum.Chain
 }

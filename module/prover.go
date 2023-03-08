@@ -127,11 +127,10 @@ func (pr *Prover) QueryLatestHeader() (out core.HeaderI, err error) {
 		if target+countToFinalizePrevious <= latest {
 			return pr.QueryHeader(int64(target))
 		}
-
-		// target is insufficient. The latest finalized block is latest - 11
-
 	}
 
+	// target is insufficient. The latest finalized block is latest - 11
+	// or
 	// latest < 211, finalized by previous epoch count
 	return pr.QueryHeader(int64(latest - countToFinalizePrevious))
 }
