@@ -1,7 +1,6 @@
 package module
 
 import (
-	"context"
 	"encoding/hex"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -13,7 +12,6 @@ import (
 
 type HeaderTestSuite struct {
 	suite.Suite
-	reader *headerReader
 }
 
 func TestHeaderTestSuite(t *testing.T) {
@@ -21,43 +19,6 @@ func TestHeaderTestSuite(t *testing.T) {
 }
 
 func (ts *HeaderTestSuite) SetupTest() {
-	ts.reader = NewHeaderReader(func(ctx context.Context, number uint64) (*types.Header, error) {
-		header := &types.Header{}
-		header.Number = big.NewInt(int64(number))
-		if header.Number.Int64()%epochBlockPeriod == 0 {
-			if header.Number.Int64() == 0 {
-				header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*4)
-			} else {
-				header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*21)
-			}
-		} else {
-			header.Extra = make([]byte, extraVanity+extraSeal)
-		}
-		return header, nil
-	}).(*headerReader)
-}
-
-func (ts *HeaderTestSuite) TestQueryETHHeaders() {
-	ts.assertHeader(0, 2)
-	ts.assertHeader(1, 2)
-	ts.assertHeader(199, 2)
-	ts.assertHeader(200, 2)
-	ts.assertHeader(201, 2)
-	ts.assertHeader(202, 11)
-}
-
-func (ts *HeaderTestSuite) TestRequireCountToFinalize() {
-	header := &types.Header{}
-	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*1)
-	ts.Require().Equal(ts.reader.requiredCountToFinalize(header), 1)
-	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*2)
-	ts.Require().Equal(ts.reader.requiredCountToFinalize(header), 1)
-	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*3)
-	ts.Require().Equal(ts.reader.requiredCountToFinalize(header), 2)
-	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*4)
-	ts.Require().Equal(ts.reader.requiredCountToFinalize(header), 2)
-	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*21)
-	ts.Require().Equal(ts.reader.requiredCountToFinalize(header), 11)
 }
 
 func (ts *HeaderTestSuite) TestNewHeaderSuccess() {
@@ -66,7 +27,7 @@ func (ts *HeaderTestSuite) TestNewHeaderSuccess() {
 		Number: big.NewInt(21400),
 		Extra:  common.Hex2Bytes("d983010111846765746889676f312e31362e3135856c696e75780000d5efc574b794a294a7e455058789c82f15e8ce00669d689e2090e08cc7f42b0bd007728dea17979718bc99e2261bfe892a7ac9b849545ffc597338db43a9cb00564971a8f282cfe1741b0294ba45a21ac35168138e2c2e8200"),
 	}
-	ethHeader, err := ts.reader.newETHHeader(&rawHeader)
+	ethHeader, err := newETHHeader(&rawHeader)
 	ts.Require().NoError(err)
 
 	accountProof := []string{
@@ -104,18 +65,6 @@ func (ts *HeaderTestSuite) TestNewHeaderError() {
 	}
 	_, err := NewHeader(1, &header)
 	ts.Require().Error(err)
-}
-
-func (ts *HeaderTestSuite) assertHeader(height uint64, count int) {
-	ethHeaders, err := ts.reader.QueryETHHeaders(height)
-	assert := ts.Require()
-	assert.NoError(err)
-	assert.Len(ethHeaders, count) // only one validator
-	var header types.Header
-	for i := 0; i < count; i++ {
-		assert.NoError(rlp.DecodeBytes(ethHeaders[i].Header, &header))
-		assert.Equal(header.Number.Uint64(), height+uint64(i))
-	}
 }
 
 // see yui-ibc-solidity

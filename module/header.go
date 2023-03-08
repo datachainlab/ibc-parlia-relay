@@ -1,7 +1,6 @@
 package module
 
 import (
-	"context"
 	"fmt"
 	clienttypes "github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
 	"github.com/ethereum/go-ethereum/common"
@@ -135,75 +134,4 @@ func (h *defaultHeader) ValidateBasic() error {
 		return fmt.Errorf("invalid header")
 	}
 	return nil
-}
-
-type HeaderReader interface {
-	QueryETHHeaders(height uint64) ([]*ETHHeader, error)
-}
-
-type headerReader struct {
-	blockByNumber func(ctx context.Context, number uint64) (*types.Header, error)
-}
-
-func NewHeaderReader(blockByNumber func(ctx context.Context, number uint64) (*types.Header, error)) HeaderReader {
-	return &headerReader{
-		blockByNumber: blockByNumber,
-	}
-}
-
-// QueryETHHeaders returns the header corresponding to the height
-func (pr *headerReader) QueryETHHeaders(height uint64) ([]*ETHHeader, error) {
-	epochCount := height / epochBlockPeriod
-	if epochCount > 0 {
-		previousEpochHeight := (epochCount - 1) * epochBlockPeriod
-		previousEpochBlock, err := pr.blockByNumber(context.TODO(), previousEpochHeight)
-		if err != nil {
-			return nil, err
-		}
-		threshold := requiredCountToFinalize(previousEpochBlock)
-		if height%epochBlockPeriod < uint64(threshold) {
-			// before checkpoint
-			return pr.getETHHeaders(height, threshold)
-		}
-	}
-	// genesis count or after checkpoint
-	lastEpochNumber := epochCount * epochBlockPeriod
-	currentEpochBlock, err := pr.blockByNumber(context.TODO(), lastEpochNumber)
-	if err != nil {
-		return nil, err
-	}
-	return pr.getETHHeaders(height, requiredCountToFinalize(currentEpochBlock))
-}
-
-func (pr *headerReader) getETHHeaders(start uint64, requiredCountToFinalize int) ([]*ETHHeader, error) {
-	var ethHeaders []*ETHHeader
-	for i := 0; i < requiredCountToFinalize; i++ {
-		block, err := pr.blockByNumber(context.TODO(), uint64(i)+start)
-		if err != nil {
-			return nil, err
-		}
-		header, err := pr.newETHHeader(block)
-		if err != nil {
-			return nil, err
-		}
-		ethHeaders = append(ethHeaders, header)
-	}
-	return ethHeaders, nil
-}
-
-func (pr *headerReader) newETHHeader(header *types.Header) (*ETHHeader, error) {
-	rlpHeader, err := rlp.EncodeToBytes(header)
-	if err != nil {
-		return nil, err
-	}
-	return &ETHHeader{Header: rlpHeader}, nil
-}
-
-func requiredCountToFinalize(header *types.Header) int {
-	validators := len(header.Extra[extraVanity:len(header.Extra)-extraSeal]) / validatorBytesLength
-	if validators%2 == 1 {
-		return validators/2 + 1
-	} else {
-		return validators / 2
-	}
 }

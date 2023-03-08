@@ -3,6 +3,8 @@ package module
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
 	"time"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -22,7 +24,6 @@ var _ core.ProverI = (*Prover)(nil)
 type Prover struct {
 	chain          ChainI
 	config         *ProverConfig
-	headerReader   HeaderReader
 	revisionNumber uint64
 }
 
@@ -31,7 +32,6 @@ func NewProver(chain ChainI, config *ProverConfig) core.ProverI {
 		chain:          chain,
 		config:         config,
 		revisionNumber: 1, //TODO upgrade
-		headerReader:   NewHeaderReader(chain.Header),
 	}
 }
 
@@ -58,7 +58,7 @@ func (pr *Prover) GetChainID() string {
 // QueryHeader returns the header corresponding to the height
 func (pr *Prover) QueryHeader(height int64) (core.HeaderI, error) {
 
-	ethHeaders, err := pr.headerReader.QueryETHHeaders(uint64(height))
+	ethHeaders, err := pr.queryETHHeaders(uint64(height))
 	if err != nil {
 		return nil, err
 	}
@@ -350,4 +350,61 @@ func (pr *Prover) QueryPacketAcknowledgementCommitmentWithProof(height int64, se
 
 func (pr *Prover) toHeight(height int64) clienttypes.Height {
 	return clienttypes.NewHeight(pr.revisionNumber, uint64(height))
+}
+
+// QueryETHHeaders returns the header corresponding to the height
+func (pr *Prover) queryETHHeaders(height uint64) ([]*ETHHeader, error) {
+	epochCount := height / epochBlockPeriod
+	if epochCount > 0 {
+		previousEpochHeight := (epochCount - 1) * epochBlockPeriod
+		previousEpochBlock, err := pr.chain.Header(context.TODO(), previousEpochHeight)
+		if err != nil {
+			return nil, err
+		}
+		threshold := requiredCountToFinalize(previousEpochBlock)
+		if height%epochBlockPeriod < uint64(threshold) {
+			// before checkpoint
+			return pr.getETHHeaders(height, threshold)
+		}
+	}
+	// genesis count or after checkpoint
+	lastEpochNumber := epochCount * epochBlockPeriod
+	currentEpochBlock, err := pr.chain.Header(context.TODO(), lastEpochNumber)
+	if err != nil {
+		return nil, err
+	}
+	return pr.getETHHeaders(height, requiredCountToFinalize(currentEpochBlock))
+}
+
+func (pr *Prover) getETHHeaders(start uint64, requiredCountToFinalize int) ([]*ETHHeader, error) {
+	var ethHeaders []*ETHHeader
+	for i := 0; i < requiredCountToFinalize; i++ {
+		block, err := pr.chain.Header(context.TODO(), uint64(i)+start)
+		if err != nil {
+			return nil, err
+		}
+		header, err := newETHHeader(block)
+		if err != nil {
+			return nil, err
+		}
+		ethHeaders = append(ethHeaders, header)
+	}
+	return ethHeaders, nil
+}
+
+func newETHHeader(header *types.Header) (*ETHHeader, error) {
+	rlpHeader, err := rlp.EncodeToBytes(header)
+	if err != nil {
+		return nil, err
+	}
+	return &ETHHeader{Header: rlpHeader}, nil
+}
+
+func requiredCountToFinalize(header *types.Header) int {
+	validators := len(header.Extra[extraVanity:len(header.Extra)-extraSeal]) / validatorBytesLength
+	if validators%2 == 1 {
+		return validators/2 + 1
+	} else {
+		return validators / 2
+	}
 }
