@@ -179,6 +179,59 @@ func (pr *Prover) UpdateLightWithHeader() (core.HeaderI, int64, int64, error) {
 	if err != nil {
 		return nil, 0, 0, err
 	}
+
+	//FIXME must be moved to pr.QueryLastHeader?
+	//TODO refactor
+	latestHeight := header.GetHeight().GetRevisionHeight()
+	epochCount := latestHeight / epochBlockPeriod
+	if epochCount > 0 {
+		previousEpochHeight := (epochCount - 1) * epochBlockPeriod
+		previousEpoch, err := pr.chain.Header(context.TODO(), previousEpochHeight)
+		if err != nil {
+			return nil, 0, 0, err
+		}
+		countToFinalizePrevious := uint64(requiredCountToFinalize(previousEpoch))
+
+		currentEpochHeight := epochCount * epochBlockPeriod
+		currentEpoch, err := pr.chain.Header(context.TODO(), currentEpochHeight)
+		if err != nil {
+			return nil, 0, 0, err
+		}
+		countToFinalizeCurrent := uint64(requiredCountToFinalize(currentEpoch))
+		heightAfterEpoch := latestHeight % epochBlockPeriod
+		currentCheckpoint := currentEpochHeight + heightAfterEpoch
+
+		// previous validator count : 21
+		// current validator count : 41
+		// current checkpoint : 211 ( 200 + 11 )
+		if heightAfterEpoch >= countToFinalizePrevious+countToFinalizeCurrent {
+			// latest >= 232 ( 11 + 21 )
+			targetHeight := int64(latestHeight - countToFinalizeCurrent)
+			return nil, targetHeight, targetHeight, nil
+		} else if heightAfterEpoch >= countToFinalizePrevious && heightAfterEpoch < countToFinalizePrevious+countToFinalizeCurrent {
+			// 211 >= latest < 232
+			targetHeight := latestHeight - countToFinalizeCurrent
+			if targetHeight < currentCheckpoint {
+				// target < 211
+				if targetHeight+countToFinalizePrevious <= latestHeight {
+					// target + 11 <= latest
+					return nil, int64(targetHeight), int64(targetHeight), nil
+				} else {
+					// insufficient block to finalize previous epoch header
+					targetHeight = latestHeight - countToFinalizePrevious
+					return nil, int64(targetHeight), int64(targetHeight), nil
+				}
+			} else {
+				// target >= 211, sufficient current block to finalize current epoch header
+				return nil, int64(targetHeight), int64(targetHeight), nil
+			}
+		} else {
+			// latest < 211
+			targetHeight := int64(latestHeight - countToFinalizePrevious)
+			return nil, targetHeight, targetHeight, nil
+		}
+	}
+
 	height := int64(header.GetHeight().GetRevisionHeight())
 	return header, height, height, nil
 }

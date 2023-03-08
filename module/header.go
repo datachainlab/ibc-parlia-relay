@@ -161,7 +161,7 @@ func (pr *headerReader) QueryETHHeaders(height uint64) ([]*ETHHeader, error) {
 		if err != nil {
 			return nil, err
 		}
-		threshold := pr.requiredCountToFinalize(previousEpochBlock)
+		threshold := requiredCountToFinalize(previousEpochBlock)
 		if height%epochBlockPeriod < uint64(threshold) {
 			// before checkpoint
 			return pr.getETHHeaders(height, threshold)
@@ -173,16 +173,7 @@ func (pr *headerReader) QueryETHHeaders(height uint64) ([]*ETHHeader, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pr.getETHHeaders(height, pr.requiredCountToFinalize(currentEpochBlock))
-}
-
-func (pr *headerReader) requiredCountToFinalize(header *types.Header) int {
-	validators := len(header.Extra[extraVanity:len(header.Extra)-extraSeal]) / validatorBytesLength
-	if validators%2 == 1 {
-		return validators/2 + 1
-	} else {
-		return validators / 2
-	}
+	return pr.getETHHeaders(height, requiredCountToFinalize(currentEpochBlock))
 }
 
 func (pr *headerReader) getETHHeaders(start uint64, requiredCountToFinalize int) ([]*ETHHeader, error) {
@@ -207,4 +198,13 @@ func (pr *headerReader) newETHHeader(header *types.Header) (*ETHHeader, error) {
 		return nil, err
 	}
 	return &ETHHeader{Header: rlpHeader}, nil
+}
+
+func requiredCountToFinalize(header *types.Header) int {
+	validators := len(header.Extra[extraVanity:len(header.Extra)-extraSeal]) / validatorBytesLength
+	if validators%2 == 1 {
+		return validators/2 + 1
+	} else {
+		return validators / 2
+	}
 }
