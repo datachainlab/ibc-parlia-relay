@@ -29,6 +29,10 @@ type mockChain struct {
 	ChainI
 }
 
+func (r *mockChain) CanonicalChainID(ctx context.Context) (uint64, error) {
+	return 9999, nil
+}
+
 func (r *mockChain) QueryClientState(height int64) (*clienttypes.QueryClientStateResponse, error) {
 	cHeight := clienttypes.NewHeight(0, uint64(height))
 	cs := ClientState{
@@ -82,6 +86,10 @@ func (r *mockChain) GetStateProof(_ common.Address, _ [][]byte, _ *big.Int) (*cl
 	}, nil
 }
 
+func (c *mockChain) LatestLightHeight(ctx context.Context) (uint64, error) {
+	return 21400, nil
+}
+
 type ProverTestSuite struct {
 	suite.Suite
 	prover *Prover
@@ -93,7 +101,6 @@ func TestProverTestSuite(t *testing.T) {
 
 func (ts *ProverTestSuite) SetupTest() {
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
-		RpcAddr:           "http://localhost:8545",
 		EthChainId:        9999,
 		HdwMnemonic:       hdwMnemonic,
 		HdwPath:           hdwPath,
@@ -162,16 +169,11 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 	ts.Require().Equal(common.BytesToHash(cs2.StateRoot), account.Root)
 }
 
-type dstMock struct {
-	ChainI
-	core.ProverI
-}
-
-func (r *dstMock) GetLatestLightHeight() (int64, error) {
-	return 10, nil
-}
-
 func (ts *ProverTestSuite) TestSetupHeader() {
+	type dstMock struct {
+		ChainI
+		core.ProverI
+	}
 	dst := dstMock{
 		ChainI:  ts.prover.chain,
 		ProverI: ts.prover,
@@ -182,7 +184,7 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	setupDone, err := ts.prover.SetupHeader(&dst, header)
 	done := setupDone.(*defaultHeader)
 	ts.Require().NoError(err)
-	ts.Require().Equal(uint64(10), done.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21400), done.GetTrustedHeight().GetRevisionHeight())
 }
 
 func (ts *ProverTestSuite) TestQueryClientStateWithProof() {
