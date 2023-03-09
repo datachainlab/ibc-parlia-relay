@@ -27,10 +27,12 @@ const (
 
 type mockChain struct {
 	ChainI
+	latestHeight uint64
+	chainID      uint64
 }
 
 func (r *mockChain) CanonicalChainID(ctx context.Context) (uint64, error) {
-	return 9999, nil
+	return r.chainID, nil
 }
 
 func (r *mockChain) QueryClientState(height int64) (*clienttypes.QueryClientStateResponse, error) {
@@ -86,13 +88,18 @@ func (r *mockChain) GetStateProof(_ common.Address, _ [][]byte, _ *big.Int) (*cl
 	}, nil
 }
 
-func (c *mockChain) LatestLightHeight(ctx context.Context) (uint64, error) {
+func (c *mockChain) LatestHeight(_ context.Context) (uint64, error) {
+	return c.latestHeight, nil
+}
+
+func (c *mockChain) LatestLightHeight(_ context.Context) (uint64, error) {
 	return 21400, nil
 }
 
 type ProverTestSuite struct {
 	suite.Suite
 	prover *Prover
+	chain  *mockChain
 }
 
 func TestProverTestSuite(t *testing.T) {
@@ -126,8 +133,12 @@ func (ts *ProverTestSuite) SetupTest() {
 		TrustLevelDenominator: 3,
 		TrustingPeriod:        1_000_000_000,
 	}
-	testChain := mockChain{ChainI: NewChain(chain)}
-	ts.prover = NewProver(&testChain, &config).(*Prover)
+	ts.chain = &mockChain{
+		ChainI:       NewChain(chain),
+		latestHeight: 21400,
+		chainID:      9999,
+	}
+	ts.prover = NewProver(ts.chain, &config).(*Prover)
 }
 
 func (ts *ProverTestSuite) TestQueryHeader() {
@@ -137,8 +148,45 @@ func (ts *ProverTestSuite) TestQueryHeader() {
 }
 
 func (ts *ProverTestSuite) TestQueryLatestHeader() {
+	currentLatest := ts.chain.latestHeight
+	defer func() {
+		ts.chain.latestHeight = currentLatest
+	}()
+	ts.chain.latestHeight = 0
 	_, err := ts.prover.QueryLatestHeader()
-	ts.Require().NoError(err)
+	ts.Require().Error(err, "no finalized header found : latest = 0")
+
+	firstEpochBlock, _ := ts.chain.Header(context.TODO(), 0)
+	firstEpochFinalizing := requiredCountToFinalize(firstEpochBlock)
+
+	// finalized by previous epoch validators
+	for i := 1; i <= 200+(firstEpochFinalizing-1); i++ {
+		ts.chain.latestHeight = uint64(i)
+		header, terr := ts.prover.QueryLatestHeader()
+		ts.Require().NoError(terr)
+		ts.Require().Equal(int(header.GetHeight().GetRevisionHeight()), int(ts.chain.latestHeight)-(firstEpochFinalizing-1), i)
+	}
+
+	secondEpochBlock, _ := ts.chain.Header(context.TODO(), 200)
+	secondEpochFinalizing := requiredCountToFinalize(secondEpochBlock)
+	currentCheckpoint := 200 + firstEpochFinalizing
+
+	// target is less than checkpoint
+	for i := 200 + firstEpochFinalizing; i < 200+firstEpochFinalizing+secondEpochFinalizing-1; i++ {
+		ts.chain.latestHeight = uint64(i)
+		header, terr := ts.prover.QueryLatestHeader()
+		ts.Require().NoError(terr)
+		ts.Require().Equal(int(header.GetHeight().GetRevisionHeight()), currentCheckpoint-1, i)
+	}
+
+	// target is greater than current checkpoint
+	for i := 200 + firstEpochFinalizing + secondEpochFinalizing - 1; i < 400; i++ {
+		ts.chain.latestHeight = uint64(i)
+		header, terr := ts.prover.QueryLatestHeader()
+		ts.Require().NoError(terr)
+		ts.Require().Equal(int(header.GetHeight().GetRevisionHeight()), int(ts.chain.latestHeight)-(secondEpochFinalizing-1), i)
+	}
+
 }
 
 func (ts *ProverTestSuite) TestCreateMsgCreateClient() {

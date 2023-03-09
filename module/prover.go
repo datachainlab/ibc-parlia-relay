@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/tendermint/tendermint/libs/math"
 	"time"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -85,10 +86,12 @@ func (pr *Prover) QueryLatestHeader() (out core.HeaderI, err error) {
 		return nil, err
 	}
 	countToFinalizeCurrent := uint64(requiredCountToFinalize(currentEpoch))
-	currentCheckpoint := currentEpoch.Number.Uint64() + countToFinalizeCurrent
+
+	// genesis epoch
 	if epochCount == 0 {
-		if latest >= countToFinalizeCurrent {
-			targetHeight := latest - countToFinalizeCurrent
+		countToFinalizeCurrentExceptTarget := countToFinalizeCurrent - 1
+		if latest >= countToFinalizeCurrentExceptTarget {
+			targetHeight := latest - countToFinalizeCurrentExceptTarget
 			return pr.QueryHeader(int64(targetHeight))
 		}
 		return nil, fmt.Errorf("no finalized header found : latest = %d", latest)
@@ -100,39 +103,16 @@ func (pr *Prover) QueryLatestHeader() (out core.HeaderI, err error) {
 		return nil, err
 	}
 	countToFinalizePrevious := uint64(requiredCountToFinalize(previousEpoch))
-	heightAfterEpoch := latest % epochBlockPeriod
 
-	// ex
-	//  - previous validator count = 21
-	//  - current validator count = 41
-	//  - current checkpoint = 211 ( 200 + 21/2 + 1 )
-
-	// latest >= 232 ( 11 + 21 ), Finalized by current validator set
-	if heightAfterEpoch >= countToFinalizePrevious+countToFinalizeCurrent {
-		return pr.QueryHeader(int64(latest - countToFinalizeCurrent))
+	// finalized by current validator set
+	checkpoint := currentEpoch.Number.Uint64() + countToFinalizePrevious
+	target := latest - (countToFinalizeCurrent - 1)
+	if target >= checkpoint {
+		return pr.QueryHeader(int64(target))
 	}
 
-	// 211 >= latest < 232, Maybe finalized by current validator set.
-	if heightAfterEpoch >= countToFinalizePrevious && heightAfterEpoch < countToFinalizePrevious+countToFinalizeCurrent {
-
-		target := latest - countToFinalizeCurrent
-
-		// target >= 211, target is finalized by current validator set
-		if target >= currentCheckpoint {
-			return pr.QueryHeader(int64(target))
-		}
-
-		// target < 211, The block signed by previous validator set is latest.
-		// target + 11 <= latest, target is finalized by previous validator set.
-		if target+countToFinalizePrevious <= latest {
-			return pr.QueryHeader(int64(target))
-		}
-	}
-
-	// target is insufficient. The latest finalized block is latest - 11
-	// or
-	// latest < 211, finalized by previous epoch count
-	return pr.QueryHeader(int64(latest - countToFinalizePrevious))
+	// finalized by previous validator set
+	return pr.QueryHeader(math.MinInt64(int64(checkpoint-1), int64(latest-(countToFinalizePrevious-1))))
 }
 
 // GetLatestLightHeight returns the latest height on the light client
