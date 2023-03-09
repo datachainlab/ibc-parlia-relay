@@ -1,5 +1,5 @@
 syntax = "proto3";
-package relayer.chains.quorum.config;
+package relayer.provers.parlia.config;
 
 option go_package = "github.com/datachainlab/ibc-parlia-relay/module";
 
