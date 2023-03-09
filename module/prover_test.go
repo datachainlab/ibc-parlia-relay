@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"math/big"
 	"testing"
+	"time"
 )
 
 const (
@@ -131,7 +132,7 @@ func (ts *ProverTestSuite) SetupTest() {
 	config := ProverConfig{
 		TrustLevelNumerator:   1,
 		TrustLevelDenominator: 3,
-		TrustingPeriod:        1_000_000_000,
+		TrustingPeriod:        time.Second * 100,
 	}
 	ts.chain = &mockChain{
 		ChainI:       NewChain(chain),
@@ -198,7 +199,7 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 	var cs ClientState
 	ts.Require().NoError(proto.Unmarshal(msg.ClientState.Value, &cs))
 	ts.Require().Equal(cs.ChainId, uint64(9999))
-	ts.Require().Equal(cs.TrustingPeriod, uint64(1_000_000_000))
+	ts.Require().Equal(cs.TrustingPeriod, time.Second*100)
 	ts.Require().Equal(cs.TrustLevel.Numerator, uint64(1))
 	ts.Require().Equal(cs.TrustLevel.Denominator, uint64(3))
 	ts.Require().False(cs.Frozen)

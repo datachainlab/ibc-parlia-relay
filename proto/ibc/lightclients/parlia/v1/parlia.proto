@@ -3,6 +3,7 @@ package ibc.lightclients.parlia.v1;
 option go_package = "github.com/datachainlab/ibc-parlia-relay/module";
 
 import "ibc/core/client/v1/client.proto";
+import "google/protobuf/duration.proto";
 
 import "gogoproto/gogo.proto";
 
@@ -18,7 +19,8 @@ message ClientState {
   bytes ibc_store_address = 2;
   ibc.core.client.v1.Height latest_height = 3;
   Fraction trust_level = 4;
-  uint64 trusting_period = 5;
+  google.protobuf.Duration trusting_period = 5
+    [(gogoproto.nullable) = false,(gogoproto.stdduration) = true];
   bool frozen = 6;
 }
 
