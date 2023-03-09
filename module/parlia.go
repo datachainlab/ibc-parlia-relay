@@ -9,7 +9,8 @@ import (
 var _ exported.ClientState = (*ClientState)(nil)
 
 func (cs *ClientState) ClientType() string {
-	panic("not implemented")
+	//TODO client type
+	return "99-parlia"
 }
 
 func (cs *ClientState) GetLatestHeight() exported.Height {
