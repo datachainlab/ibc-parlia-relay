@@ -15,21 +15,13 @@ make build
 make -C development/chains/bsc network-all
 
 ## deploy contract
-cd contracts
-cp ../../config/truffle-config.js .
-cp ../../config/4_initialize_parlia.js ./migrations/
-rm -rf build
-rm -rf contracts
-rm -rf migrations
-cp -R $SOLIDITY_PATH/contracts contracts
-cp -R $SOLIDITY_PATH/migrations migrations
+cd ../contracts
 npm i
-npx truffle build
-npx truffle migrate --network eth_local
-npx truffle migrate --network bsc_local
+npx truffle migrate --network eth_local --reset
+npx truffle migrate --network bsc_local --reset
 
 ## setup relayer
-cd ../../
+cd ../
 rm -rf $HOME/.yui-relayer
 go run main.go config init
 go run main.go chains add-dir config/demo/

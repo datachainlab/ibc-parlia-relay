@@ -1,2 +1,3 @@
-test/lcp-bridge
-
+build
+lcp-bridge
+node_modules
