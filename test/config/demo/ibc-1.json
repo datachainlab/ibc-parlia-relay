@@ -6,8 +6,8 @@
     "rpc_addr": "http://localhost:8545",
     "hdw_mnemonic": "math razor capable expose worth grape metal sunset metal sudden usage scheme",
     "hdw_path": "m/44'/60'/0'/0/0",
-    "ibc_host_address": "0x702E40245797c5a2108A566b3CE2Bf14Bc6aF841",
-    "ibc_handler_address": "0xaa43d337145E8930d01cb4E60Abf6595C692921E"
+    "ibc_host_address": "0x0000000000000000000000000000000000000000",
+    "ibc_handler_address": "0x1D268db12EB341E196C682ebB94314Af2cAC0d8d"
   },
   "prover": {
     "@type": "/relayer.provers.parlia.config.ProverConfig"

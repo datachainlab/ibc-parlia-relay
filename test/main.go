@@ -1,12 +1,11 @@
 package main
 
 import (
-	"github.com/hyperledger-labs/yui-ibc-solidity/pkg/relay/ethereum"
-	"log"
-
 	"github.com/datachainlab/ibc-parlia-relay/module"
+	"github.com/hyperledger-labs/yui-ibc-solidity/pkg/relay/ethereum"
 	"github.com/hyperledger-labs/yui-relayer/cmd"
 	mock "github.com/hyperledger-labs/yui-relayer/provers/mock/module"
+	"log"
 )
 
 func main() {
