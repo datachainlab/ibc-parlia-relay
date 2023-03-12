@@ -5,10 +5,10 @@ import "@hyperledger-labs/yui-ibc-solidity/contracts/core/02-client/ILightClient
 import "@hyperledger-labs/yui-ibc-solidity/contracts/core/02-client/IBCHeight.sol";
 import "@hyperledger-labs/yui-ibc-solidity/contracts/proto/Client.sol";
 import {
-    IbcLightclientsMockV1ClientState as ClientState,
-    IbcLightclientsMockV1ConsensusState as ConsensusState,
-    IbcLightclientsMockV1Header as Header
-} from "@hyperledger-labs/yui-ibc-solidity/contracts/proto/MockClient.sol";
+    IbcLightclientsParliaV1ClientState as ClientState,
+    IbcLightclientsParliaV1ConsensusState as ConsensusState,
+    IbcLightclientsParliaV1Header as Header
+} from "../ibc/lightclients/parlia/v1/parlia.sol";
 import {GoogleProtobufAny as Any} from "@hyperledger-labs/yui-ibc-solidity/contracts/proto/GoogleProtobufAny.sol";
 import "@hyperledger-labs/yui-ibc-solidity/contracts/lib/Bytes.sol";
 
@@ -55,8 +55,7 @@ contract MockParliaClient is ILightClient {
             return (clientStateCommitment, update, false);
         }
         if (
-            clientState.latest_height.revision_number != 0 || clientState.latest_height.revision_height == 0
-                || consensusState.timestamp == 0
+            clientState.latest_height.revision_height == 0 || consensusState.timestamp == 0
         ) {
             return (clientStateCommitment, update, false);
         }
@@ -185,10 +184,6 @@ contract MockParliaClient is ILightClient {
         Any.Data memory any = Any.decode(bz);
         require(keccak256(abi.encodePacked(any.type_url)) == HEADER_TYPE_URL_HASH, "invalid header type");
         Header.Data memory header = Header.decode(any.value);
-        require(
-            header.height.revision_number == 0 && header.height.revision_height != 0 && header.timestamp != 0,
-            "invalid header"
-        );
         return (header.height, header.timestamp);
     }
 

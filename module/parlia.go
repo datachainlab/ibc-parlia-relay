@@ -10,7 +10,7 @@ var _ exported.ClientState = (*ClientState)(nil)
 
 func (cs *ClientState) ClientType() string {
 	//TODO client type
-	return "mock-client"
+	return "parlia-client"
 }
 
 func (cs *ClientState) GetLatestHeight() exported.Height {
