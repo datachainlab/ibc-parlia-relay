@@ -9,7 +9,6 @@ import (
 )
 
 func main() {
-
 	if err := cmd.Execute(
 		mock.Module{},
 		ethereum.Module{},
