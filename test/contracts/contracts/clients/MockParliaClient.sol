@@ -11,8 +11,11 @@ import {
 } from "../ibc/lightclients/parlia/v1/parlia.sol";
 import {GoogleProtobufAny as Any} from "@hyperledger-labs/yui-ibc-solidity/contracts/proto/GoogleProtobufAny.sol";
 import "@hyperledger-labs/yui-ibc-solidity/contracts/lib/Bytes.sol";
+import "@hyperledger-labs/yui-ibc-solidity/contracts/lib/RLP.sol";
 
 contract MockParliaClient is ILightClient {
+    using RLP for bytes;
+    using RLP for RLP.RLPItem;
     using Bytes for bytes;
     using IBCHeight for Height.Data;
 
@@ -82,7 +85,7 @@ contract MockParliaClient is ILightClient {
      */
     function getLatestHeight(string calldata clientId) external view override returns (Height.Data memory, bool) {
         ClientState.Data storage clientState = clientStates[clientId];
-        return (clientState.latest_height, clientState.latest_height.revision_height != 0);
+        return (Height.Data({revision_number: 0, revision_height: clientState.latest_height.revision_height}), clientState.latest_height.revision_height != 0);
     }
 
     /**
@@ -105,9 +108,6 @@ contract MockParliaClient is ILightClient {
         Any.Data memory anyConsensusState;
 
         (height, timestamp) = parseHeader(clientMessageBytes);
-        if (height.gt(clientStates[clientId].latest_height)) {
-            clientStates[clientId].latest_height = height;
-        }
         anyClientState.type_url = CLIENT_STATE_TYPE_URL;
         anyClientState.value = ClientState.encode(clientStates[clientId]);
 
@@ -184,7 +184,10 @@ contract MockParliaClient is ILightClient {
         Any.Data memory any = Any.decode(bz);
         require(keccak256(abi.encodePacked(any.type_url)) == HEADER_TYPE_URL_HASH, "invalid header type");
         Header.Data memory header = Header.decode(any.value);
-        return (header.height, header.timestamp);
+        bytes memory rlpEthHeader  = header.headers[0].header;
+
+        RLP.RLPItem[] memory items = rlpEthHeader.toRLPItem().toList();
+        return (Height.Data({revision_number: 0, revision_height: uint64(items[8].toUint())}), uint64(items[11].toUint()));
     }
 
     function unmarshalClientState(bytes calldata bz)

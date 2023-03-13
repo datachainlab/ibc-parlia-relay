@@ -3,12 +3,12 @@ package relayer.provers.parlia.config;
 
 option go_package = "github.com/datachainlab/ibc-parlia-relay/module";
 
-import "google/protobuf/duration.proto";
+import "ibc/lightclients/parlia/v1/parlia.proto";
 import "gogoproto/gogo.proto";
 
 message ProverConfig {
   uint64 trust_level_numerator = 1;
   uint64 trust_level_denominator = 2;
-  google.protobuf.Duration trusting_period = 3
+  ibc.lightclients.parlia.v1.Duration trusting_period = 3
     [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];  // as unix time
 }
