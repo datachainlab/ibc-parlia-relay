@@ -151,9 +151,6 @@ contract MockParliaClient is ILightClient {
         string calldata clientId
     ) external view returns (bytes memory clientStateBytes, bool) {
         ClientState.Data storage clientState = clientStates[clientId];
-        if (clientState.latest_height.revision_height == 0) {
-            return (clientStateBytes, false);
-        }
         return (Any.encode(Any.Data({
             type_url: CLIENT_STATE_TYPE_URL,
             value: ClientState.encode(clientState)
@@ -169,9 +166,6 @@ contract MockParliaClient is ILightClient {
         Height.Data calldata height
     ) external view returns (bytes memory consensusStateBytes, bool) {
         ConsensusState.Data storage consensusState = consensusStates[clientId][height.toUint128()];
-        if (consensusState.timestamp == 0) {
-            return (consensusStateBytes, false);
-        }
         return (Any.encode(Any.Data({
             type_url: CONSENSUS_STATE_TYPE_URL,
             value: ConsensusState.encode(consensusState)

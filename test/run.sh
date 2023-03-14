@@ -30,3 +30,4 @@ jq <<< `cat $HOME/.yui-relayer/config/config.yaml`
 
 ## run cli
 go run main.go tx clients ibc01
+go run main.go tx update-clients ibc01
