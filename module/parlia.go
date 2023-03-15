@@ -9,8 +9,7 @@ import (
 var _ exported.ClientState = (*ClientState)(nil)
 
 func (cs *ClientState) ClientType() string {
-	//TODO client type
-	return "parlia-client"
+	return Parlia
 }
 
 func (cs *ClientState) GetLatestHeight() exported.Height {

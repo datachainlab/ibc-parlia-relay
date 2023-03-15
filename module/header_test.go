@@ -42,15 +42,15 @@ func (ts *HeaderTestSuite) TestNewHeaderSuccess() {
 		Headers:      []*ETHHeader{ethHeader},
 		AccountProof: accountProofRLP,
 	}
-	proxy, err := NewHeader(1, &header)
+	target, err := header.Target()
 	ts.Require().NoError(err)
-	ts.Require().Equal(proxy.Target().Number, rawHeader.Number)
-	validator, err := proxy.ValidatorSet()
+	ts.Require().Equal(target.Number, rawHeader.Number)
+	validator, err := extractValidatorSet(target)
 	ts.Require().NoError(err)
 	ts.Require().Equal(len(validator), 1)
-	ts.Require().NoError(proxy.ValidateBasic())
-	ts.Require().Equal(proxy.GetHeight().GetRevisionHeight(), proxy.Target().Number.Uint64())
-	account, err := proxy.Account(common.HexToAddress(ibcHandlerAddress))
+	ts.Require().NoError(header.ValidateBasic())
+	ts.Require().Equal(header.GetHeight().GetRevisionHeight(), target.Number.Uint64())
+	account, err := header.Account(common.HexToAddress(ibcHandlerAddress))
 	ts.Require().NoError(err)
 	ts.Require().Equal(account.Root, common.HexToHash("c3608871098f21b59607ef3fb9412a091de9246ad1281a92f5b07dc2f465b7a0"))
 	ts.Require().Equal(account.CodeHash, common.Hex2Bytes("7498e14000b8457a51de3cd583e9337cfa52aee2c2e9f945fac35a820e685904"))
@@ -63,8 +63,7 @@ func (ts *HeaderTestSuite) TestNewHeaderError() {
 		Headers:      []*ETHHeader{},
 		AccountProof: []byte{},
 	}
-	_, err := NewHeader(1, &header)
-	ts.Require().Error(err)
+	ts.Require().Error(header.ValidateBasic())
 }
 
 // see yui-ibc-solidity

@@ -68,10 +68,10 @@ func (pr *Prover) QueryHeader(height int64) (core.HeaderI, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewHeader(pr.revisionNumber, &Header{
+	return &Header{
 		AccountProof: rlpAccountProof,
 		Headers:      ethHeaders,
-	})
+	}, nil
 }
 
 // QueryLatestHeader returns the latest header from the chain
@@ -127,7 +127,11 @@ func (pr *Prover) GetLatestLightHeight() (int64, error) {
 // CreateMsgCreateClient creates a CreateClientMsg to this chain
 func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.HeaderI, _ sdk.AccAddress) (*clienttypes.MsgCreateClient, error) {
 	// get account proof from header
-	header := dstHeader.(HeaderI)
+	header := dstHeader.(*Header)
+	target, err := header.Target()
+	if err != nil {
+		return nil, err
+	}
 
 	// recover account data from account proof
 	account, err := header.Account(pr.chain.IBCHandlerAddress())
@@ -161,12 +165,12 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.HeaderI, _ sdk.
 	}
 
 	// create initial consensus state
-	validatorSet, err := header.ValidatorSet()
+	validatorSet, err := extractValidatorSet(target)
 	if err != nil {
 		return nil, err
 	}
 	consensusState := ConsensusState{
-		Timestamp:    header.Target().Time,
+		Timestamp:    target.Time,
 		StateRoot:    account.Root.Bytes(),
 		ValidatorSet: validatorSet,
 	}
@@ -184,7 +188,7 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.HeaderI, _ sdk.
 
 // SetupHeader creates a new header based on a given header
 func (pr *Prover) SetupHeader(dst core.LightClientIBCQueryierI, baseSrcHeader core.HeaderI) (core.HeaderI, error) {
-	header := baseSrcHeader.(*defaultHeader)
+	header := baseSrcHeader.(*Header)
 
 	// get client state on destination chain
 	dstHeight, err := dst.GetLatestLightHeight()

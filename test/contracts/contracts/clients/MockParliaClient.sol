@@ -19,6 +19,7 @@ contract MockParliaClient is ILightClient {
     using Bytes for bytes;
     using IBCHeight for Height.Data;
 
+    ///ibc.lightclients.${module}.v1.${resource}
     string private constant HEADER_TYPE_URL = "/ibc.lightclients.parlia.v1.Header";
     string private constant CLIENT_STATE_TYPE_URL = "/ibc.lightclients.parlia.v1.ClientState";
     string private constant CONSENSUS_STATE_TYPE_URL = "/ibc.lightclients.parlia.v1.ConsensusState";

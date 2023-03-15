@@ -5,11 +5,11 @@ import (
 	clienttypes "github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"log"
 
 	"github.com/cosmos/ibc-go/v4/modules/core/exported"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/hyperledger-labs/yui-relayer/core"
 )
 
 const epochBlockPeriod = 200
@@ -19,6 +19,29 @@ const validatorBytesLength = 20
 
 // Parlia TODO client_type
 const Parlia string = "99-parlia"
+
+func (*Header) ClientType() string {
+	return Parlia
+}
+
+func (h *Header) GetHeight() exported.Height {
+	target, err := h.Target()
+	if err != nil {
+		log.Panicf("invalid header: %v", h)
+	}
+	//TODO revision number
+	return clienttypes.NewHeight(0, target.Number.Uint64())
+}
+
+func (h *Header) ValidateBasic() error {
+	if _, err := h.Target(); err != nil {
+		return err
+	}
+	if _, err := h.decodeAccountProof(); err != nil {
+		return err
+	}
+	return nil
+}
 
 func (h *Header) decodeEthHeaders() ([]*types.Header, error) {
 	ethHeaders := make([]*types.Header, len(h.Headers))
@@ -48,68 +71,30 @@ func (h *Header) decodeAccountProof() ([][]byte, error) {
 	return accountProof, nil
 }
 
-type HeaderI interface {
-	core.HeaderI
-	Target() *types.Header
-	Account(path common.Address) (*types.StateAccount, error)
-	ValidatorSet() ([][]byte, error)
-}
-
-type defaultHeader struct {
-	*Header
-	revisionNumber uint64
-
-	// cache
-	decodedTargetHeader *types.Header
-	decodedAccountProof [][]byte
-}
-
-func NewHeader(revisionNumber uint64, header *Header) (HeaderI, error) {
-	decodedHeaders, err := header.decodeEthHeaders()
+func (h *Header) Target() (*types.Header, error) {
+	decodedHeaders, err := h.decodeEthHeaders()
 	if err != nil {
 		return nil, err
 	}
 	if len(decodedHeaders) == 0 {
 		return nil, fmt.Errorf("invalid header length")
 	}
-	decodedAccountProof, err := header.decodeAccountProof()
+	return decodedHeaders[0], nil
+}
+
+func (h *Header) Account(path common.Address) (*types.StateAccount, error) {
+	target, err := h.Target()
 	if err != nil {
 		return nil, err
 	}
-	decodedTargetHeader := decodedHeaders[0]
-
-	return &defaultHeader{
-		revisionNumber:      revisionNumber,
-		Header:              header,
-		decodedTargetHeader: decodedTargetHeader,
-		decodedAccountProof: decodedAccountProof,
-	}, nil
-}
-
-func (h *defaultHeader) Target() *types.Header {
-	return h.decodedTargetHeader
-}
-
-func (h *defaultHeader) ValidatorSet() ([][]byte, error) {
-	extra := h.decodedTargetHeader.Extra
-	if len(extra) < extraVanity+extraSeal {
-		return nil, fmt.Errorf("invalid extra length")
+	decodedAccountProof, err := h.decodeAccountProof()
+	if err != nil {
+		return nil, err
 	}
-	var validatorSet [][]byte
-	validators := extra[extraVanity : len(extra)-extraSeal]
-	validatorCount := len(validators) / validatorBytesLength
-	for i := 0; i < validatorCount; i++ {
-		start := validatorBytesLength * i
-		validatorSet = append(validatorSet, validators[start:start+validatorBytesLength])
-	}
-	return validatorSet, nil
-}
-
-func (h *defaultHeader) Account(path common.Address) (*types.StateAccount, error) {
 	rlpAccount, err := verifyProof(
-		h.decodedTargetHeader.Root,
+		target.Root,
 		crypto.Keccak256Hash(path.Bytes()).Bytes(),
-		h.decodedAccountProof,
+		decodedAccountProof,
 	)
 	if err != nil {
 		return nil, err
@@ -121,17 +106,17 @@ func (h *defaultHeader) Account(path common.Address) (*types.StateAccount, error
 	return &account, nil
 }
 
-func (*defaultHeader) ClientType() string {
-	return Parlia
-}
-
-func (h *defaultHeader) GetHeight() exported.Height {
-	return clienttypes.NewHeight(h.revisionNumber, h.decodedTargetHeader.Number.Uint64())
-}
-
-func (h *defaultHeader) ValidateBasic() error {
-	if h.Header == nil || h.decodedTargetHeader == nil || h.decodedAccountProof == nil {
-		return fmt.Errorf("invalid header")
+func extractValidatorSet(h *types.Header) ([][]byte, error) {
+	extra := h.Extra
+	if len(extra) < extraVanity+extraSeal {
+		return nil, fmt.Errorf("invalid extra length")
 	}
-	return nil
+	var validatorSet [][]byte
+	validators := extra[extraVanity : len(extra)-extraSeal]
+	validatorCount := len(validators) / validatorBytesLength
+	for i := 0; i < validatorCount; i++ {
+		start := validatorBytesLength * i
+		validatorSet = append(validatorSet, validators[start:start+validatorBytesLength])
+	}
+	return validatorSet, nil
 }

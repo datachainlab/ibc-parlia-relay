@@ -6,7 +6,7 @@ const MockParliaClient = artifacts.require("MockParliaClient");
 
 const PortTransfer = "transfer"
 const MockClientType = "mock-client"
-const ParliaClientType = "parlia-client"
+const ParliaClientType = "99-parlia"
 
 module.exports = async function (deployer) {
   const ibcHandler = await IBCHandler.deployed();

@@ -210,11 +210,13 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 	var cs2 ConsensusState
 	ts.Require().NoError(err)
 	ts.Require().NoError(proto.Unmarshal(msg.ConsensusState.Value, &cs2))
-	rawHeader := header.(HeaderI)
-	validatorSet, err := rawHeader.ValidatorSet()
+	rawHeader := header.(*Header)
+	target, err := rawHeader.Target()
+	ts.Require().NoError(err)
+	validatorSet, err := extractValidatorSet(target)
 	account, err := rawHeader.Account(common.HexToAddress(ibcHandlerAddress))
 	ts.Require().Equal(cs2.ValidatorSet, validatorSet)
-	ts.Require().Equal(cs2.Timestamp, rawHeader.Target().Time)
+	ts.Require().Equal(cs2.Timestamp, target.Time)
 	ts.Require().Equal(common.BytesToHash(cs2.StateRoot), account.Root)
 }
 
@@ -227,11 +229,9 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 		ChainI:  ts.prover.chain,
 		ProverI: ts.prover,
 	}
-	header := &defaultHeader{
-		Header: &Header{},
-	}
+	header := &Header{}
 	setupDone, err := ts.prover.SetupHeader(&dst, header)
-	done := setupDone.(*defaultHeader)
+	done := setupDone.(*Header)
 	ts.Require().NoError(err)
 	ts.Require().Equal(uint64(21400), done.GetTrustedHeight().GetRevisionHeight())
 }
