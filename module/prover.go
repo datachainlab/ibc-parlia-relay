@@ -32,7 +32,7 @@ func NewProver(chain ChainI, config *ProverConfig) core.ProverI {
 	return &Prover{
 		chain:          chain,
 		config:         config,
-		revisionNumber: 1, //TODO upgrade
+		revisionNumber: 0, //TODO upgrade
 	}
 }
 
@@ -75,6 +75,15 @@ func (pr *Prover) QueryHeader(height int64) (core.HeaderI, error) {
 }
 
 // QueryLatestHeader returns the latest header from the chain
+// ex) previous validator : 4, current validator = 21
+// latest | target
+// 203    | 200
+// 204    | 201
+// 205    | 202
+// 212    | 202
+// 213    | 203 ( checkpoint by previous validator )
+// 214    | 204
+// 215    | 205
 func (pr *Prover) QueryLatestHeader() (out core.HeaderI, err error) {
 	latest, err := pr.chain.LatestHeight(context.TODO())
 	if err != nil {
@@ -385,9 +394,9 @@ func newETHHeader(header *types.Header) (*ETHHeader, error) {
 
 func requiredCountToFinalize(header *types.Header) int {
 	validators := len(header.Extra[extraVanity:len(header.Extra)-extraSeal]) / validatorBytesLength
-	if validators%2 == 1 {
-		return validators/2 + 1
-	} else {
-		return validators / 2
-	}
+	// The checkpoint is [(block - 1) % epochCount == len(previousValidatorCount / 2)]
+	// for example when the validator count is 21 the checkpoint is 211, 411, 611 ...
+	// https://github.com/bnb-chain/bsc/blob/master/consensus/parlia/parlia.go#L605
+	// https://github.com/bnb-chain/bsc/blob/master/consensus/parlia/snapshot.go#L191
+	return validators/2 + 1
 }

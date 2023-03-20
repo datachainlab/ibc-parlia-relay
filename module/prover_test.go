@@ -157,11 +157,15 @@ func (ts *ProverTestSuite) TestQueryLatestHeader() {
 	_, err := ts.prover.QueryLatestHeader()
 	ts.Require().Error(err, "no finalized header found : latest = 0")
 
+	ts.chain.latestHeight = 1
+	_, err = ts.prover.QueryLatestHeader()
+	ts.Require().Error(err, "no finalized header found : latest = 0")
+
 	firstEpochBlock, _ := ts.chain.Header(context.TODO(), 0)
 	firstEpochFinalizing := requiredCountToFinalize(firstEpochBlock)
 
 	// finalized by previous epoch validators
-	for i := 1; i <= 200+(firstEpochFinalizing-1); i++ {
+	for i := 2; i <= 200+firstEpochFinalizing; i++ {
 		ts.chain.latestHeight = uint64(i)
 		header, terr := ts.prover.QueryLatestHeader()
 		ts.Require().NoError(terr)
@@ -173,11 +177,12 @@ func (ts *ProverTestSuite) TestQueryLatestHeader() {
 	currentCheckpoint := 200 + firstEpochFinalizing
 
 	// target is less than checkpoint
-	for i := 200 + firstEpochFinalizing; i < 200+firstEpochFinalizing+secondEpochFinalizing-1; i++ {
+	for i := 200 + firstEpochFinalizing + 1; i < 200+firstEpochFinalizing+secondEpochFinalizing-1; i++ {
 		ts.chain.latestHeight = uint64(i)
 		header, terr := ts.prover.QueryLatestHeader()
 		ts.Require().NoError(terr)
-		ts.Require().Equal(int(header.GetHeight().GetRevisionHeight()), currentCheckpoint-1, i)
+		height := header.GetHeight().GetRevisionHeight()
+		ts.Require().Equal(int(height), currentCheckpoint-1, i)
 	}
 
 	// target is greater than current checkpoint
@@ -185,7 +190,8 @@ func (ts *ProverTestSuite) TestQueryLatestHeader() {
 		ts.chain.latestHeight = uint64(i)
 		header, terr := ts.prover.QueryLatestHeader()
 		ts.Require().NoError(terr)
-		ts.Require().Equal(int(header.GetHeight().GetRevisionHeight()), int(ts.chain.latestHeight)-(secondEpochFinalizing-1), i)
+		height := header.GetHeight().GetRevisionHeight()
+		ts.Require().Equal(int(height), int(ts.chain.latestHeight)-(secondEpochFinalizing-1), i)
 	}
 
 }
@@ -259,12 +265,12 @@ func (ts *ProverTestSuite) TestQueryETHHeaders() {
 			assert.Equal(header.Number.Uint64(), height+uint64(i))
 		}
 	}
-	assertHeader(0, 2)
-	assertHeader(1, 2)
-	assertHeader(199, 2)
-	assertHeader(200, 2)
-	assertHeader(201, 2)
-	assertHeader(202, 11)
+	assertHeader(0, 3)
+	assertHeader(1, 3)
+	assertHeader(200, 3)
+	assertHeader(201, 3)
+	assertHeader(202, 3)
+	assertHeader(203, 11)
 }
 
 func (ts *ProverTestSuite) TestRequireCountToFinalize() {
@@ -272,11 +278,13 @@ func (ts *ProverTestSuite) TestRequireCountToFinalize() {
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*1)
 	ts.Require().Equal(requiredCountToFinalize(header), 1)
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*2)
-	ts.Require().Equal(requiredCountToFinalize(header), 1)
+	ts.Require().Equal(requiredCountToFinalize(header), 2)
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*3)
 	ts.Require().Equal(requiredCountToFinalize(header), 2)
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*4)
-	ts.Require().Equal(requiredCountToFinalize(header), 2)
+	ts.Require().Equal(requiredCountToFinalize(header), 3)
+	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*5)
+	ts.Require().Equal(requiredCountToFinalize(header), 3)
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*21)
 	ts.Require().Equal(requiredCountToFinalize(header), 11)
 }
