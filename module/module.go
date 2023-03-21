@@ -23,10 +23,17 @@ func (Module) RegisterInterfaces(registry codectypes.InterfaceRegistry) {
 		(*core.ProverConfigI)(nil),
 		&ProverConfig{},
 	)
-
+	registry.RegisterImplementations(
+		(*exported.Header)(nil),
+		&Header{},
+	)
 	registry.RegisterImplementations(
 		(*exported.ClientState)(nil),
 		&ClientState{},
+	)
+	registry.RegisterImplementations(
+		(*exported.ConsensusState)(nil),
+		&ConsensusState{},
 	)
 }
 

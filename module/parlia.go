@@ -13,11 +13,11 @@ func (cs *ClientState) ClientType() string {
 }
 
 func (cs *ClientState) GetLatestHeight() exported.Height {
-	return cs.LatestHeight
+	return *cs.LatestHeight
 }
 
 func (cs *ClientState) Validate() error {
-	panic("not implemented")
+	return nil
 }
 
 func (cs *ClientState) Initialize(sdk.Context, codec.BinaryCodec, sdk.KVStore, exported.ConsensusState) error {
@@ -174,4 +174,21 @@ func (cs *ClientState) VerifyNextSequenceRecv(
 	nextSequenceRecv uint64,
 ) error {
 	panic("not implemented")
+}
+
+var _ exported.ConsensusState = (*ConsensusState)(nil)
+
+// ClientType returns mock-client type.
+func (cs *ConsensusState) ClientType() string {
+	return Parlia
+}
+
+// GetRoot returns nil since mock-client do not have roots.
+func (cs *ConsensusState) GetRoot() exported.Root {
+	return nil
+}
+
+// ValidateBasic defines basic validation for the mock-client consensus state.
+func (cs *ConsensusState) ValidateBasic() error {
+	return nil
 }
