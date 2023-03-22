@@ -2,6 +2,7 @@
 
 rm -rf lcp-bridge && git clone https://github.com/datachainlab/lcp-bridge
 cd lcp-bridge
+git checkout 1e8ce53d582a87108485598874fec7b256d6df9a
 
 ## ETH chain
 SOLIDITY_PATH=$GOPATH/pkg/mod/github.com/hyperledger-labs/yui-ibc-solidity@v0.2.5-0.20221130073947-3315e5fa0f5b
@@ -31,3 +32,11 @@ jq <<< `cat $HOME/.yui-relayer/config/config.yaml`
 ## run cli
 go run main.go tx clients ibc01
 go run main.go tx update-clients ibc01
+go run main.go tx connection ibc01
+go run main.go tx channel ibc01
+
+go run main.go service start ibc01
+
+## test
+cd contracts
+npx truffle exec apps/0-init.js --network=eth_local

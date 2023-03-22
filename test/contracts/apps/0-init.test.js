@@ -1,8 +1,8 @@
-const MiniToken = artifacts.require("MiniToken");
+const SimpleToken = artifacts.require("@hyperledger-labs/yui-ibc-solidity/SimpleToken");
 
-contract("MiniToken", (accounts) => {
+contract("SimpleToken", (accounts) => {
   it("should put 100 MiniToken in Alice account on ibc0", () =>
-    MiniToken.deployed()
+      SimpleToken.deployed()
       .then((instance) => instance.balanceOf(accounts[1]))
       .then((balance) => {
           console.log("token amount = ", balance.toString())

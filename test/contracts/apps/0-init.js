@@ -1,11 +1,11 @@
-const MiniToken = artifacts.require("MiniToken");
+const SimpleToken = artifacts.require("@hyperledger-labs/yui-ibc-solidity/SimpleToken");
 
 module.exports = async (callback) => {
   const accounts = await web3.eth.getAccounts();
   const alice = accounts[1];
   const mintAmount = 100;
 
-  const miniToken = await MiniToken.deployed();
+  const miniToken = await SimpleToken.deployed();
   const block = await web3.eth.getBlockNumber();
   console.log("blockNumber =", block)
   await miniToken.mint(alice, mintAmount);
