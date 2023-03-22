@@ -35,8 +35,9 @@ go run main.go tx update-clients ibc01
 go run main.go tx connection ibc01
 go run main.go tx channel ibc01
 
+## start relayer
 go run main.go service start ibc01
 
 ## test
 cd contracts
-npx truffle exec apps/0-init.js --network=eth_local
+npx truffle exec apps/0-init.js --network eth_local

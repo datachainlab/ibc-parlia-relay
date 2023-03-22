@@ -7,7 +7,7 @@
     "hdw_mnemonic": "math razor capable expose worth grape metal sunset metal sudden usage scheme",
     "hdw_path": "m/44'/60'/0'/0/0",
     "ibc_host_address": "0x0000000000000000000000000000000000000000",
-    "ibc_handler_address": "0x5E6a17F4f4a0785825f152186A69415B49901755"
+    "ibc_handler_address": "0xBE4B6cE7De9cEE9949E6758D02dbA0E41dB51741"
   },
   "prover": {
     "@type": "/relayer.provers.mock.config.ProverConfig"

@@ -20,6 +20,15 @@ module.exports = {
       host: '127.0.0.1',
       port: 8645,
       network_id: '2018',
+      provider: () =>
+          new HDWalletProvider({
+            mnemonic: {
+              phrase: mnemonic,
+            },
+            providerOrUrl: 'http://127.0.0.1:8645',
+            addressIndex: 0,
+            numberOfAddresses: 5,
+          }),
     },
   },
 
