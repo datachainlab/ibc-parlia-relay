@@ -7,7 +7,7 @@
     "hdw_mnemonic": "math razor capable expose worth grape metal sunset metal sudden usage scheme",
     "hdw_path": "m/44'/60'/0'/0/0",
     "ibc_host_address": "0x0000000000000000000000000000000000000000",
-    "ibc_handler_address": "0xc324fBF6512022865d96510bfe761c7c776ccb76"
+    "ibc_handler_address": "0x83d3293dd9DDD495C709a9F52E250073FDB0D48E"
   },
   "prover": {
     "@type": "/relayer.provers.parlia.config.ProverConfig"

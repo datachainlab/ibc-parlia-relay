@@ -2,7 +2,7 @@ const IBCHandler = artifacts.require("OwnableIBCHandler");
 const MockClient = artifacts.require("MockClient");
 const ICS20TransferBank = artifacts.require("ICS20TransferBank");
 const ICS20Bank = artifacts.require("ICS20Bank");
-const MockParliaClient = artifacts.require("MockParliaClient");
+const ParliaClient = artifacts.require("ParliaClient");
 
 const PortTransfer = "transfer"
 const MockClientType = "mock-client"
@@ -15,7 +15,7 @@ module.exports = async function (deployer) {
   for(const f of [
     () => ibcHandler.bindPort(PortTransfer, ICS20TransferBank.address),
     () => ibcHandler.registerClient(MockClientType, MockClient.address),
-    () => ibcHandler.registerClient(ParliaClientType, MockParliaClient.address),
+    () => ibcHandler.registerClient(ParliaClientType, ParliaClient.address),
     () => ics20Bank.setOperator(ICS20TransferBank.address),
   ]) {
     const result = await f();

@@ -14,7 +14,7 @@ import "@hyperledger-labs/yui-ibc-solidity/contracts/lib/Bytes.sol";
 import "@hyperledger-labs/yui-ibc-solidity/contracts/lib/RLP.sol";
 import "@hyperledger-labs/yui-ibc-solidity/contracts/lib/TrieProofs.sol";
 
-contract MockParliaClient is ILightClient {
+contract ParliaClient is ILightClient {
     using TrieProofs for bytes;
     using RLP for bytes;
     using RLP for RLP.RLPItem;
@@ -119,6 +119,8 @@ contract MockParliaClient is ILightClient {
         (height, stateRoot, timestamp, accountProof) = parseHeader(clientMessageBytes);
         anyClientState.type_url = CLIENT_STATE_TYPE_URL;
         anyClientState.value = ClientState.encode(clientStates[clientId]);
+
+        //TODO verify header
 
         ConsensusState.Data storage consensusState = consensusStates[clientId][height.toUint128()];
         consensusState.timestamp = timestamp;
