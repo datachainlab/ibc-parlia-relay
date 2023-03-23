@@ -5,6 +5,7 @@ import (
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/types"
 	clienttypes "github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
+	"github.com/cosmos/ibc-go/v4/modules/core/exported"
 	"github.com/ethereum/go-ethereum/common"
 	types2 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -27,7 +28,7 @@ const (
 )
 
 type mockChain struct {
-	ChainI
+	Chain
 	latestHeight uint64
 	chainID      uint64
 }
@@ -36,8 +37,8 @@ func (r *mockChain) CanonicalChainID(ctx context.Context) (uint64, error) {
 	return r.chainID, nil
 }
 
-func (r *mockChain) QueryClientState(height int64) (*clienttypes.QueryClientStateResponse, error) {
-	cHeight := clienttypes.NewHeight(0, uint64(height))
+func (r *mockChain) QueryClientState(ctx core.QueryContext) (*clienttypes.QueryClientStateResponse, error) {
+	cHeight := clienttypes.NewHeight(ctx.Height().GetRevisionNumber(), ctx.Height().GetRevisionHeight())
 	cs := ClientState{
 		LatestHeight:    &cHeight,
 		IbcStoreAddress: common.Hex2Bytes(ibcHandlerAddress),
@@ -66,7 +67,7 @@ func (r *mockChain) Header(_ context.Context, height uint64) (*types2.Header, er
 	return header, nil
 }
 
-func (r *mockChain) GetStateProof(_ common.Address, _ [][]byte, _ *big.Int) (*client.StateProof, error) {
+func (r *mockChain) GetProof(_ common.Address, _ [][]byte, _ *big.Int) (*client.StateProof, error) {
 	// eth.getProof("0xaa43d337145E8930d01cb4E60Abf6595C692921E",["0x0c0dd47e5867d48cad725de0d09f9549bd564c1d143f6c1f451b26ccd981eeae"], 21400)
 	// storageHash: "0xc3608871098f21b59607ef3fb9412a091de9246ad1281a92f5b07dc2f465b7a0",
 	accountProof := []string{
@@ -89,12 +90,8 @@ func (r *mockChain) GetStateProof(_ common.Address, _ [][]byte, _ *big.Int) (*cl
 	}, nil
 }
 
-func (c *mockChain) LatestHeight(_ context.Context) (uint64, error) {
-	return c.latestHeight, nil
-}
-
-func (c *mockChain) LatestLightHeight(_ context.Context) (uint64, error) {
-	return 21400, nil
+func (c *mockChain) LatestHeight() (exported.Height, error) {
+	return clienttypes.NewHeight(0, c.latestHeight), nil
 }
 
 type ProverTestSuite struct {
@@ -109,10 +106,10 @@ func TestProverTestSuite(t *testing.T) {
 
 func (ts *ProverTestSuite) SetupTest() {
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
-		EthChainId:        9999,
-		HdwMnemonic:       hdwMnemonic,
-		HdwPath:           hdwPath,
-		IbcHandlerAddress: ibcHandlerAddress,
+		EthChainId:  9999,
+		HdwMnemonic: hdwMnemonic,
+		HdwPath:     hdwPath,
+		IbcAddress:  ibcHandlerAddress,
 	})
 	ts.Require().NoError(err)
 	codec := core.MakeCodec()
@@ -135,7 +132,7 @@ func (ts *ProverTestSuite) SetupTest() {
 		TrustingPeriod:        time.Second * 100,
 	}
 	ts.chain = &mockChain{
-		ChainI:       NewChain(chain),
+		Chain:        NewChain(chain),
 		latestHeight: 21400,
 		chainID:      9999,
 	}
@@ -143,22 +140,22 @@ func (ts *ProverTestSuite) SetupTest() {
 }
 
 func (ts *ProverTestSuite) TestQueryHeader() {
-	header, err := ts.prover.QueryHeader(200)
+	header, err := ts.prover.queryHeader(200)
 	ts.Require().NoError(err)
 	ts.Require().Equal(uint64(200), header.GetHeight().GetRevisionHeight())
 }
 
-func (ts *ProverTestSuite) TestQueryLatestHeader() {
+func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 	currentLatest := ts.chain.latestHeight
 	defer func() {
 		ts.chain.latestHeight = currentLatest
 	}()
 	ts.chain.latestHeight = 0
-	_, err := ts.prover.QueryLatestHeader()
+	_, err := ts.prover.GetLatestFinalizedHeader()
 	ts.Require().Error(err, "no finalized header found : latest = 0")
 
 	ts.chain.latestHeight = 1
-	_, err = ts.prover.QueryLatestHeader()
+	_, err = ts.prover.GetLatestFinalizedHeader()
 	ts.Require().Error(err, "no finalized header found : latest = 0")
 
 	firstEpochBlock, _ := ts.chain.Header(context.TODO(), 0)
@@ -167,7 +164,7 @@ func (ts *ProverTestSuite) TestQueryLatestHeader() {
 	// finalized by previous epoch validators
 	for i := 2; i <= 200+firstEpochFinalizing; i++ {
 		ts.chain.latestHeight = uint64(i)
-		header, terr := ts.prover.QueryLatestHeader()
+		header, terr := ts.prover.GetLatestFinalizedHeader()
 		ts.Require().NoError(terr)
 		ts.Require().Equal(int(header.GetHeight().GetRevisionHeight()), int(ts.chain.latestHeight)-(firstEpochFinalizing-1), i)
 	}
@@ -179,7 +176,7 @@ func (ts *ProverTestSuite) TestQueryLatestHeader() {
 	// target is less than checkpoint
 	for i := 200 + firstEpochFinalizing + 1; i < 200+firstEpochFinalizing+secondEpochFinalizing-1; i++ {
 		ts.chain.latestHeight = uint64(i)
-		header, terr := ts.prover.QueryLatestHeader()
+		header, terr := ts.prover.GetLatestFinalizedHeader()
 		ts.Require().NoError(terr)
 		height := header.GetHeight().GetRevisionHeight()
 		ts.Require().Equal(int(height), currentCheckpoint-1, i)
@@ -188,7 +185,7 @@ func (ts *ProverTestSuite) TestQueryLatestHeader() {
 	// target is greater than current checkpoint
 	for i := 200 + firstEpochFinalizing + secondEpochFinalizing - 1; i < 400; i++ {
 		ts.chain.latestHeight = uint64(i)
-		header, terr := ts.prover.QueryLatestHeader()
+		header, terr := ts.prover.GetLatestFinalizedHeader()
 		ts.Require().NoError(terr)
 		height := header.GetHeight().GetRevisionHeight()
 		ts.Require().Equal(int(height), int(ts.chain.latestHeight)-(secondEpochFinalizing-1), i)
@@ -197,7 +194,7 @@ func (ts *ProverTestSuite) TestQueryLatestHeader() {
 }
 
 func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
-	header, err := ts.prover.QueryHeader(200)
+	header, err := ts.prover.queryHeader(200)
 	ts.Require().NoError(err)
 	msg, err := ts.prover.CreateMsgCreateClient("", header, types.AccAddress{})
 	ts.Require().NoError(err)
@@ -211,7 +208,7 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 	ts.Require().False(cs.Frozen)
 	ts.Require().Equal(common.Bytes2Hex(cs.IbcStoreAddress), ibcHandlerAddress)
 	ts.Require().Equal(cs.GetLatestHeight().GetRevisionHeight(), uint64(200))
-	ts.Require().Equal(cs.GetLatestHeight().GetRevisionNumber(), ts.prover.revisionNumber)
+	ts.Require().Equal(cs.GetLatestHeight().GetRevisionNumber(), uint64(0))
 
 	var cs2 ConsensusState
 	ts.Require().NoError(err)
@@ -228,25 +225,25 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 
 func (ts *ProverTestSuite) TestSetupHeader() {
 	type dstMock struct {
-		ChainI
-		core.ProverI
+		Chain
+		core.Prover
 	}
 	dst := dstMock{
-		ChainI:  ts.prover.chain,
-		ProverI: ts.prover,
+		Chain:  ts.prover.chain,
+		Prover: ts.prover,
 	}
 	header := &Header{}
-	setupDone, err := ts.prover.SetupHeader(&dst, header)
-	done := setupDone.(*Header)
+	setupDone, err := ts.prover.SetupHeadersForUpdate(&dst, header)
+	done := setupDone[0].(*Header)
 	ts.Require().NoError(err)
 	ts.Require().Equal(uint64(21400), done.GetTrustedHeight().GetRevisionHeight())
 }
 
 func (ts *ProverTestSuite) TestQueryClientStateWithProof() {
-	res, err := ts.prover.QueryClientStateWithProof(21400)
+	res, err := ts.prover.QueryClientStateWithProof(core.NewQueryContext(context.TODO(), clienttypes.NewHeight(0, 21400)))
 	ts.Require().NoError(err)
 
-	ts.Require().Equal(res.ProofHeight.GetRevisionNumber(), ts.prover.revisionNumber)
+	ts.Require().Equal(res.ProofHeight.GetRevisionNumber(), uint64(0))
 	ts.Require().Equal(res.ProofHeight.GetRevisionHeight(), uint64(21400))
 
 	// storage_key is 0x0c0dd47e5867d48cad725de0d09f9549bd564c1d143f6c1f451b26ccd981eeae

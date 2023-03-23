@@ -2,6 +2,7 @@ package module
 
 import (
 	"fmt"
+	"github.com/cosmos/ibc-go/v4/modules/core/exported"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -10,8 +11,8 @@ import (
 )
 
 func (pr *Prover) getAccountProof(height int64) ([]byte, error) {
-	stateProof, err := pr.chain.GetStateProof(
-		pr.chain.IBCHandlerAddress(),
+	stateProof, err := pr.chain.GetProof(
+		pr.chain.IBCAddress(),
 		nil,
 		big.NewInt(height),
 	)
@@ -21,7 +22,7 @@ func (pr *Prover) getAccountProof(height int64) ([]byte, error) {
 	return stateProof.AccountProofRLP, nil
 }
 
-func (pr *Prover) getStateCommitmentProof(path []byte, height int64) ([]byte, error) {
+func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) ([]byte, error) {
 	// calculate slot for commitment
 	slot := crypto.Keccak256Hash(append(
 		crypto.Keccak256Hash(path).Bytes(),
@@ -33,10 +34,10 @@ func (pr *Prover) getStateCommitmentProof(path []byte, height int64) ([]byte, er
 	}
 
 	// call eth_getProof
-	stateProof, err := pr.chain.GetStateProof(
-		pr.chain.IBCHandlerAddress(),
+	stateProof, err := pr.chain.GetProof(
+		pr.chain.IBCAddress(),
 		[][]byte{marshaledSlot},
-		big.NewInt(height),
+		big.NewInt(int64(height.GetRevisionHeight())),
 	)
 	if err != nil {
 		return nil, err

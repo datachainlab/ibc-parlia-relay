@@ -6,9 +6,9 @@ import (
 	"github.com/hyperledger-labs/yui-relayer/core"
 )
 
-var _ core.ProverConfigI = (*ProverConfig)(nil)
+var _ core.ProverConfig = (*ProverConfig)(nil)
 
-func (c *ProverConfig) Build(chain core.ChainI) (core.ProverI, error) {
+func (c *ProverConfig) Build(chain core.Chain) (core.Prover, error) {
 	chain_, ok := chain.(*ethereum.Chain)
 	if !ok {
 		return nil, fmt.Errorf("chain type must be %T, not %T", &ethereum.Chain{}, chain)

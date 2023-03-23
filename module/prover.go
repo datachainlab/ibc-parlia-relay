@@ -20,19 +20,17 @@ import (
 	"github.com/hyperledger-labs/yui-relayer/core"
 )
 
-var _ core.ProverI = (*Prover)(nil)
+var _ core.Prover = (*Prover)(nil)
 
 type Prover struct {
-	chain          ChainI
-	config         *ProverConfig
-	revisionNumber uint64
+	chain  Chain
+	config *ProverConfig
 }
 
-func NewProver(chain ChainI, config *ProverConfig) core.ProverI {
+func NewProver(chain Chain, config *ProverConfig) core.Prover {
 	return &Prover{
-		chain:          chain,
-		config:         config,
-		revisionNumber: 0, //TODO upgrade
+		chain:  chain,
+		config: config,
 	}
 }
 
@@ -51,30 +49,7 @@ func (pr *Prover) SetupForRelay(ctx context.Context) error {
 	return nil
 }
 
-// GetChainID returns the chain ID
-func (pr *Prover) GetChainID() string {
-	return pr.chain.ChainID()
-}
-
-// QueryHeader returns the header corresponding to the height
-func (pr *Prover) QueryHeader(height int64) (core.HeaderI, error) {
-
-	ethHeaders, err := pr.queryETHHeaders(uint64(height))
-	if err != nil {
-		return nil, err
-	}
-	// get RLP-encoded account proof
-	rlpAccountProof, err := pr.getAccountProof(height)
-	if err != nil {
-		return nil, err
-	}
-	return &Header{
-		AccountProof: rlpAccountProof,
-		Headers:      ethHeaders,
-	}, nil
-}
-
-// QueryLatestHeader returns the latest header from the chain
+// GetLatestFinalizedHeader returns the latest finalized header from the chain
 // ex) previous validator : 4, current validator = 21
 // latest | target
 // 203    | 200
@@ -84,12 +59,13 @@ func (pr *Prover) QueryHeader(height int64) (core.HeaderI, error) {
 // 213    | 203 ( checkpoint by previous validator )
 // 214    | 204
 // 215    | 205
-func (pr *Prover) QueryLatestHeader() (out core.HeaderI, err error) {
-	latest, err := pr.chain.LatestHeight(context.TODO())
+func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
+	latestHeight, err := pr.chain.LatestHeight()
 	if err != nil {
 		return nil, err
 	}
-	epochCount := latest / epochBlockPeriod
+	latestBlockNumber := latestHeight.GetRevisionHeight()
+	epochCount := latestBlockNumber / epochBlockPeriod
 	currentEpoch, err := pr.chain.Header(context.TODO(), epochCount*epochBlockPeriod)
 	if err != nil {
 		return nil, err
@@ -99,11 +75,11 @@ func (pr *Prover) QueryLatestHeader() (out core.HeaderI, err error) {
 	// genesis epoch
 	if epochCount == 0 {
 		countToFinalizeCurrentExceptTarget := countToFinalizeCurrent - 1
-		if latest >= countToFinalizeCurrentExceptTarget {
-			targetHeight := latest - countToFinalizeCurrentExceptTarget
-			return pr.QueryHeader(int64(targetHeight))
+		if latestBlockNumber >= countToFinalizeCurrentExceptTarget {
+			targetHeight := latestBlockNumber - countToFinalizeCurrentExceptTarget
+			return pr.queryHeader(int64(targetHeight))
 		}
-		return nil, fmt.Errorf("no finalized header found : latest = %d", latest)
+		return nil, fmt.Errorf("no finalized header found : latest = %d", latestBlockNumber)
 	}
 
 	previousEpochHeight := (epochCount - 1) * epochBlockPeriod
@@ -115,26 +91,17 @@ func (pr *Prover) QueryLatestHeader() (out core.HeaderI, err error) {
 
 	// finalized by current validator set
 	checkpoint := currentEpoch.Number.Uint64() + countToFinalizePrevious
-	target := latest - (countToFinalizeCurrent - 1)
+	target := latestBlockNumber - (countToFinalizeCurrent - 1)
 	if target >= checkpoint {
-		return pr.QueryHeader(int64(target))
+		return pr.queryHeader(int64(target))
 	}
 
 	// finalized by previous validator set
-	return pr.QueryHeader(math.MinInt64(int64(checkpoint-1), int64(latest-(countToFinalizePrevious-1))))
-}
-
-// GetLatestLightHeight returns the latest height on the light client
-func (pr *Prover) GetLatestLightHeight() (int64, error) {
-	bn, err := pr.chain.LatestLightHeight(context.TODO())
-	if err != nil {
-		return 0, err
-	}
-	return int64(bn), nil
+	return pr.queryHeader(math.MinInt64(int64(checkpoint-1), int64(latestBlockNumber-(countToFinalizePrevious-1))))
 }
 
 // CreateMsgCreateClient creates a CreateClientMsg to this chain
-func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.HeaderI, _ sdk.AccAddress) (*clienttypes.MsgCreateClient, error) {
+func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.AccAddress) (*clienttypes.MsgCreateClient, error) {
 	// get account proof from header
 	header := dstHeader.(*Header)
 	target, err := header.Target()
@@ -143,7 +110,7 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.HeaderI, _ sdk.
 	}
 
 	// recover account data from account proof
-	account, err := header.Account(pr.chain.IBCHandlerAddress())
+	account, err := header.Account(pr.chain.IBCAddress())
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +133,7 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.HeaderI, _ sdk.
 		ChainId:         chainID,
 		LatestHeight:    &latestHeight,
 		Frozen:          false,
-		IbcStoreAddress: pr.chain.IBCHandlerAddress().Bytes(),
+		IbcStoreAddress: pr.chain.IBCAddress().Bytes(),
 	}
 	anyClientState, err := codectypes.NewAnyWithValue(&clientState)
 	if err != nil {
@@ -195,16 +162,15 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.HeaderI, _ sdk.
 	}, nil
 }
 
-// SetupHeader creates a new header based on a given header
-func (pr *Prover) SetupHeader(dst core.LightClientIBCQueryierI, baseSrcHeader core.HeaderI) (core.HeaderI, error) {
-	header := baseSrcHeader.(*Header)
-
-	// get client state on destination chain
-	dstHeight, err := dst.GetLatestLightHeight()
+// SetupHeadersForUpdate creates a new header based on a given header
+func (pr *Prover) SetupHeadersForUpdate(dstChain core.ChainInfoICS02Querier, latestFinalizedHeader core.Header) ([]core.Header, error) {
+	header := latestFinalizedHeader.(*Header)
+	// LCP doesn't need height / EVM needs latest height
+	latestHeightOnDstChain, err := dstChain.LatestHeight()
 	if err != nil {
 		return nil, err
 	}
-	csRes, err := dst.QueryClientState(dstHeight)
+	csRes, err := dstChain.QueryClientState(core.NewQueryContext(context.TODO(), latestHeightOnDstChain))
 	if err != nil {
 		return nil, err
 	}
@@ -213,34 +179,22 @@ func (pr *Prover) SetupHeader(dst core.LightClientIBCQueryierI, baseSrcHeader co
 		return nil, err
 	}
 
-	// use the latest height of the client state on the destination chain as trusted height
-	latestHeight := cs.GetLatestHeight()
-	exportedLatestHeight := clienttypes.NewHeight(latestHeight.GetRevisionNumber(), latestHeight.GetRevisionHeight())
-	header.TrustedHeight = &exportedLatestHeight
-	return header, nil
-}
-
-// UpdateLightWithHeader updates a header on the light client and returns the header and height corresponding to the chain
-func (pr *Prover) UpdateLightWithHeader() (core.HeaderI, int64, int64, error) {
-	header, err := pr.QueryLatestHeader()
-	if err != nil {
-		return nil, 0, 0, err
-	}
-	height := int64(header.GetHeight().GetRevisionHeight())
-	return header, height, height, nil
+	trustedHeight := pr.toHeight(cs.GetLatestHeight())
+	header.TrustedHeight = &trustedHeight
+	return []core.Header{header}, nil
 }
 
 // QueryClientConsensusStateWithProof returns the ClientConsensusState and its proof
-func (pr *Prover) QueryClientConsensusStateWithProof(height int64, dstClientConsHeight exported.Height) (*clienttypes.QueryConsensusStateResponse, error) {
-	res, err := pr.chain.QueryClientConsensusState(height, dstClientConsHeight)
+func (pr *Prover) QueryClientConsensusStateWithProof(ctx core.QueryContext, dstClientConsHeight exported.Height) (*clienttypes.QueryConsensusStateResponse, error) {
+	res, err := pr.chain.QueryClientConsensusState(ctx, dstClientConsHeight)
 	if err != nil {
 		return nil, err
 	}
-	res.ProofHeight = pr.toHeight(height)
+	res.ProofHeight = pr.toHeight(ctx.Height())
 	res.Proof, err = pr.getStateCommitmentProof(host.FullConsensusStateKey(
 		pr.chain.Path().ClientID,
 		dstClientConsHeight,
-	), height)
+	), ctx.Height())
 	if err != nil {
 		return nil, err
 	}
@@ -248,15 +202,15 @@ func (pr *Prover) QueryClientConsensusStateWithProof(height int64, dstClientCons
 }
 
 // QueryClientStateWithProof returns the ClientState and its proof
-func (pr *Prover) QueryClientStateWithProof(height int64) (*clienttypes.QueryClientStateResponse, error) {
-	res, err := pr.chain.QueryClientState(height)
+func (pr *Prover) QueryClientStateWithProof(ctx core.QueryContext) (*clienttypes.QueryClientStateResponse, error) {
+	res, err := pr.chain.QueryClientState(ctx)
 	if err != nil {
 		return nil, err
 	}
-	res.ProofHeight = pr.toHeight(height)
+	res.ProofHeight = pr.toHeight(ctx.Height())
 	res.Proof, err = pr.getStateCommitmentProof(host.FullClientStateKey(
 		pr.chain.Path().ClientID,
-	), height)
+	), ctx.Height())
 	if err != nil {
 		return nil, err
 	}
@@ -264,8 +218,8 @@ func (pr *Prover) QueryClientStateWithProof(height int64) (*clienttypes.QueryCli
 }
 
 // QueryConnectionWithProof returns the Connection and its proof
-func (pr *Prover) QueryConnectionWithProof(height int64) (*conntypes.QueryConnectionResponse, error) {
-	res, err := pr.chain.QueryConnection(height)
+func (pr *Prover) QueryConnectionWithProof(ctx core.QueryContext) (*conntypes.QueryConnectionResponse, error) {
+	res, err := pr.chain.QueryConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -273,10 +227,10 @@ func (pr *Prover) QueryConnectionWithProof(height int64) (*conntypes.QueryConnec
 		// connection not found
 		return res, nil
 	}
-	res.ProofHeight = pr.toHeight(height)
+	res.ProofHeight = pr.toHeight(ctx.Height())
 	res.Proof, err = pr.getStateCommitmentProof(host.ConnectionKey(
 		pr.chain.Path().ConnectionID,
-	), height)
+	), ctx.Height())
 	if err != nil {
 		return nil, err
 	}
@@ -284,8 +238,8 @@ func (pr *Prover) QueryConnectionWithProof(height int64) (*conntypes.QueryConnec
 }
 
 // QueryChannelWithProof returns the Channel and its proof
-func (pr *Prover) QueryChannelWithProof(height int64) (chanRes *chantypes.QueryChannelResponse, err error) {
-	res, err := pr.chain.QueryChannel(height)
+func (pr *Prover) QueryChannelWithProof(ctx core.QueryContext) (chanRes *chantypes.QueryChannelResponse, err error) {
+	res, err := pr.chain.QueryChannel(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -293,11 +247,11 @@ func (pr *Prover) QueryChannelWithProof(height int64) (chanRes *chantypes.QueryC
 		// channel not found
 		return res, nil
 	}
-	res.ProofHeight = pr.toHeight(height)
+	res.ProofHeight = pr.toHeight(ctx.Height())
 	res.Proof, err = pr.getStateCommitmentProof(host.ChannelKey(
 		pr.chain.Path().PortID,
 		pr.chain.Path().ChannelID,
-	), height)
+	), ctx.Height())
 	if err != nil {
 		return nil, err
 	}
@@ -305,17 +259,17 @@ func (pr *Prover) QueryChannelWithProof(height int64) (chanRes *chantypes.QueryC
 }
 
 // QueryPacketCommitmentWithProof returns the packet commitment and its proof
-func (pr *Prover) QueryPacketCommitmentWithProof(height int64, seq uint64) (comRes *chantypes.QueryPacketCommitmentResponse, err error) {
-	res, err := pr.chain.QueryPacketCommitment(height, seq)
+func (pr *Prover) QueryPacketCommitmentWithProof(ctx core.QueryContext, seq uint64) (comRes *chantypes.QueryPacketCommitmentResponse, err error) {
+	res, err := pr.chain.QueryPacketCommitment(ctx, seq)
 	if err != nil {
 		return nil, err
 	}
-	res.ProofHeight = pr.toHeight(height)
+	res.ProofHeight = pr.toHeight(ctx.Height())
 	res.Proof, err = pr.getStateCommitmentProof(host.PacketCommitmentKey(
 		pr.chain.Path().PortID,
 		pr.chain.Path().ChannelID,
 		seq,
-	), height)
+	), ctx.Height())
 	if err != nil {
 		return nil, err
 	}
@@ -323,28 +277,46 @@ func (pr *Prover) QueryPacketCommitmentWithProof(height int64, seq uint64) (comR
 }
 
 // QueryPacketAcknowledgementCommitmentWithProof returns the packet acknowledgement commitment and its proof
-func (pr *Prover) QueryPacketAcknowledgementCommitmentWithProof(height int64, seq uint64) (ackRes *chantypes.QueryPacketAcknowledgementResponse, err error) {
-	res, err := pr.chain.QueryPacketAcknowledgementCommitment(height, seq)
+func (pr *Prover) QueryPacketAcknowledgementCommitmentWithProof(ctx core.QueryContext, seq uint64) (ackRes *chantypes.QueryPacketAcknowledgementResponse, err error) {
+	res, err := pr.chain.QueryPacketAcknowledgementCommitment(ctx, seq)
 	if err != nil {
 		return nil, err
 	}
-	res.ProofHeight = pr.toHeight(height)
+	res.ProofHeight = pr.toHeight(ctx.Height())
 	res.Proof, err = pr.getStateCommitmentProof(host.PacketAcknowledgementKey(
 		pr.chain.Path().PortID,
 		pr.chain.Path().ChannelID,
 		seq,
-	), height)
+	), ctx.Height())
 	if err != nil {
 		return nil, err
 	}
 	return res, nil
 }
 
-func (pr *Prover) toHeight(height int64) clienttypes.Height {
-	return clienttypes.NewHeight(pr.revisionNumber, uint64(height))
+func (pr *Prover) toHeight(height exported.Height) clienttypes.Height {
+	return clienttypes.NewHeight(height.GetRevisionNumber(), height.GetRevisionHeight())
 }
 
-// QueryETHHeaders returns the header corresponding to the height
+// queryHeader returns the header corresponding to the height
+func (pr *Prover) queryHeader(height int64) (core.Header, error) {
+
+	ethHeaders, err := pr.queryETHHeaders(uint64(height))
+	if err != nil {
+		return nil, err
+	}
+	// get RLP-encoded account proof
+	rlpAccountProof, err := pr.getAccountProof(height)
+	if err != nil {
+		return nil, err
+	}
+	return &Header{
+		AccountProof: rlpAccountProof,
+		Headers:      ethHeaders,
+	}, nil
+}
+
+// queryETHHeaders returns the header corresponding to the height
 func (pr *Prover) queryETHHeaders(height uint64) ([]*ETHHeader, error) {
 	epochCount := height / epochBlockPeriod
 	if epochCount > 0 {
