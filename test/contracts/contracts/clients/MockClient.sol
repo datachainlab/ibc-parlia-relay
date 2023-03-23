@@ -5,35 +5,26 @@ import "@hyperledger-labs/yui-ibc-solidity/contracts/core/02-client/ILightClient
 import "@hyperledger-labs/yui-ibc-solidity/contracts/core/02-client/IBCHeight.sol";
 import "@hyperledger-labs/yui-ibc-solidity/contracts/proto/Client.sol";
 import {
-    IbcLightclientsParliaV1ClientState as ClientState,
-    IbcLightclientsParliaV1ConsensusState as ConsensusState,
-    IbcLightclientsParliaV1Header as Header
-} from "../ibc/lightclients/parlia/v1/parlia.sol";
+IbcLightclientsMockV1ClientState as ClientState,
+IbcLightclientsMockV1ConsensusState as ConsensusState,
+IbcLightclientsMockV1Header as Header
+} from "@hyperledger-labs/yui-ibc-solidity/contracts/proto/MockClient.sol";
 import {GoogleProtobufAny as Any} from "@hyperledger-labs/yui-ibc-solidity/contracts/proto/GoogleProtobufAny.sol";
 import "solidity-bytes-utils/contracts/BytesLib.sol";
-import "solidity-rlp/contracts/Helper.sol";
-import "@hyperledger-labs/yui-ibc-solidity/contracts/lib/TrieProofs.sol";
 
-contract ParliaClient is ILightClient {
-    using TrieProofs for bytes;
-    using RLPReader for bytes;
-    using RLPReader for RLPReader.RLPItem;
+// MockClient implements https://github.com/datachainlab/ibc-mock-client
+// WARNING: This client is intended to be used for testing purpose. Therefore, it is not generally available in a production, except in a fully trusted environment.
+contract MockClient is ILightClient {
     using BytesLib for bytes;
     using IBCHeight for Height.Data;
 
-    ///ibc.lightclients.${module}.v1.${resource}
-    string private constant HEADER_TYPE_URL = "/ibc.lightclients.parlia.v1.Header";
-    string private constant CLIENT_STATE_TYPE_URL = "/ibc.lightclients.parlia.v1.ClientState";
-    string private constant CONSENSUS_STATE_TYPE_URL = "/ibc.lightclients.parlia.v1.ConsensusState";
+    string private constant HEADER_TYPE_URL = "/ibc.lightclients.mock.v1.Header";
+    string private constant CLIENT_STATE_TYPE_URL = "/ibc.lightclients.mock.v1.ClientState";
+    string private constant CONSENSUS_STATE_TYPE_URL = "/ibc.lightclients.mock.v1.ConsensusState";
 
     bytes32 private constant HEADER_TYPE_URL_HASH = keccak256(abi.encodePacked(HEADER_TYPE_URL));
-    bytes32 private constant CLIENT_STATE_TYPE_URL_HASH =
-        keccak256(abi.encodePacked(CLIENT_STATE_TYPE_URL));
-    bytes32 private constant CONSENSUS_STATE_TYPE_URL_HASH =
-        keccak256(abi.encodePacked(CONSENSUS_STATE_TYPE_URL));
-
-    uint256 private constant COMMITMENT_SLOT = 0;
-    uint8 private constant ACCOUNT_STORAGE_ROOT_INDEX = 2;
+    bytes32 private constant CLIENT_STATE_TYPE_URL_HASH = keccak256(abi.encodePacked(CLIENT_STATE_TYPE_URL));
+    bytes32 private constant CONSENSUS_STATE_TYPE_URL_HASH = keccak256(abi.encodePacked(CONSENSUS_STATE_TYPE_URL));
 
     address internal ibcHandler;
     mapping(string => ClientState.Data) internal clientStates;
@@ -50,7 +41,8 @@ contract ParliaClient is ILightClient {
     external
     override
     onlyIBC
-    returns (bytes32 clientStateCommitment, ConsensusStateUpdate memory update, bool ok) {
+    returns (bytes32 clientStateCommitment, ConsensusStateUpdate memory update, bool ok)
+    {
         ClientState.Data memory clientState;
         ConsensusState.Data memory consensusState;
 
@@ -63,21 +55,20 @@ contract ParliaClient is ILightClient {
             return (clientStateCommitment, update, false);
         }
         if (
-            clientState.latest_height.revision_height == 0 || consensusState.timestamp == 0
+            clientState.latest_height.revision_number != 0 || clientState.latest_height.revision_height == 0
+            || consensusState.timestamp == 0
         ) {
             return (clientStateCommitment, update, false);
         }
-
-        Height.Data memory height;
-        height.revision_height = clientState.latest_height.revision_height;
-        height.revision_number = clientState.latest_height.revision_number;
-
         clientStates[clientId] = clientState;
-        consensusStates[clientId][height.toUint128()] = consensusState;
+        consensusStates[clientId][clientState.latest_height.toUint128()] = consensusState;
         return (
-            keccak256(clientStateBytes),
-            ConsensusStateUpdate({consensusStateCommitment: keccak256(consensusStateBytes), height: height}),
-            true
+        keccak256(clientStateBytes),
+        ConsensusStateUpdate({
+        consensusStateCommitment: keccak256(consensusStateBytes),
+        height: clientState.latest_height
+        }),
+        true
         );
     }
 
@@ -85,10 +76,10 @@ contract ParliaClient is ILightClient {
      * @dev getTimestampAtHeight returns the timestamp of the consensus state at the given height.
      */
     function getTimestampAtHeight(string calldata clientId, Height.Data calldata height)
-        external
-        view
-        override
-        returns (uint64, bool)
+    external
+    view
+    override
+    returns (uint64, bool)
     {
         ConsensusState.Data storage consensusState = consensusStates[clientId][height.toUint128()];
         return (consensusState.timestamp, consensusState.timestamp != 0);
@@ -99,7 +90,7 @@ contract ParliaClient is ILightClient {
      */
     function getLatestHeight(string calldata clientId) external view override returns (Height.Data memory, bool) {
         ClientState.Data storage clientState = clientStates[clientId];
-        return (Height.Data({revision_number: 0, revision_height: clientState.latest_height.revision_height}), clientState.latest_height.revision_height != 0);
+        return (clientState.latest_height, clientState.latest_height.revision_height != 0);
     }
 
     /**
@@ -111,36 +102,32 @@ contract ParliaClient is ILightClient {
      * 5. persist the state(s) on the host
      */
     function updateClient(string calldata clientId, bytes calldata clientMessageBytes)
-        external
-        onlyIBC
-        override
-        returns (bytes32 clientStateCommitment, ConsensusStateUpdate[] memory updates, bool ok)
+    external
+    override
+    onlyIBC
+    returns (bytes32 clientStateCommitment, ConsensusStateUpdate[] memory updates, bool ok)
     {
         Height.Data memory height;
         uint64 timestamp;
-        bytes32 stateRoot;
-        bytes memory accountProof;
         Any.Data memory anyClientState;
         Any.Data memory anyConsensusState;
 
-        ClientState.Data storage clientState = clientStates[clientId];
-        (height, stateRoot, timestamp, accountProof) = parseHeader(clientMessageBytes);
+        (height, timestamp) = parseHeader(clientMessageBytes);
+        if (height.gt(clientStates[clientId].latest_height)) {
+            clientStates[clientId].latest_height = height;
+        }
         anyClientState.type_url = CLIENT_STATE_TYPE_URL;
         anyClientState.value = ClientState.encode(clientStates[clientId]);
 
-        //TODO verify header
-
         ConsensusState.Data storage consensusState = consensusStates[clientId][height.toUint128()];
         consensusState.timestamp = timestamp;
-        consensusState.state_root = abi.encodePacked(
-            verifyStorageProof(BytesLib.toAddress(clientState.ibc_store_address, 0), stateRoot, accountProof));
 
         anyConsensusState.type_url = CONSENSUS_STATE_TYPE_URL;
         anyConsensusState.value = ConsensusState.encode(consensusState);
 
         updates = new ConsensusStateUpdate[](1);
         updates[0] =
-            ConsensusStateUpdate({consensusStateCommitment: keccak256(Any.encode(anyConsensusState)), height: height});
+        ConsensusStateUpdate({consensusStateCommitment: keccak256(Any.encode(anyConsensusState)), height: height});
         return (keccak256(Any.encode(anyClientState)), updates, true);
     }
 
@@ -155,22 +142,15 @@ contract ParliaClient is ILightClient {
         uint64,
         bytes calldata proof,
         bytes memory,
-        bytes calldata path,
+        bytes memory,
         bytes calldata value
     ) external view override returns (bool) {
-        ConsensusState.Data storage consensusState = consensusStates[clientId][height.toUint128()];
-        require(consensusState.timestamp != 0,"consensus state not found");
-        bytes32 root = consensusState.state_root.toBytes32(0);
-        return verifyMembership(
-            proof,
-            root,
-            keccak256(abi.encodePacked(keccak256(path), COMMITMENT_SLOT)),
-            keccak256(value)
-        );
+        require(consensusStates[clientId][height.toUint128()].timestamp != 0, "consensus state not found");
+        return sha256(value) == proof.toBytes32(0) || keccak256(value) == proof.toBytes32(0);
     }
 
     /**
-    * @dev verifyNonMembership is a generic proof verification method which verifies the absence of a given CommitmentPath at a specified height.
+     * @dev verifyNonMembership is a generic proof verification method which verifies the absence of a given CommitmentPath at a specified height.
      * The caller is expected to construct the full CommitmentPath from a CommitmentPrefix and a standardized path (as defined in ICS 24).
      */
     function verifyNonMembership(
@@ -183,19 +163,7 @@ contract ParliaClient is ILightClient {
         bytes memory
     ) external view override returns (bool) {
         require(consensusStates[clientId][height.toUint128()].timestamp != 0, "consensus state not found");
-        return true;
-    //    return proof.length == 0;
-    }
-
-    // Same as IBFT2Client.sol
-    function verifyMembership(bytes calldata proof, bytes32 root, bytes32 slot, bytes32 expectedValue)
-    internal
-    pure
-    returns (bool)
-    {
-        bytes32 path = keccak256(abi.encodePacked(slot));
-        bytes memory dataHash = proof.verify(root, path);
-        return expectedValue == dataHash.toRlpItem().toBytes().toBytes32(0);
+        return proof.length == 0;
     }
 
     /* State accessors */
@@ -204,50 +172,50 @@ contract ParliaClient is ILightClient {
      * @dev getClientState returns the clientState corresponding to `clientId`.
      *      If it's not found, the function returns false.
      */
-    function getClientState(
-        string calldata clientId
-    ) external view returns (bytes memory clientStateBytes, bool) {
+    function getClientState(string calldata clientId) external view returns (bytes memory clientStateBytes, bool) {
         ClientState.Data storage clientState = clientStates[clientId];
-        return (Any.encode(Any.Data({
-            type_url: CLIENT_STATE_TYPE_URL,
-            value: ClientState.encode(clientState)
-        })), true);
+        if (clientState.latest_height.revision_height == 0) {
+            return (clientStateBytes, false);
+        }
+        return (Any.encode(Any.Data({type_url: CLIENT_STATE_TYPE_URL, value: ClientState.encode(clientState)})), true);
     }
 
     /**
      * @dev getConsensusState returns the consensusState corresponding to `clientId` and `height`.
      *      If it's not found, the function returns false.
      */
-    function getConsensusState(
-        string calldata clientId,
-        Height.Data calldata height
-    ) external view returns (bytes memory consensusStateBytes, bool) {
+    function getConsensusState(string calldata clientId, Height.Data calldata height)
+    external
+    view
+    returns (bytes memory consensusStateBytes, bool)
+    {
         ConsensusState.Data storage consensusState = consensusStates[clientId][height.toUint128()];
-        return (Any.encode(Any.Data({
-            type_url: CONSENSUS_STATE_TYPE_URL,
-            value: ConsensusState.encode(consensusState)
-        })), true);
+        if (consensusState.timestamp == 0) {
+            return (consensusStateBytes, false);
+        }
+        return (
+        Any.encode(Any.Data({type_url: CONSENSUS_STATE_TYPE_URL, value: ConsensusState.encode(consensusState)})),
+        true
+        );
     }
 
     /* Internal functions */
 
-    function parseHeader(bytes memory bz) internal pure returns (Height.Data memory, bytes32, uint64, bytes memory) {
+    function parseHeader(bytes memory bz) internal pure returns (Height.Data memory, uint64) {
         Any.Data memory any = Any.decode(bz);
         require(keccak256(abi.encodePacked(any.type_url)) == HEADER_TYPE_URL_HASH, "invalid header type");
         Header.Data memory header = Header.decode(any.value);
-        bytes memory rlpEthHeader  = header.headers[0].header;
-
-        RLPReader.RLPItem[] memory items = rlpEthHeader.toRlpItem().toList();
-        Height.Data memory height = Height.Data({revision_number: 0, revision_height: uint64(items[8].toUint())});
-        uint64 timestamp = uint64(items[11].toUint());
-        bytes32 stateRoot = items[3].toBytes().toBytes32(0);
-        return (height,stateRoot, timestamp, header.account_proof);
+        require(
+            header.height.revision_number == 0 && header.height.revision_height != 0 && header.timestamp != 0,
+            "invalid header"
+        );
+        return (header.height, header.timestamp);
     }
 
     function unmarshalClientState(bytes calldata bz)
-        internal
-        pure
-        returns (ClientState.Data memory clientState, bool ok)
+    internal
+    pure
+    returns (ClientState.Data memory clientState, bool ok)
     {
         Any.Data memory anyClientState = Any.decode(bz);
         if (keccak256(abi.encodePacked(anyClientState.type_url)) != CLIENT_STATE_TYPE_URL_HASH) {
@@ -257,25 +225,15 @@ contract ParliaClient is ILightClient {
     }
 
     function unmarshalConsensusState(bytes calldata bz)
-        internal
-        pure
-        returns (ConsensusState.Data memory consensusState, bool ok)
+    internal
+    pure
+    returns (ConsensusState.Data memory consensusState, bool ok)
     {
         Any.Data memory anyConsensusState = Any.decode(bz);
         if (keccak256(abi.encodePacked(anyConsensusState.type_url)) != CONSENSUS_STATE_TYPE_URL_HASH) {
             return (consensusState, false);
         }
         return (ConsensusState.decode(anyConsensusState.value), true);
-    }
-
-    function verifyStorageProof(address account, bytes32 stateRoot, bytes memory accountStateProof)
-    internal
-    pure
-    returns (bytes32)
-    {
-        bytes32 proofPath = keccak256(abi.encodePacked(account));
-        bytes memory accountRLP = accountStateProof.verify(stateRoot, proofPath); // reverts if proof is invalid
-        return bytes32(accountRLP.toRlpItem().toList()[ACCOUNT_STORAGE_ROOT_INDEX].toUint());
     }
 
     modifier onlyIBC() {

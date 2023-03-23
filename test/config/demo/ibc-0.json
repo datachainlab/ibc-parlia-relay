@@ -6,8 +6,7 @@
     "rpc_addr": "http://localhost:8645",
     "hdw_mnemonic": "math razor capable expose worth grape metal sunset metal sudden usage scheme",
     "hdw_path": "m/44'/60'/0'/0/0",
-    "ibc_host_address": "0x0000000000000000000000000000000000000000",
-    "ibc_handler_address": "0xBE4B6cE7De9cEE9949E6758D02dbA0E41dB51741"
+    "ibc_address": "0x29a69AFEEBfc6284409f8d40518B1Cbd1D77c732"
   },
   "prover": {
     "@type": "/relayer.provers.mock.config.ProverConfig"
