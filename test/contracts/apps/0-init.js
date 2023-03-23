@@ -1,8 +1,8 @@
 const ICS20TransferBank = artifacts.require("@hyperledger-labs/yui-ibc-solidity/ICS20TransferBank");
 const ICS20Bank = artifacts.require("@hyperledger-labs/yui-ibc-solidity/ICS20Bank");
 
-const bankAddr = "0xd50340f8C15472b8505D8ef0A706F4b1C9A9A66F";
-const transferAddr = "0xcD1ecA1Ae8603ade1A20e58c0Db0ABDFcC4c725e";
+const bankAddr = "0x78247fcA07EE10B76FCe148A69A00A726A4Ca003";
+const transferAddr = "0xa0ba0aC3E2b19F99fA7Dc603c7A3ec711c30Bfd1";
 
 module.exports = async (callback) => {
   const accounts = await web3.eth.getAccounts();

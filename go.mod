@@ -7,9 +7,12 @@ require (
 	github.com/cosmos/ibc-go/v4 v4.0.0
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/gogo/protobuf v1.3.3
-	github.com/hyperledger-labs/yui-ibc-solidity v0.2.5-0.20221130073947-3315e5fa0f5b
-	github.com/hyperledger-labs/yui-relayer v0.3.0
+	github.com/hyperledger-labs/yui-relayer v0.3.1
+	github.com/hyperledger-labs/yui-ibc-solidity v0.2.5-0.20230320070810-64b95470cabe
 	github.com/spf13/cobra v1.5.0
+	github.com/stretchr/testify v1.8.2
+	github.com/tendermint/tendermint v0.34.20
+	google.golang.org/protobuf v1.28.0
 
 )
 
@@ -68,6 +71,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hdevalence/ed25519consensus v0.0.0-20210204194344-59a8610d2b87 // indirect
+	github.com/hyperledger-labs/yui-ibc-solidity v0.2.5-0.20230320070810-64b95470cabe // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jmhodges/levigo v1.0.0 // indirect
 	github.com/keybase/go-keychain v0.0.0-20190712205309-48d3d31d256d // indirect
@@ -101,15 +105,12 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.12.0 // indirect
-	github.com/stretchr/objx v0.5.0 // indirect
-	github.com/stretchr/testify v1.8.2 // indirect
 	github.com/subosito/gotenv v1.4.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tecbot/gorocksdb v0.0.0-20191217155057-f0fad39f321c // indirect
 	github.com/tendermint/btcd v0.1.1 // indirect
 	github.com/tendermint/crypto v0.0.0-20191022145703-50d29ede1e15 // indirect
 	github.com/tendermint/go-amino v0.16.0 // indirect
-	github.com/tendermint/tendermint v0.34.20 // indirect
 	github.com/tendermint/tm-db v0.6.6 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.4.0 // indirect
@@ -124,7 +125,6 @@ require (
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/genproto v0.0.0-20220519153652-3a47de7e79bd // indirect
 	google.golang.org/grpc v1.48.0 // indirect
-	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/ini.v1 v1.66.6 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
@@ -135,3 +135,5 @@ replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alp
 
 // bsc's tendermint is imcompatible with yui-ibc-solidity
 // replace github.com/ethereum/go-ethereum => github.com/bnb-chain/bsc v1.1.19
+replace github.com/hyperledger-labs/yui-relayer => ../../hyperledger-labs/yui-relayer/
+replace github.com/hyperledger-labs/yui-ibc-solidity => ../../hyperledger-labs/yui-ibc-solidity/

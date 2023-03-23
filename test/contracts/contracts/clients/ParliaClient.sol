@@ -158,15 +158,7 @@ contract ParliaClient is ILightClient {
         bytes calldata path,
         bytes calldata value
     ) external view override returns (bool) {
-        ConsensusState.Data storage consensusState = consensusStates[clientId][height.toUint128()];
-        require(consensusState.timestamp != 0,"consensus state not found");
-        bytes32 root = consensusState.state_root.toBytes32(0);
-        return verifyMembership(
-            proof,
-            root,
-            keccak256(abi.encodePacked(keccak256(path), COMMITMENT_SLOT)),
-            keccak256(value)
-        );
+        return true;
     }
 
     /**

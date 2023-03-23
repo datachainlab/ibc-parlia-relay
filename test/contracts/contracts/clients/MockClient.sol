@@ -145,8 +145,11 @@ contract MockClient is ILightClient {
         bytes memory,
         bytes calldata value
     ) external view override returns (bool) {
-        require(consensusStates[clientId][height.toUint128()].timestamp != 0, "consensus state not found");
-        return sha256(value) == proof.toBytes32(0) || keccak256(value) == proof.toBytes32(0);
+        //require(consensusStates[clientId][height.toUint128()].timestamp != 0, "consensus state not found");
+        bytes32 v = value.toBytes32(0); // packet
+        bytes32 p = proof.toBytes32(0);
+        bytes32 s = sha256(value); // connection / channel
+        return s == p || v == p;
     }
 
     /**

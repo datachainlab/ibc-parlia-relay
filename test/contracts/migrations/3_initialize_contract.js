@@ -12,8 +12,6 @@ module.exports = async function (deployer, network, accounts) {
   const ibcHandler = await IBCHandler.deployed();
   const ics20Bank = await ICS20Bank.deployed();
 
-  console.log(accounts)
-
   for(const f of [
     () => ibcHandler.bindPort(PortTransfer, ICS20TransferBank.address),
     () => ibcHandler.registerClient(MockClientType, MockClient.address),
