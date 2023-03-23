@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  bsc-rpc:
+    depends_on:
+      bootstrap-simple:
+        condition: service_completed_successfully
+
+  bsc-validator1:
+    depends_on:
+      bootstrap-simple:
+        condition: service_completed_successfully
+
+  bsc-rpc2:
+    depends_on:
+      bootstrap-simple2:
+        condition: service_completed_successfully
+
+  bsc-validator2:
+    depends_on:
+      bootstrap-simple2:
+        condition: service_completed_successfully

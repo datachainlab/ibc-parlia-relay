@@ -16,6 +16,18 @@ module.exports = {
           numberOfAddresses: 5,
         }),
     },
+    bsc_local2: {
+      network_id: '*', // Any network (default: none)
+      provider: () =>
+          new HDWalletProvider({
+              mnemonic: {
+                  phrase: mnemonic,
+              },
+              providerOrUrl: 'http://127.0.0.1:8645',
+              addressIndex: 0,
+              numberOfAddresses: 5,
+          }),
+    },
     eth_local: {
       host: '127.0.0.1',
       port: 8645,

@@ -1,11 +1,11 @@
 const IBCHandler = artifacts.require("OwnableIBCHandler");
-const MockClient = artifacts.require("MockClient");
+//const MockClient = artifacts.require("MockClient");
 const ICS20TransferBank = artifacts.require("ICS20TransferBank");
 const ICS20Bank = artifacts.require("ICS20Bank");
 const ParliaClient = artifacts.require("ParliaClient");
 
 const PortTransfer = "transfer"
-const MockClientType = "mock-client"
+//const MockClientType = "mock-client"
 const ParliaClientType = "99-parlia"
 
 module.exports = async function (deployer, network, accounts) {
@@ -14,7 +14,7 @@ module.exports = async function (deployer, network, accounts) {
 
   for(const f of [
     () => ibcHandler.bindPort(PortTransfer, ICS20TransferBank.address),
-    () => ibcHandler.registerClient(MockClientType, MockClient.address),
+    //() => ibcHandler.registerClient(MockClientType, MockClient.address),
     () => ibcHandler.registerClient(ParliaClientType, ParliaClient.address),
     () => ics20Bank.setOperator(ICS20TransferBank.address),
     () => ics20Bank.setOperator(accounts[0]), // make deployer mintable

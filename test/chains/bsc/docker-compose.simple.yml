@@ -1,0 +1,107 @@
+version: "3.8"
+
+volumes:
+  bsc-rpc:
+  bsc-validator1:
+  bsc-rpc2:
+  bsc-validator2:
+
+services:
+  bootstrap-simple:
+    build:
+      context: .
+      dockerfile: Dockerfile.bootstrap
+    env_file: .env
+    environment:
+      INIT_HOLDER_BALANCE: "500000000000000000000"
+      NUMS_OF_VALIDATOR: 1
+    volumes:
+      - bsc-rpc:/root/storage/bsc-rpc
+      - bsc-validator1:/root/storage/bsc-validator1
+      - ./scripts:/root/scripts
+      - ./config:/root/config
+      - ./init-holders:/root/init-holders
+    command: /root/scripts/bootstrap.sh
+  bootstrap-simple2:
+    build:
+      context: .
+      dockerfile: Dockerfile.bootstrap
+    env_file: .env2
+    environment:
+      INIT_HOLDER_BALANCE: "500000000000000000000"
+      NUMS_OF_VALIDATOR: 1
+    volumes:
+      - bsc-rpc2:/root/storage/bsc-rpc
+      - bsc-validator2:/root/storage/bsc-validator1
+      - ./scripts:/root/scripts
+      - ./config:/root/config
+      - ./init-holders:/root/init-holders
+    command: /root/scripts/bootstrap.sh
+
+  bsc-rpc: # This is the bootstrap node
+    image: bsc-geth:docker-local
+    env_file: .env
+    ports:
+      - 8545:8545
+    environment:
+      NODE_ID: bsc-rpc
+    networks:
+      - bsc
+    volumes:
+      - bsc-rpc:/root/.ethereum
+      - ./scripts:/scripts
+      - ./config:/config
+    command: ash /scripts/bsc-rpc.sh
+
+  bsc-rpc2: # This is the bootstrap node
+    image: bsc-geth:docker-local
+    env_file: .env2
+    ports:
+      - 8645:8545
+    environment:
+      NODE_ID: bsc-rpc2
+    networks:
+      - bsc2
+    volumes:
+      - bsc-rpc2:/root/.ethereum
+      - ./scripts:/scripts
+      - ./config:/config
+    command: ash /scripts/bsc-rpc.sh
+
+  bsc-validator1:
+    image: bsc-geth:docker-local
+    env_file: .env
+    environment:
+      NODE_ID: bsc-validator1
+      BOOTSTRAP_HOST: bsc-rpc
+    networks:
+      - bsc
+    volumes:
+      - bsc-validator1:/root/.ethereum
+      - ./scripts:/scripts
+    command: ash /scripts/bsc-validator.sh
+
+  bsc-validator2:
+    image: bsc-geth:docker-local
+    env_file: .env2
+    environment:
+      NODE_ID: bsc-validator2
+      BOOTSTRAP_HOST: bsc-rpc2
+    networks:
+      - bsc2
+    volumes:
+      - bsc-validator2:/root/.ethereum
+      - ./scripts:/scripts
+    command: ash /scripts/bsc-validator.sh
+
+networks:
+  bsc:
+    ipam:
+      driver: default
+      config:
+        - subnet: 99.99.0.0/16
+  bsc2:
+    ipam:
+      driver: default
+      config:
+        - subnet: 99.98.0.0/16
