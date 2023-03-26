@@ -1,4 +1,4 @@
-.PHONY:build
+.PHONY:chain
 chain:
 	make -C chains build
 	make -C chains network
@@ -18,8 +18,12 @@ relayer:
 	./testrly tx update-clients ibc01 --home .testrly
 	./testrly tx connection ibc01 --home .testrly
 	./testrly tx channel ibc01 --home .testrly
-	./testrly service start ibc01 --home .testrly
+	nohup ./testrly service start ibc01 --home .testrly > testrly.log  &
 
 .PHONY:test
 test:
 	make -C contracts test
+
+.PHONY:down
+down:
+	make -C chains network-down

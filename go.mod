@@ -7,8 +7,8 @@ require (
 	github.com/cosmos/ibc-go/v4 v4.0.0
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/gogo/protobuf v1.3.3
-	github.com/hyperledger-labs/yui-relayer v0.3.1
 	github.com/hyperledger-labs/yui-ibc-solidity v0.2.5-0.20230320070810-64b95470cabe
+	github.com/hyperledger-labs/yui-relayer v0.3.1
 	github.com/spf13/cobra v1.5.0
 	github.com/stretchr/testify v1.8.2
 	github.com/tendermint/tendermint v0.34.20
@@ -40,7 +40,6 @@ require (
 	github.com/cosmos/ledger-cosmos-go v0.11.1 // indirect
 	github.com/cosmos/ledger-go v0.9.2 // indirect
 	github.com/danieljoos/wincred v1.0.2 // indirect
-	github.com/datachainlab/ibc-mock-client v0.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
@@ -71,7 +70,6 @@ require (
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hdevalence/ed25519consensus v0.0.0-20210204194344-59a8610d2b87 // indirect
-	github.com/hyperledger-labs/yui-ibc-solidity v0.2.5-0.20230320070810-64b95470cabe // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jmhodges/levigo v1.0.0 // indirect
 	github.com/keybase/go-keychain v0.0.0-20190712205309-48d3d31d256d // indirect
@@ -135,5 +133,6 @@ replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alp
 
 // bsc's tendermint is imcompatible with yui-ibc-solidity
 // replace github.com/ethereum/go-ethereum => github.com/bnb-chain/bsc v1.1.19
-replace github.com/hyperledger-labs/yui-relayer => ../../hyperledger-labs/yui-relayer/
-replace github.com/hyperledger-labs/yui-ibc-solidity => ../../yoshidan/yui-ibc-solidity/
+
+// TODO merge PR
+replace github.com/hyperledger-labs/yui-ibc-solidity => github.com/yoshidan/yui-ibc-solidity v0.0.0-20230323141937-6d7b48d24369
