@@ -4,7 +4,8 @@ build:
 
 .PHONY:network
 network:
-	make -C bsc network-all
+	make -C bsc bootstrap
+	make -C bsc network
 
 .PHONY:network-down
 network-down:

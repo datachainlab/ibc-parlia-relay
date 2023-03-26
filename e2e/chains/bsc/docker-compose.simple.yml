@@ -22,6 +22,7 @@ services:
       - ./config:/root/config
       - ./init-holders:/root/init-holders
     command: /root/scripts/bootstrap.sh
+
   bootstrap-simple2:
     build:
       context: .

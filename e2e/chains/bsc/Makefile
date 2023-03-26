@@ -16,20 +16,17 @@ build:
 .PHONY:bootstrap
 bootstrap:
 	$(OSFLAG) docker compose -f docker-compose.simple.yml run --rm bootstrap-simple
+	$(OSFLAG) docker compose -f docker-compose.simple.yml run --rm bootstrap-simple2
 
 # run bsc-rpc, bsc-validator1
 .PHONY:network
 network:
 	$(OSFLAG) docker compose -f docker-compose.simple.yml up -d bsc-rpc bsc-validator1
+	$(OSFLAG) docker compose -f docker-compose.simple.yml up -d bsc-rpc2 bsc-validator2
 
 .PHONY:network-down
 network-down:
 	$(OSFLAG) docker compose -f docker-compose.simple.yml down -v
-
-# run bootstrap and bsc-rpc, bsc-validator1
-.PHONY:network-all
-network-all:
-	$(OSFLAG) docker compose -f docker-compose.simple.yml -f docker-compose.simple.override.yml up -d
 
 .PHONY:reset-network
 reset-network: network-down network-all
