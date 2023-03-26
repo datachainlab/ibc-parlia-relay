@@ -158,7 +158,14 @@ contract ParliaClient is ILightClient {
         bytes calldata path,
         bytes calldata value
     ) external view override returns (bool) {
-        return true;
+        ConsensusState.Data storage consensusState = consensusStates[clientId][height.toUint128()];
+        require(consensusState.timestamp != 0,  "consensus state not found");
+        return verifyMembership(
+            proof,
+            consensusState.state_root.toBytes32(0),
+            keccak256(abi.encodePacked(keccak256(path), COMMITMENT_SLOT)),
+            keccak256(value)
+        );
     }
 
     /**
@@ -172,11 +179,13 @@ contract ParliaClient is ILightClient {
         uint64,
         bytes calldata proof,
         bytes memory,
-        bytes memory
+        bytes calldata path
     ) external view override returns (bool) {
-        require(consensusStates[clientId][height.toUint128()].timestamp != 0, "consensus state not found");
-        return true;
-    //    return proof.length == 0;
+        ConsensusState.Data storage consensusState = consensusStates[clientId][height.toUint128()];
+        require(consensusState.timestamp != 0,  "consensus state not found");
+        return verifyNonMembership(
+            proof, consensusState.state_root.toBytes32(0), keccak256(abi.encodePacked(keccak256(path), COMMITMENT_SLOT))
+        );
     }
 
     // Same as IBFT2Client.sol
@@ -187,7 +196,14 @@ contract ParliaClient is ILightClient {
     {
         bytes32 path = keccak256(abi.encodePacked(slot));
         bytes memory dataHash = proof.verify(root, path);
-        return expectedValue == dataHash.toRlpItem().toBytes().toBytes32(0);
+        return expectedValue == bytes32(dataHash.toRlpItem().toUint());
+    }
+
+    function verifyNonMembership(bytes calldata proof, bytes32 root, bytes32 slot) internal pure returns (bool) {
+        // bytes32 path = keccak256(abi.encodePacked(slot));
+        // bytes memory dataHash = proof.verify(root, path); // reverts if proof is invalid
+        // return dataHash.toRlpItem().toBytes().length == 0;
+        revert("not implemented");
     }
 
     /* State accessors */

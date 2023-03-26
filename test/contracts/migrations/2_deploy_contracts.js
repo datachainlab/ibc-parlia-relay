@@ -7,7 +7,6 @@ const IBCHandler = artifacts.require("@hyperledger-labs/yui-ibc-solidity/Ownable
 const SimpleToken = artifacts.require("@hyperledger-labs/yui-ibc-solidity/SimpleToken");
 const ICS20TransferBank = artifacts.require("@hyperledger-labs/yui-ibc-solidity/ICS20TransferBank");
 const ICS20Bank = artifacts.require("@hyperledger-labs/yui-ibc-solidity/ICS20Bank");
-//const MockClient = artifacts.require("MockClient");
 const ParliaClient = artifacts.require("ParliaClient");
 
 module.exports = async function (deployer) {
@@ -17,7 +16,6 @@ module.exports = async function (deployer) {
   await deployer.deploy(IBCPacket);
   await deployer.deploy(IBCHandler, IBCClient.address, IBCConnection.address, IBCChannelHandshake.address, IBCPacket.address);
 
-  //await deployer.deploy(MockClient, IBCHandler.address);
   await deployer.deploy(ParliaClient, IBCHandler.address);
   await deployer.deploy(SimpleToken, "simple", "simple", 1000000);
   await deployer.deploy(ICS20Bank);

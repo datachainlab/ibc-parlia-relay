@@ -1,3 +1,4 @@
 build
-lcp-bridge
 node_modules
+testrly
+.testrly

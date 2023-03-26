@@ -136,4 +136,4 @@ replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alp
 // bsc's tendermint is imcompatible with yui-ibc-solidity
 // replace github.com/ethereum/go-ethereum => github.com/bnb-chain/bsc v1.1.19
 replace github.com/hyperledger-labs/yui-relayer => ../../hyperledger-labs/yui-relayer/
-replace github.com/hyperledger-labs/yui-ibc-solidity => ../../hyperledger-labs/yui-ibc-solidity/
+replace github.com/hyperledger-labs/yui-ibc-solidity => ../../yoshidan/yui-ibc-solidity/
