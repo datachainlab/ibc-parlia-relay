@@ -29,7 +29,7 @@ network-down:
 # run bootstrap and bsc-rpc, bsc-validator1
 .PHONY:network-all
 network-all:
-	$(OSFLAG) docker compose -f docker-compose.simple.yml up -d
+	$(OSFLAG) docker compose -f docker-compose.simple.yml -f docker-compose.simple.override.yml up -d
 
 .PHONY:reset-network
 reset-network: network-down network-all
