@@ -3,23 +3,20 @@ package ibc.lightclients.parlia.v1;
 option go_package = "github.com/datachainlab/ibc-parlia-relay/module";
 
 import "ibc/core/client/v1/client.proto";
-import "gogoproto/gogo.proto";
-import "google/protobuf/duration.proto";
 
 message Fraction {
-    uint64 numerator = 1;
-    uint64 denominator = 2;
+  uint64 numerator = 1;
+  uint64 denominator = 2;
 }
 
 message ClientState {
   option (gogoproto.goproto_getters) = false;
-
+  
   uint64 chain_id = 1;
   bytes ibc_store_address = 2;
   ibc.core.client.v1.Height latest_height = 3;
   Fraction trust_level = 4;
-  google.protobuf.Duration trusting_period = 5
-    [(gogoproto.nullable) = false,(gogoproto.stdduration) = true];
+  uint64 trusting_period = 5;
   bool frozen = 6;
 }
 
@@ -34,7 +31,7 @@ message Header {
 }
 
 message ConsensusState {
-   bytes state_root = 1;
-   uint64 timestamp = 2;
-   repeated bytes validator_set = 3;
+  bytes state_root = 1;
+  uint64 timestamp = 2;
+  repeated bytes validator_set = 3;
 }
