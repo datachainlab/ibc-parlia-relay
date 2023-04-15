@@ -185,9 +185,7 @@ func (pr *Prover) SetupHeadersForUpdate(dstChain core.ChainInfoICS02Querier, lat
 
 	// debug log
 	if pr.config.Debug {
-		if logString, _ := header.ToPrettyString(); logString != "" {
-			log.Printf("SetupHeadersForUpdate: header=%s", logString)
-		}
+		log.Printf("SetupHeadersForUpdate: height = %d, \n%s\n", header.TrustedHeight.RevisionHeight, header.ToPrettyString())
 	}
 
 	return []core.Header{header}, nil

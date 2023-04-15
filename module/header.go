@@ -10,6 +10,8 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/tendermint/tendermint/libs/json"
 	"log"
+	"strconv"
+	"strings"
 )
 
 const epochBlockPeriod = 200
@@ -106,41 +108,42 @@ func (h *Header) Account(path common.Address) (*types.StateAccount, error) {
 	return &account, nil
 }
 
-func (h *Header) ToPrettyString() (string, error) {
-	type PrettyString struct {
-		Raw                       *Header
-		DecodedHeaders            []*types.Header
-		DecodedAccountProof       [][]byte
-		ProtobufEncodedAnyTypeURL string
-		ProtobufEncodedAnyValue   []byte
+func (h *Header) ToPrettyString() string {
+	contents := make([]string, 0)
+	toString := func(data []byte) string {
+		v := make([]string, len(data))
+		for i, e := range data {
+			v[i] = strconv.Itoa(int(e))
+		}
+		return strings.Join(v, ",")
+	}
+
+	for i, e := range h.Headers {
+		contents = append(contents, fmt.Sprintf("raw_header[%d] = [%s]\n", i, toString(e.Header)))
+	}
+	accountProof, err := h.decodeAccountProof()
+	if err == nil {
+		for i, e := range accountProof {
+			contents = append(contents, fmt.Sprintf("decoded_account_proof[%d] = [%s]\n", i, toString(e)))
+		}
 	}
 	headers, err := h.decodeEthHeaders()
-	if err != nil {
-		return "", err
+	if err == nil {
+		decodedHeaders, err := json.MarshalIndent(headers, "", " ")
+		if err == nil {
+			contents = append(contents, fmt.Sprintf("decoded_header = %s\n", decodedHeaders))
+		}
 	}
-
-	accountProof, err := h.decodeAccountProof()
-	if err != nil {
-		return "", err
-	}
-
 	anyHeader, err := clienttypes.PackHeader(h)
-	if err != nil {
-		return "", err
+	if err == nil {
+		contents = append(contents, fmt.Sprintf("protobuf type url = %s\n", anyHeader.TypeUrl))
+		contents = append(contents, fmt.Sprintf("protobuf value = [%s]\n", toString(anyHeader.Value)))
+		msg, err := anyHeader.Marshal()
+		if err == nil {
+			contents = append(contents, fmt.Sprintf("protobuf marshal = [%s]\n", toString(msg)))
+		}
 	}
-
-	toString := PrettyString{
-		Raw:                       h,
-		DecodedHeaders:            headers,
-		DecodedAccountProof:       accountProof,
-		ProtobufEncodedAnyTypeURL: anyHeader.TypeUrl,
-		ProtobufEncodedAnyValue:   anyHeader.Value,
-	}
-	value, err := json.MarshalIndent(toString, "", " ")
-	if err != nil {
-		return "", err
-	}
-	return string(value), nil
+	return strings.Join(contents, "")
 }
 
 func extractValidatorSet(h *types.Header) ([][]byte, error) {
