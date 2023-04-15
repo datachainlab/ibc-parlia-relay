@@ -3,13 +3,13 @@ package module
 import (
 	"fmt"
 	clienttypes "github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"log"
-
 	"github.com/cosmos/ibc-go/v4/modules/core/exported"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/tendermint/tendermint/libs/json"
+	"log"
 )
 
 const epochBlockPeriod = 200
@@ -104,6 +104,43 @@ func (h *Header) Account(path common.Address) (*types.StateAccount, error) {
 		return nil, err
 	}
 	return &account, nil
+}
+
+func (h *Header) ToPrettyString() (string, error) {
+	type PrettyString struct {
+		Raw                       *Header
+		DecodedHeaders            []*types.Header
+		DecodedAccountProof       [][]byte
+		ProtobufEncodedAnyTypeURL string
+		ProtobufEncodedAnyValue   []byte
+	}
+	headers, err := h.decodeEthHeaders()
+	if err != nil {
+		return "", err
+	}
+
+	accountProof, err := h.decodeAccountProof()
+	if err != nil {
+		return "", err
+	}
+
+	anyHeader, err := clienttypes.PackHeader(h)
+	if err != nil {
+		return "", err
+	}
+
+	toString := PrettyString{
+		Raw:                       h,
+		DecodedHeaders:            headers,
+		DecodedAccountProof:       accountProof,
+		ProtobufEncodedAnyTypeURL: anyHeader.TypeUrl,
+		ProtobufEncodedAnyValue:   anyHeader.Value,
+	}
+	value, err := json.MarshalIndent(toString, "", " ")
+	if err != nil {
+		return "", err
+	}
+	return string(value), nil
 }
 
 func extractValidatorSet(h *types.Header) ([][]byte, error) {

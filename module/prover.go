@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/tendermint/tendermint/libs/math"
+	"log"
 	"time"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -181,6 +182,14 @@ func (pr *Prover) SetupHeadersForUpdate(dstChain core.ChainInfoICS02Querier, lat
 
 	trustedHeight := pr.toHeight(cs.GetLatestHeight())
 	header.TrustedHeight = &trustedHeight
+
+	// debug log
+	if pr.config.Debug {
+		if logString, _ := header.ToPrettyString(); logString != "" {
+			log.Printf("SetupHeadersForUpdate: header=%s", logString)
+		}
+	}
+
 	return []core.Header{header}, nil
 }
 

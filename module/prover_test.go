@@ -129,6 +129,7 @@ func (ts *ProverTestSuite) SetupTest() {
 		TrustLevelNumerator:   1,
 		TrustLevelDenominator: 3,
 		TrustingPeriod:        100,
+		Debug:                 true,
 	}
 	ts.chain = &mockChain{
 		Chain:        NewChain(chain),

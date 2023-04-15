@@ -10,8 +10,6 @@ message Fraction {
 }
 
 message ClientState {
-  option (gogoproto.goproto_getters) = false;
-  
   uint64 chain_id = 1;
   bytes ibc_store_address = 2;
   ibc.core.client.v1.Height latest_height = 3;
