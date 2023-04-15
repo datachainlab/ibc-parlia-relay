@@ -109,41 +109,52 @@ func (h *Header) Account(path common.Address) (*types.StateAccount, error) {
 }
 
 func (h *Header) ToPrettyString() string {
-	contents := make([]string, 0)
-	toString := func(data []byte) string {
-		v := make([]string, len(data))
-		for i, e := range data {
-			v[i] = strconv.Itoa(int(e))
-		}
-		return strings.Join(v, ",")
+
+	type Pretty struct {
+		Raw             []string
+		Header          []*types.Header
+		AccountProof    []string
+		ProtoBufTypeURL string
+		ProtoBufValue   string
+		ProtoBufMarshal string
 	}
 
-	for i, e := range h.Headers {
-		contents = append(contents, fmt.Sprintf("raw_header[%d] = [%s]\n", i, toString(e.Header)))
+	prettyByteArray := func(data []byte) string {
+		ret := make([]string, len(data))
+		for i, e := range data {
+			ret[i] = strconv.Itoa(int(e))
+		}
+		return fmt.Sprintf("vec![%s]", strings.Join(ret, ","))
 	}
+
+	pretty := &Pretty{}
+
+	pretty.Raw = make([]string, len(h.Headers))
+	for i, e := range h.Headers {
+		pretty.Raw[i] = prettyByteArray(e.Header)
+	}
+
 	accountProof, err := h.decodeAccountProof()
 	if err == nil {
+		pretty.AccountProof = make([]string, len(accountProof))
 		for i, e := range accountProof {
-			contents = append(contents, fmt.Sprintf("decoded_account_proof[%d] = [%s]\n", i, toString(e)))
+			pretty.AccountProof[i] = prettyByteArray(e)
 		}
 	}
 	headers, err := h.decodeEthHeaders()
 	if err == nil {
-		decodedHeaders, err := json.MarshalIndent(headers, "", " ")
-		if err == nil {
-			contents = append(contents, fmt.Sprintf("decoded_header = %s\n", decodedHeaders))
-		}
+		pretty.Header = headers
 	}
 	anyHeader, err := clienttypes.PackHeader(h)
 	if err == nil {
-		contents = append(contents, fmt.Sprintf("protobuf type url = %s\n", anyHeader.TypeUrl))
-		contents = append(contents, fmt.Sprintf("protobuf value = [%s]\n", toString(anyHeader.Value)))
-		msg, err := anyHeader.Marshal()
-		if err == nil {
-			contents = append(contents, fmt.Sprintf("protobuf marshal = [%s]\n", toString(msg)))
+		pretty.ProtoBufTypeURL = anyHeader.TypeUrl
+		pretty.ProtoBufValue = prettyByteArray(anyHeader.Value)
+		if msg, mErr := anyHeader.Marshal(); mErr == nil {
+			pretty.ProtoBufMarshal = prettyByteArray(msg)
 		}
 	}
-	return strings.Join(contents, "")
+	value, _ := json.MarshalIndent(pretty, "  ", "  ")
+	return string(value)
 }
 
 func extractValidatorSet(h *types.Header) ([][]byte, error) {
