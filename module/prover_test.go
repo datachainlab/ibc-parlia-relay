@@ -195,7 +195,7 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 
 func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 
-	epochHeader, tErr := ts.prover.queryHeader(200)
+	previousEpochHeader, tErr := ts.prover.queryHeader(200)
 	ts.Require().NoError(tErr)
 
 	assertFn := func(finalizedHeight int64) {
@@ -219,7 +219,7 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 		var cs2 ConsensusState
 		ts.Require().NoError(err)
 		ts.Require().NoError(proto.Unmarshal(msg.ConsensusState.Value, &cs2))
-		rawHeader := epochHeader.(*Header)
+		rawHeader := previousEpochHeader.(*Header)
 		target, err := rawHeader.Target()
 		ts.Require().NoError(err)
 		validatorSet, err := extractValidatorSet(target)
@@ -230,9 +230,9 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 		ts.Require().Equal(cs2.Timestamp, target.Time)
 		ts.Require().Equal(common.BytesToHash(cs2.StateRoot), account.Root)
 	}
-	assertFn(200)
-	assertFn(201)
-	assertFn(399)
+	assertFn(400)
+	assertFn(401)
+	assertFn(599)
 }
 
 func (ts *ProverTestSuite) TestSetupHeader() {

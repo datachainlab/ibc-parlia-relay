@@ -109,21 +109,19 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 		return nil, err
 	}
 
-	// Initial client_state must be epoch header because lcp-parlia requires validator set when update_client
+	// Initial client_state must be previous epoch header because lcp-parlia requires validator set when update_client
 	blockNumber := target.Number.Int64()
-	isEpoch := blockNumber%epochBlockPeriod == 0
-	if !isEpoch {
-		epochBlockNumber := blockNumber / epochBlockPeriod * epochBlockPeriod
-		var epochHeader core.Header
-		epochHeader, err = pr.queryHeader(epochBlockNumber)
-		if err != nil {
-			return nil, err
-		}
-		header = epochHeader.(*Header)
-		target, err = header.Target()
-		if err != nil {
-			return nil, err
-		}
+	epochCount := blockNumber / epochBlockPeriod
+	previousEpochHeight := math.MaxInt64((epochCount-1)*epochBlockPeriod, 0)
+	var previousEpochHeader core.Header
+	previousEpochHeader, err = pr.queryHeader(previousEpochHeight)
+	if err != nil {
+		return nil, err
+	}
+	header = previousEpochHeader.(*Header)
+	target, err = header.Target()
+	if err != nil {
+		return nil, err
 	}
 
 	// recover account data from account proof
