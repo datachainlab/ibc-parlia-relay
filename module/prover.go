@@ -194,22 +194,17 @@ func (pr *Prover) SetupHeadersForUpdate(dstChain core.ChainInfoICS02Querier, lat
 		return nil, err
 	}
 
-	// Append insufficient epoch blocks
-	savedLatestHeight := cs.GetLatestHeight().GetRevisionHeight()
-	finalizedHeight := header.GetHeight().GetRevisionHeight()
-	latestEpoch := savedLatestHeight / epochBlockPeriod * epochBlockPeriod
 	targetHeaders := make([]core.Header, 0)
 
+	// Needless to update already saved state
 	if cs.GetLatestHeight().GetRevisionHeight() == header.GetHeight().GetRevisionHeight() {
-		// Needless to update
 		return targetHeaders, nil
 	}
 
-	for epochHeight := latestEpoch; epochHeight < finalizedHeight; epochHeight += epochBlockPeriod {
-		// skip if saved latest header is epoch
-		if epochHeight == savedLatestHeight {
-			continue
-		}
+	// Append insufficient epoch blocks
+	savedLatestHeight := cs.GetLatestHeight().GetRevisionHeight()
+	firstUnsavedEpoch := (savedLatestHeight/epochBlockPeriod + 1) * epochBlockPeriod
+	for epochHeight := firstUnsavedEpoch; epochHeight < header.GetHeight().GetRevisionHeight(); epochHeight += epochBlockPeriod {
 		epoch, err := pr.queryHeader(int64(epochHeight))
 		if err != nil {
 			return nil, fmt.Errorf("SetupHeadersForUpdate failed to get past epochs : saved_latest = %d : %+v", savedLatestHeight, err)
@@ -221,9 +216,12 @@ func (pr *Prover) SetupHeadersForUpdate(dstChain core.ChainInfoICS02Querier, lat
 	}
 
 	for i, h := range targetHeaders {
-		latestHeight := cs.GetLatestHeight()
-		revisionNumber := latestHeight.GetRevisionNumber()
-		trustedHeight := clienttypes.NewHeight(revisionNumber, latestHeight.GetRevisionHeight()+epochBlockPeriod*uint64(i))
+		var trustedHeight clienttypes.Height
+		if i == 0 {
+			trustedHeight = pr.toHeight(cs.GetLatestHeight())
+		} else {
+			trustedHeight = pr.toHeight(targetHeaders[i-1].GetHeight())
+		}
 		h.(*Header).TrustedHeight = &trustedHeight
 		if pr.config.Debug {
 			log.Printf("SetupHeadersForUpdate: target height = %d, trustedHeight = %d\n", h.GetHeight().GetRevisionHeight(), trustedHeight.GetRevisionHeight())
