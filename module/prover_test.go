@@ -244,11 +244,46 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 		Chain:  ts.prover.chain,
 		Prover: ts.prover,
 	}
-	header := &Header{}
+	header, err := ts.prover.queryHeader(22005)
 	setupDone, err := ts.prover.SetupHeadersForUpdate(&dst, header)
-	done := setupDone[0].(*Header)
+	ts.Require().Len(setupDone, 4)
+	first := setupDone[0].(*Header)
+	ts.Require().Equal(uint64(21600), first.GetHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21400), first.GetTrustedHeight().GetRevisionHeight())
+	second := setupDone[1].(*Header)
 	ts.Require().NoError(err)
-	ts.Require().Equal(uint64(21400), done.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21800), second.GetHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21600), second.GetTrustedHeight().GetRevisionHeight())
+	third := setupDone[2].(*Header)
+	ts.Require().NoError(err)
+	ts.Require().Equal(uint64(22000), third.GetHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21800), third.GetTrustedHeight().GetRevisionHeight())
+	last := setupDone[3].(*Header)
+	ts.Require().NoError(err)
+	ts.Require().Equal(uint64(22005), last.GetHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(22000), last.GetTrustedHeight().GetRevisionHeight())
+
+	header, err = ts.prover.queryHeader(21800)
+	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
+	ts.Require().Len(setupDone, 2)
+	first = setupDone[0].(*Header)
+	ts.Require().Equal(uint64(21600), first.GetHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21400), first.GetTrustedHeight().GetRevisionHeight())
+	second = setupDone[1].(*Header)
+	ts.Require().NoError(err)
+	ts.Require().Equal(uint64(21800), second.GetHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21600), second.GetTrustedHeight().GetRevisionHeight())
+
+	header, err = ts.prover.queryHeader(21401)
+	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
+	ts.Require().Len(setupDone, 1)
+	first = setupDone[0].(*Header)
+	ts.Require().Equal(uint64(21401), first.GetHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21400), first.GetTrustedHeight().GetRevisionHeight())
+
+	header, err = ts.prover.queryHeader(21400)
+	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
+	ts.Require().Len(setupDone, 0)
 }
 
 func (ts *ProverTestSuite) TestQueryClientStateWithProof() {

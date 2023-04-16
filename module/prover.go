@@ -194,15 +194,48 @@ func (pr *Prover) SetupHeadersForUpdate(dstChain core.ChainInfoICS02Querier, lat
 		return nil, err
 	}
 
-	trustedHeight := pr.toHeight(cs.GetLatestHeight())
-	header.TrustedHeight = &trustedHeight
+	// Append insufficient epoch blocks
+	savedLatestHeight := cs.GetLatestHeight().GetRevisionHeight()
+	finalizedHeight := header.GetHeight().GetRevisionHeight()
+	latestEpoch := savedLatestHeight / epochBlockPeriod * epochBlockPeriod
+	targetHeaders := make([]core.Header, 0)
+
+	if cs.GetLatestHeight().GetRevisionHeight() == header.GetHeight().GetRevisionHeight() {
+		// Needless to update
+		return targetHeaders, nil
+	}
+
+	for epochHeight := latestEpoch; epochHeight < finalizedHeight; epochHeight += epochBlockPeriod {
+		// skip if saved latest header is epoch
+		if epochHeight == savedLatestHeight {
+			continue
+		}
+		epoch, err := pr.queryHeader(int64(epochHeight))
+		if err != nil {
+			return nil, err
+		}
+		targetHeaders = append(targetHeaders, epoch)
+	}
+	if len(targetHeaders) == 0 || targetHeaders[len(targetHeaders)-1].GetHeight() != header.GetHeight() {
+		targetHeaders = append(targetHeaders, header)
+	}
+
+	for i, h := range targetHeaders {
+		latestHeight := cs.GetLatestHeight()
+		revisionNumber := latestHeight.GetRevisionNumber()
+		trustedHeight := clienttypes.NewHeight(revisionNumber, latestHeight.GetRevisionHeight()+epochBlockPeriod*uint64(i))
+		h.(*Header).TrustedHeight = &trustedHeight
+		if pr.config.Debug {
+			log.Printf("SetupHeadersForUpdate: target height = %d, trustedHeight = %d\n", h.GetHeight().GetRevisionHeight(), trustedHeight.GetRevisionHeight())
+		}
+	}
 
 	// debug log
 	if pr.config.Debug {
-		log.Printf("SetupHeadersForUpdate: height = %d, \n%s\n", header.TrustedHeight.RevisionHeight, header.ToPrettyString())
+		log.Printf("SetupHeadersForUpdate: last height = %d, \n%s\n", header.GetHeight().GetRevisionHeight(), header.ToPrettyString())
 	}
 
-	return []core.Header{header}, nil
+	return targetHeaders, nil
 }
 
 // QueryClientConsensusStateWithProof returns the ClientConsensusState and its proof
