@@ -103,11 +103,27 @@ func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
 
 // CreateMsgCreateClient creates a CreateClientMsg to this chain
 func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.AccAddress) (*clienttypes.MsgCreateClient, error) {
-	// get account proof from header
 	header := dstHeader.(*Header)
 	target, err := header.Target()
 	if err != nil {
 		return nil, err
+	}
+
+	// Initial client_state must be epoch header because lcp-parlia requires validator set when update_client
+	blockNumber := target.Number.Int64()
+	isEpoch := blockNumber%epochBlockPeriod == 0
+	if !isEpoch {
+		epochBlockNumber := blockNumber / epochBlockPeriod * epochBlockPeriod
+		var epochHeader core.Header
+		epochHeader, err = pr.queryHeader(epochBlockNumber)
+		if err != nil {
+			return nil, err
+		}
+		header = epochHeader.(*Header)
+		target, err = header.Target()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// recover account data from account proof

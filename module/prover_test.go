@@ -194,35 +194,45 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 }
 
 func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
-	header, err := ts.prover.queryHeader(200)
-	ts.Require().NoError(err)
-	msg, err := ts.prover.CreateMsgCreateClient("", header, types.AccAddress{})
-	ts.Require().NoError(err)
-	ts.Require().Equal(msg.ClientState.TypeUrl, "/ibc.lightclients.parlia.v1.ClientState")
-	var cs ClientState
-	ts.Require().NoError(proto.Unmarshal(msg.ClientState.Value, &cs))
-	ts.Require().Equal(cs.ChainId, uint64(9999))
-	ts.Require().Equal(cs.TrustingPeriod, uint64(100))
-	ts.Require().Equal(cs.TrustLevel.Numerator, uint64(1))
-	ts.Require().Equal(cs.TrustLevel.Denominator, uint64(3))
-	ts.Require().False(cs.Frozen)
-	ts.Require().Equal(common.Bytes2Hex(cs.IbcStoreAddress), ibcHandlerAddress)
-	ts.Require().Equal(cs.GetLatestHeight().GetRevisionHeight(), uint64(200))
-	ts.Require().Equal(cs.GetLatestHeight().GetRevisionNumber(), uint64(0))
 
-	var cs2 ConsensusState
-	ts.Require().NoError(err)
-	ts.Require().NoError(proto.Unmarshal(msg.ConsensusState.Value, &cs2))
-	rawHeader := header.(*Header)
-	target, err := rawHeader.Target()
-	ts.Require().NoError(err)
-	validatorSet, err := extractValidatorSet(target)
-	ts.Require().NoError(err)
-	account, err := rawHeader.Account(common.HexToAddress(ibcHandlerAddress))
-	ts.Require().NoError(err)
-	ts.Require().Equal(cs2.ValidatorSet, validatorSet)
-	ts.Require().Equal(cs2.Timestamp, target.Time)
-	ts.Require().Equal(common.BytesToHash(cs2.StateRoot), account.Root)
+	epochHeader, tErr := ts.prover.queryHeader(200)
+	ts.Require().NoError(tErr)
+
+	assertFn := func(finalizedHeight int64) {
+		finalizedHeader, err := ts.prover.queryHeader(finalizedHeight)
+		ts.Require().NoError(err)
+		msg, err := ts.prover.CreateMsgCreateClient("", finalizedHeader, types.AccAddress{})
+		ts.Require().NoError(err)
+		ts.Require().Equal(msg.ClientState.TypeUrl, "/ibc.lightclients.parlia.v1.ClientState")
+		var cs ClientState
+		ts.Require().NoError(proto.Unmarshal(msg.ClientState.Value, &cs))
+		ts.Require().Equal(cs.ChainId, uint64(9999))
+		ts.Require().Equal(cs.TrustingPeriod, uint64(100))
+		ts.Require().Equal(cs.TrustLevel.Numerator, uint64(1))
+		ts.Require().Equal(cs.TrustLevel.Denominator, uint64(3))
+		ts.Require().False(cs.Frozen)
+		ts.Require().Equal(common.Bytes2Hex(cs.IbcStoreAddress), ibcHandlerAddress)
+		ts.Require().Equal(cs.GetLatestHeight().GetRevisionHeight(), uint64(200))
+		ts.Require().Equal(cs.GetLatestHeight().GetRevisionNumber(), uint64(0))
+
+		// assert same epoch
+		var cs2 ConsensusState
+		ts.Require().NoError(err)
+		ts.Require().NoError(proto.Unmarshal(msg.ConsensusState.Value, &cs2))
+		rawHeader := epochHeader.(*Header)
+		target, err := rawHeader.Target()
+		ts.Require().NoError(err)
+		validatorSet, err := extractValidatorSet(target)
+		ts.Require().NoError(err)
+		account, err := rawHeader.Account(common.HexToAddress(ibcHandlerAddress))
+		ts.Require().NoError(err)
+		ts.Require().Equal(cs2.ValidatorSet, validatorSet)
+		ts.Require().Equal(cs2.Timestamp, target.Time)
+		ts.Require().Equal(common.BytesToHash(cs2.StateRoot), account.Root)
+	}
+	assertFn(200)
+	assertFn(201)
+	assertFn(399)
 }
 
 func (ts *ProverTestSuite) TestSetupHeader() {
