@@ -123,10 +123,13 @@ contract ParliaClient is ILightClient {
         Any.Data memory anyClientState;
         Any.Data memory anyConsensusState;
 
-        ClientState.Data storage clientState = clientStates[clientId];
         (height, stateRoot, timestamp, accountProof) = parseHeader(clientMessageBytes);
+
+        ClientState.Data storage clientState = clientStates[clientId];
+        clientState.latest_height.revision_number = height.revision_number;
+        clientState.latest_height.revision_height = height.revision_height;
         anyClientState.type_url = CLIENT_STATE_TYPE_URL;
-        anyClientState.value = ClientState.encode(clientStates[clientId]);
+        anyClientState.value = ClientState.encode(clientState);
 
         //TODO verify header
 

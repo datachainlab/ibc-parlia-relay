@@ -127,7 +127,7 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 	// recover account data from account proof
 	account, err := header.Account(pr.chain.IBCAddress())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("it may be that not enough block has been generated since contract was created. : finalized height = %d, previous epoch height=%d, %+v", blockNumber, header.GetHeight().GetRevisionHeight(), err)
 	}
 
 	// get chain id
@@ -212,7 +212,7 @@ func (pr *Prover) SetupHeadersForUpdate(dstChain core.ChainInfoICS02Querier, lat
 		}
 		epoch, err := pr.queryHeader(int64(epochHeight))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("SetupHeadersForUpdate failed to get past epochs : saved_latest = %d : %+v", savedLatestHeight, err)
 		}
 		targetHeaders = append(targetHeaders, epoch)
 	}
@@ -354,15 +354,14 @@ func (pr *Prover) toHeight(height exported.Height) clienttypes.Height {
 
 // queryHeader returns the header corresponding to the height
 func (pr *Prover) queryHeader(height int64) (core.Header, error) {
-
 	ethHeaders, err := pr.queryETHHeaders(uint64(height))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("height = %d, %+v", height, err)
 	}
 	// get RLP-encoded account proof
 	rlpAccountProof, err := pr.getAccountProof(height)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("height = %d, %+v", height, err)
 	}
 	return &Header{
 		AccountProof: rlpAccountProof,
