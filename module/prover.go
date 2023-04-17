@@ -79,7 +79,7 @@ func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
 		countToFinalizeCurrentExceptTarget := countToFinalizeCurrent - 1
 		if latestBlockNumber >= countToFinalizeCurrentExceptTarget {
 			targetHeight := latestBlockNumber - countToFinalizeCurrentExceptTarget
-			return pr.queryHeader(int64(targetHeight))
+			return pr.queryHeaderAndAccountProof(int64(targetHeight))
 		}
 		return nil, fmt.Errorf("no finalized header found : latest = %d", latestBlockNumber)
 	}
@@ -95,11 +95,11 @@ func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
 	checkpoint := currentEpoch.Number.Uint64() + countToFinalizePrevious
 	target := latestBlockNumber - (countToFinalizeCurrent - 1)
 	if target >= checkpoint {
-		return pr.queryHeader(int64(target))
+		return pr.queryHeaderAndAccountProof(int64(target))
 	}
 
 	// finalized by previous validator set
-	return pr.queryHeader(math.MinInt64(int64(checkpoint-1), int64(latestBlockNumber-(countToFinalizePrevious-1))))
+	return pr.queryHeaderAndAccountProof(math.MinInt64(int64(checkpoint-1), int64(latestBlockNumber-(countToFinalizePrevious-1))))
 }
 
 // CreateMsgCreateClient creates a CreateClientMsg to this chain
@@ -115,7 +115,7 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 	epochCount := blockNumber / epochBlockPeriod
 	previousEpochHeight := math.MaxInt64((epochCount-1)*epochBlockPeriod, 0)
 	var previousEpochHeader core.Header
-	previousEpochHeader, err = pr.queryHeaderWithoutAccountProof(previousEpochHeight)
+	previousEpochHeader, err = pr.queryHeader(previousEpochHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -157,6 +157,7 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 	}
 	consensusState := ConsensusState{
 		Timestamp:    target.Time,
+		StateRoot:    crypto.Keccak256(),
 		ValidatorSet: validatorSet,
 	}
 	anyConsensusState, err := codectypes.NewAnyWithValue(&consensusState)
@@ -199,7 +200,7 @@ func (pr *Prover) SetupHeadersForUpdate(dstChain core.ChainInfoICS02Querier, lat
 	savedLatestHeight := cs.GetLatestHeight().GetRevisionHeight()
 	firstUnsavedEpoch := (savedLatestHeight/epochBlockPeriod + 1) * epochBlockPeriod
 	for epochHeight := firstUnsavedEpoch; epochHeight < header.GetHeight().GetRevisionHeight(); epochHeight += epochBlockPeriod {
-		epoch, err := pr.queryHeader(int64(epochHeight))
+		epoch, err := pr.queryHeaderAndAccountProof(int64(epochHeight))
 		if err != nil {
 			return nil, fmt.Errorf("SetupHeadersForUpdate failed to get past epochs : saved_latest = %d : %+v", savedLatestHeight, err)
 		}
@@ -345,7 +346,7 @@ func (pr *Prover) toHeight(height exported.Height) clienttypes.Height {
 }
 
 // queryHeader returns the header corresponding to the height
-func (pr *Prover) queryHeader(height int64) (core.Header, error) {
+func (pr *Prover) queryHeaderAndAccountProof(height int64) (core.Header, error) {
 	ethHeaders, err := pr.queryETHHeaders(uint64(height))
 	if err != nil {
 		return nil, fmt.Errorf("height = %d, %+v", height, err)
@@ -362,15 +363,23 @@ func (pr *Prover) queryHeader(height int64) (core.Header, error) {
 }
 
 // queryHeader returns the header corresponding to the height
-func (pr *Prover) queryHeaderWithoutAccountProof(height int64) (core.Header, error) {
+func (pr *Prover) queryHeader(height int64) (core.Header, error) {
 	ethHeaders, err := pr.queryETHHeaders(uint64(height))
 	if err != nil {
 		return nil, fmt.Errorf("height = %d, %+v", height, err)
 	}
 	return &Header{
-		Headers:      ethHeaders,
-		AccountProof: crypto.Keccak256(),
+		Headers: ethHeaders,
 	}, nil
+}
+
+func (pr *Prover) queryAccountProof(height int64) ([]byte, error) {
+	// get RLP-encoded account proof
+	rlpAccountProof, err := pr.getAccountProof(height)
+	if err != nil {
+		return nil, fmt.Errorf("height = %d, %+v", height, err)
+	}
+	return rlpAccountProof, nil
 }
 
 // queryETHHeaders returns the header corresponding to the height
