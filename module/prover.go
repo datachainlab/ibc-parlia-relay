@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/tendermint/tendermint/libs/math"
 	"log"
@@ -367,7 +368,8 @@ func (pr *Prover) queryHeaderWithoutAccountProof(height int64) (core.Header, err
 		return nil, fmt.Errorf("height = %d, %+v", height, err)
 	}
 	return &Header{
-		Headers: ethHeaders,
+		Headers:      ethHeaders,
+		AccountProof: crypto.Keccak256(),
 	}, nil
 }
 
