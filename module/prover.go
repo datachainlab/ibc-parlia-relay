@@ -114,7 +114,7 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 	epochCount := blockNumber / epochBlockPeriod
 	previousEpochHeight := math.MaxInt64((epochCount-1)*epochBlockPeriod, 0)
 	var previousEpochHeader core.Header
-	previousEpochHeader, err = pr.queryHeader(previousEpochHeight)
+	previousEpochHeader, err = pr.queryHeaderWithoutAccountProof(previousEpochHeight)
 	if err != nil {
 		return nil, err
 	}
@@ -122,12 +122,6 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 	target, err = header.Target()
 	if err != nil {
 		return nil, err
-	}
-
-	// recover account data from account proof
-	account, err := header.Account(pr.chain.IBCAddress())
-	if err != nil {
-		return nil, fmt.Errorf("it may be that not enough block has been generated since contract was created. : finalized height = %d, previous epoch height=%d, %+v", blockNumber, header.GetHeight().GetRevisionHeight(), err)
 	}
 
 	// get chain id
@@ -162,7 +156,6 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 	}
 	consensusState := ConsensusState{
 		Timestamp:    target.Time,
-		StateRoot:    account.Root.Bytes(),
 		ValidatorSet: validatorSet,
 	}
 	anyConsensusState, err := codectypes.NewAnyWithValue(&consensusState)
@@ -364,6 +357,17 @@ func (pr *Prover) queryHeader(height int64) (core.Header, error) {
 	return &Header{
 		AccountProof: rlpAccountProof,
 		Headers:      ethHeaders,
+	}, nil
+}
+
+// queryHeader returns the header corresponding to the height
+func (pr *Prover) queryHeaderWithoutAccountProof(height int64) (core.Header, error) {
+	ethHeaders, err := pr.queryETHHeaders(uint64(height))
+	if err != nil {
+		return nil, fmt.Errorf("height = %d, %+v", height, err)
+	}
+	return &Header{
+		Headers: ethHeaders,
 	}, nil
 }
 
