@@ -186,7 +186,7 @@ func (pr *Prover) SetupHeadersForUpdate(dstChain core.ChainInfoICS02Querier, lat
 	}
 	csRes, err := dstChain.QueryClientState(core.NewQueryContext(context.TODO(), latestHeightOnDstChain))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("SetupHeadersForUpdate: height = %d, %+v", latestHeightOnDstChain, err)
 	}
 	var cs exported.ClientState
 	if err = pr.chain.Codec().UnpackAny(csRes.ClientState, &cs); err != nil {
