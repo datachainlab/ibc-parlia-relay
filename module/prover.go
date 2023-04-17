@@ -24,6 +24,10 @@ import (
 
 var _ core.Prover = (*Prover)(nil)
 
+type DebuggableChain struct {
+	Chain
+}
+
 type Prover struct {
 	chain  Chain
 	config *ProverConfig
@@ -250,6 +254,7 @@ func (pr *Prover) QueryClientConsensusStateWithProof(ctx core.QueryContext, dstC
 
 // QueryClientStateWithProof returns the ClientState and its proof
 func (pr *Prover) QueryClientStateWithProof(ctx core.QueryContext) (*clienttypes.QueryClientStateResponse, error) {
+	log.Printf("QueryClientStateWithProof: height = %d\n", ctx.Height().GetRevisionHeight())
 	res, err := pr.chain.QueryClientState(ctx)
 	if err != nil {
 		return nil, err
@@ -266,6 +271,7 @@ func (pr *Prover) QueryClientStateWithProof(ctx core.QueryContext) (*clienttypes
 
 // QueryConnectionWithProof returns the Connection and its proof
 func (pr *Prover) QueryConnectionWithProof(ctx core.QueryContext) (*conntypes.QueryConnectionResponse, error) {
+	log.Printf("QueryConnectionWithProof: height = %d\n", ctx.Height().GetRevisionHeight())
 	res, err := pr.chain.QueryConnection(ctx)
 	if err != nil {
 		return nil, err
