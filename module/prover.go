@@ -8,6 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/tendermint/tendermint/libs/math"
 	"log"
+	"strconv"
+	"strings"
 	"time"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -229,7 +231,9 @@ func (pr *Prover) SetupHeadersForUpdate(dstChain core.ChainInfoICS02Querier, lat
 
 	// debug log
 	if pr.config.Debug {
-		log.Printf("SetupHeadersForUpdate: last height = %d, \n%s\n", header.GetHeight().GetRevisionHeight(), header.ToPrettyString())
+		account, _ := header.Account(pr.chain.IBCAddress())
+		_, storageRoot, _ := pr.getAccountProof(int64(header.GetHeight().GetRevisionHeight()))
+		log.Printf("SetupHeadersForUpdate: last height = %d, accountRoot = %s, storageRoot=%s\n", header.GetHeight().GetRevisionHeight(), account.Root, storageRoot)
 	}
 
 	return targetHeaders, nil
@@ -280,10 +284,11 @@ func (pr *Prover) QueryConnectionWithProof(ctx core.QueryContext) (*conntypes.Qu
 		// connection not found
 		return res, nil
 	}
-	res.ProofHeight = pr.toHeight(ctx.Height())
-	res.Proof, err = pr.getStateCommitmentProof(host.ConnectionKey(
+	key := host.ConnectionKey(
 		pr.chain.Path().ConnectionID,
-	), ctx.Height())
+	)
+	res.ProofHeight = pr.toHeight(ctx.Height())
+	res.Proof, err = pr.getStateCommitmentProof(key, ctx.Height())
 	if err != nil {
 		return nil, err
 	}
@@ -292,6 +297,7 @@ func (pr *Prover) QueryConnectionWithProof(ctx core.QueryContext) (*conntypes.Qu
 
 // QueryChannelWithProof returns the Channel and its proof
 func (pr *Prover) QueryChannelWithProof(ctx core.QueryContext) (chanRes *chantypes.QueryChannelResponse, err error) {
+	log.Printf("QueryClientWithProof: height = %d\n", ctx.Height().GetRevisionHeight())
 	res, err := pr.chain.QueryChannel(ctx)
 	if err != nil {
 		return nil, err
@@ -301,13 +307,19 @@ func (pr *Prover) QueryChannelWithProof(ctx core.QueryContext) (chanRes *chantyp
 		return res, nil
 	}
 	res.ProofHeight = pr.toHeight(ctx.Height())
-	res.Proof, err = pr.getStateCommitmentProof(host.ChannelKey(
+	key := host.ChannelKey(
 		pr.chain.Path().PortID,
 		pr.chain.Path().ChannelID,
-	), ctx.Height())
+	)
+	res.Proof, err = pr.getStateCommitmentProof(key, ctx.Height())
 	if err != nil {
 		return nil, err
 	}
+	v := make([]string, len(res.Proof))
+	for i, e := range res.Proof {
+		v[i] = strconv.Itoa(int(e))
+	}
+	log.Printf("channel path = %s, channel proof = %s", key, strings.Join(v, ","))
 	return res, nil
 }
 
@@ -358,7 +370,7 @@ func (pr *Prover) queryHeaderAndAccountProof(height int64) (core.Header, error) 
 		return nil, fmt.Errorf("height = %d, %+v", height, err)
 	}
 	// get RLP-encoded account proof
-	rlpAccountProof, err := pr.getAccountProof(height)
+	rlpAccountProof, _, err := pr.getAccountProof(height)
 	if err != nil {
 		return nil, fmt.Errorf("height = %d, %+v", height, err)
 	}
@@ -381,7 +393,7 @@ func (pr *Prover) queryHeader(height int64) (core.Header, error) {
 
 func (pr *Prover) queryAccountProof(height int64) ([]byte, error) {
 	// get RLP-encoded account proof
-	rlpAccountProof, err := pr.getAccountProof(height)
+	rlpAccountProof, _, err := pr.getAccountProof(height)
 	if err != nil {
 		return nil, fmt.Errorf("height = %d, %+v", height, err)
 	}

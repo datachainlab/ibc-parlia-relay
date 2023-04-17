@@ -3,23 +3,33 @@ package module
 import (
 	"fmt"
 	"github.com/cosmos/ibc-go/v4/modules/core/exported"
+	"log"
 	"math/big"
+	"strconv"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/trie"
 )
 
-func (pr *Prover) getAccountProof(height int64) ([]byte, error) {
+func (pr *Prover) getAccountProof(height int64) ([]byte, common.Hash, error) {
 	stateProof, err := pr.chain.GetProof(
 		pr.chain.IBCAddress(),
 		nil,
 		big.NewInt(height),
 	)
 	if err != nil {
-		return nil, err
+		return nil, [32]byte{}, err
 	}
-	return stateProof.AccountProofRLP, nil
+	hash := stateProof.StorageHash[:]
+	v := make([]string, len(hash))
+	for i, e := range hash {
+		v[i] = strconv.Itoa(int(e))
+	}
+
+	log.Printf("storageRoot = %s", strings.Join(v, ","))
+	return stateProof.AccountProofRLP, common.BytesToHash(stateProof.StorageHash[:]), nil
 }
 
 func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) ([]byte, error) {
@@ -42,6 +52,16 @@ func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) (
 	if err != nil {
 		return nil, err
 	}
+	hash := stateProof.StorageHash[:]
+	v := make([]string, len(hash))
+	for i, e := range hash {
+		v[i] = strconv.Itoa(int(e))
+	}
+	vv := make([]string, len(stateProof.StorageProofRLP[0]))
+	for i, e := range stateProof.StorageProofRLP[0] {
+		vv[i] = strconv.Itoa(int(e))
+	}
+	log.Printf("path = %s, slot = %s, storageRoot = %s, proof = %s", path, marshaledSlot, strings.Join(v, ","), strings.Join(vv, ","))
 	return stateProof.StorageProofRLP[0], nil
 }
 
