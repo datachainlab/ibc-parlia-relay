@@ -8,8 +8,6 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/tendermint/tendermint/libs/math"
 	"log"
-	"strconv"
-	"strings"
 	"time"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -275,11 +273,11 @@ func (pr *Prover) QueryClientStateWithProof(ctx core.QueryContext) (*clienttypes
 
 // QueryConnectionWithProof returns the Connection and its proof
 func (pr *Prover) QueryConnectionWithProof(ctx core.QueryContext) (*conntypes.QueryConnectionResponse, error) {
-	log.Printf("QueryConnectionWithProof: height = %d\n", ctx.Height().GetRevisionHeight())
 	res, err := pr.chain.QueryConnection(ctx)
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("QueryConnectionWithProof: height = %d, path = %s\n", ctx.Height().GetRevisionHeight(), res.Connection.String())
 	if res.Connection.State == conntypes.UNINITIALIZED {
 		// connection not found
 		return res, nil
@@ -289,9 +287,7 @@ func (pr *Prover) QueryConnectionWithProof(ctx core.QueryContext) (*conntypes.Qu
 	)
 	res.ProofHeight = pr.toHeight(ctx.Height())
 	res.Proof, err = pr.getStateCommitmentProof(key, ctx.Height())
-	if err != nil {
-		return nil, err
-	}
+
 	return res, nil
 }
 
@@ -315,11 +311,6 @@ func (pr *Prover) QueryChannelWithProof(ctx core.QueryContext) (chanRes *chantyp
 	if err != nil {
 		return nil, err
 	}
-	v := make([]string, len(res.Proof))
-	for i, e := range res.Proof {
-		v[i] = strconv.Itoa(int(e))
-	}
-	log.Printf("channel path = %s, channel proof = %s", key, strings.Join(v, ","))
 	return res, nil
 }
 
