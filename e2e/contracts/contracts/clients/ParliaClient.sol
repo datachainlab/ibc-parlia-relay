@@ -62,11 +62,13 @@ contract ParliaClient is ILightClient {
         if (!ok) {
             return (clientStateCommitment, update, false);
         }
+        /* can be genesis block
         if (
             clientState.latest_height.revision_height == 0 || consensusState.timestamp == 0
         ) {
             return (clientStateCommitment, update, false);
         }
+        */
 
         Height.Data memory height;
         height.revision_height = clientState.latest_height.revision_height;

@@ -140,6 +140,5 @@ require (
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 
-replace github.com/hyperledger-labs/yui-relayer => github.com/yoshidan/yui-relayer v0.0.0-20230418092837-c901ef3c6209
-
-// replace github.com/hyperledger-labs/yui-relayer => ../../yoshidan/yui-relayer
+replace github.com/hyperledger-labs/yui-relayer => ../../yoshidan/yui-relayer
+replace github.com/hyperledger-labs/yui-ibc-solidity => ../../yoshidan/yui-ibc-solidity
