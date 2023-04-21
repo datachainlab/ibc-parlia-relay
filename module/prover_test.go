@@ -407,3 +407,36 @@ func (ts *ProverTestSuite) TestConnection() {
 	storageRoot := common.BytesToHash([]byte{82, 151, 170, 160, 133, 205, 75, 144, 49, 43, 13, 172, 81, 2, 52, 123, 17, 51, 253, 55, 100, 124, 234, 205, 131, 149, 248, 211, 22, 210, 2, 68})
 	ts.Require().NoError(verifyMembership(storageRoot, res.Proof, path, commitment))
 }
+
+func (ts *ProverTestSuite) TestConnectionStateProofAsLCPCommitment() {
+	proofInit := common.Hex2Bytes("f8ccb872f8708369626398636f6e6e656374696f6e732f636f6e6e656374696f6e2d30a022ab576a7df38bb4860ffbc65f30d5a66536fb2d8ec3d5d7d4ab9a3ead0e4312900000000000000000000000000000013da0ee0b5f32ae2bff0d82149ea22b02e350fbbe467a514ba80bbadd89007df1d167949c406cd64ce7fce93eb9d7baf1288c41c921521db84153509dc20ccebff5b9b436cf108737c6bdc24782569dff36a376353407cbe19b2a8fbaf045755a52c674612a1274da7363cd84ff9f5272abcd0ae4e7043f3a3b00")
+	var rawValueProof [][]byte
+	if err := rlp.DecodeBytes(proofInit, &rawValueProof); err != nil {
+		panic(err)
+	}
+	// same validation as LCPCommitment.sol#parseStateCommitmentAndProof
+	ts.Require().Len(rawValueProof, 3)
+	commitmentBytes := rawValueProof[0]
+	signer := common.BytesToAddress(rawValueProof[1])
+	signature := rawValueProof[2]
+	ts.Require().Len(signature, 65)
+	ts.Require().Equal(signer.String(), "0x9C406cD64Ce7fce93Eb9d7bAf1288C41C921521D")
+
+	var rawCommitmentProof [][]byte
+	if err := rlp.DecodeBytes(commitmentBytes, &rawCommitmentProof); err != nil {
+		panic(err)
+	}
+	ts.Require().Len(rawCommitmentProof, 5)
+
+	// assert commitment
+	commitmentPrefix := rawCommitmentProof[0]
+	commitmentPath := rawCommitmentProof[1]
+	commitmentValue := common.BytesToHash(rawCommitmentProof[2])
+	commitmentHeight := new(big.Int).SetBytes(rawCommitmentProof[3]).Uint64()
+	commitmentStateId := common.BytesToHash(rawCommitmentProof[4])
+	ts.Require().Equal(string(commitmentPrefix), "ibc")
+	ts.Require().Equal(string(commitmentPath), "connections/connection-0")
+	ts.Require().Equal(commitmentValue.String(), "0x22ab576a7df38bb4860ffbc65f30d5a66536fb2d8ec3d5d7d4ab9a3ead0e4312")
+	ts.Require().Equal(commitmentHeight, uint64(317))
+	ts.Require().Equal(commitmentStateId.String(), "0xee0b5f32ae2bff0d82149ea22b02e350fbbe467a514ba80bbadd89007df1d167")
+}

@@ -277,7 +277,9 @@ func (pr *Prover) QueryConnectionWithProof(ctx core.QueryContext) (*conntypes.Qu
 	)
 	res.ProofHeight = pr.toHeight(ctx.Height())
 	res.Proof, err = pr.getStateCommitmentProof(key, ctx.Height())
-
+	if err != nil {
+		return nil, err
+	}
 	return res, nil
 }
 
