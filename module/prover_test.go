@@ -11,6 +11,7 @@ import (
 	"github.com/cosmos/ibc-go/v4/modules/core/exported"
 	"github.com/ethereum/go-ethereum/common"
 	types2 "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/gogo/protobuf/proto"
 	"github.com/hyperledger-labs/yui-ibc-solidity/pkg/client"
@@ -142,8 +143,8 @@ func (ts *ProverTestSuite) SetupTest() {
 	ts.prover = NewProver(ts.chain, &config).(*Prover)
 }
 
-func (ts *ProverTestSuite) TestQueryHeader() {
-	header, err := ts.prover.queryHeader(200)
+func (ts *ProverTestSuite) TestQueryHeaderAndAccountProof() {
+	header, err := ts.prover.queryHeaderAndAccountProof(200)
 	ts.Require().NoError(err)
 	ts.Require().Equal(uint64(200), header.GetHeight().GetRevisionHeight())
 }
@@ -198,12 +199,14 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 
 func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 
-	previousEpochHeader, tErr := ts.prover.queryHeader(200)
+	previousEpochETHHeader, tErr := ts.prover.queryETHHeaders(uint64(200))
 	ts.Require().NoError(tErr)
+	previousEpochHeader := &Header{Headers: previousEpochETHHeader}
 
 	assertFn := func(finalizedHeight int64) {
-		finalizedHeader, err := ts.prover.queryHeader(finalizedHeight)
+		finalizedETHHeader, err := ts.prover.queryETHHeaders(uint64(finalizedHeight))
 		ts.Require().NoError(err)
+		finalizedHeader := &Header{Headers: finalizedETHHeader}
 		msg, err := ts.prover.CreateMsgCreateClient("", finalizedHeader, types.AccAddress{})
 		ts.Require().NoError(err)
 		ts.Require().Equal(msg.ClientState.TypeUrl, "/ibc.lightclients.parlia.v1.ClientState")
@@ -222,16 +225,13 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 		var cs2 ConsensusState
 		ts.Require().NoError(err)
 		ts.Require().NoError(proto.Unmarshal(msg.ConsensusState.Value, &cs2))
-		rawHeader := previousEpochHeader.(*Header)
-		target, err := rawHeader.Target()
+		target, err := previousEpochHeader.Target()
 		ts.Require().NoError(err)
 		validatorSet, err := extractValidatorSet(target)
 		ts.Require().NoError(err)
-		account, err := rawHeader.Account(common.HexToAddress(ibcHandlerAddress))
-		ts.Require().NoError(err)
 		ts.Require().Equal(cs2.ValidatorSet, validatorSet)
 		ts.Require().Equal(cs2.Timestamp, target.Time)
-		ts.Require().Equal(common.BytesToHash(cs2.StateRoot), account.Root)
+		ts.Require().Equal(cs2.StateRoot, crypto.Keccak256())
 	}
 	assertFn(400)
 	assertFn(401)
@@ -248,7 +248,7 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 		Prover: ts.prover,
 	}
 
-	header, err := ts.prover.queryHeader(21800)
+	header, err := ts.prover.queryHeaderAndAccountProof(21800)
 	ts.Require().NoError(err)
 	setupDone, err := ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)
@@ -261,7 +261,7 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.Require().Equal(uint64(21800), e.GetHeight().GetRevisionHeight())
 	ts.Require().Equal(uint64(21600), e.GetTrustedHeight().GetRevisionHeight())
 
-	header, err = ts.prover.queryHeader(21401)
+	header, err = ts.prover.queryHeaderAndAccountProof(21401)
 	ts.Require().NoError(err)
 	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)
@@ -270,13 +270,13 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.Require().Equal(uint64(21401), e.GetHeight().GetRevisionHeight())
 	ts.Require().Equal(uint64(21400), e.GetTrustedHeight().GetRevisionHeight())
 
-	header, err = ts.prover.queryHeader(21400)
+	header, err = ts.prover.queryHeaderAndAccountProof(21400)
 	ts.Require().NoError(err)
 	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)
 	ts.Require().Len(setupDone, 0)
 
-	header, err = ts.prover.queryHeader(22005)
+	header, err = ts.prover.queryHeaderAndAccountProof(22005)
 	ts.Require().NoError(err)
 	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)
@@ -304,7 +304,7 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.chain.latestHeight = e.GetHeight().GetRevisionHeight()
 
 	// for next update client
-	header, err = ts.prover.queryHeader(22006)
+	header, err = ts.prover.queryHeaderAndAccountProof(22006)
 	ts.Require().NoError(err)
 	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)
@@ -315,7 +315,7 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 
 	// relayer had been stopped
 	ts.chain.latestHeight = e.GetHeight().GetRevisionHeight()
-	header, err = ts.prover.queryHeader(22510)
+	header, err = ts.prover.queryHeaderAndAccountProof(22510)
 	ts.Require().NoError(err)
 	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)

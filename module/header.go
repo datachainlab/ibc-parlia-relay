@@ -160,7 +160,7 @@ func (h *Header) ToPrettyString() string {
 func extractValidatorSet(h *types.Header) ([][]byte, error) {
 	extra := h.Extra
 	if len(extra) < extraVanity+extraSeal {
-		return nil, fmt.Errorf("invalid extra length")
+		return nil, fmt.Errorf("invalid extra length : %d", h.Number.Uint64())
 	}
 	var validatorSet [][]byte
 	validators := extra[extraVanity : len(extra)-extraSeal]

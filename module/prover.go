@@ -118,12 +118,11 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 	blockNumber := target.Number.Int64()
 	epochCount := blockNumber / epochBlockPeriod
 	previousEpochHeight := math.MaxInt64((epochCount-1)*epochBlockPeriod, 0)
-	var previousEpochHeader core.Header
-	previousEpochHeader, err = pr.queryHeader(previousEpochHeight)
+	ethHeaders, err := pr.queryETHHeaders(uint64(previousEpochHeight))
 	if err != nil {
 		return nil, err
 	}
-	header = previousEpochHeader.(*Header)
+	header = &Header{Headers: ethHeaders}
 	target, err = header.Target()
 	if err != nil {
 		return nil, err
@@ -161,8 +160,9 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 	}
 	consensusState := ConsensusState{
 		Timestamp:    target.Time,
-		StateRoot:    crypto.Keccak256(),
 		ValidatorSet: validatorSet,
+		// Since ibc handler may not be deployed at the target epoch when create_client is used, state_root is not obtained.
+		StateRoot: crypto.Keccak256(),
 	}
 	anyConsensusState, err := codectypes.NewAnyWithValue(&consensusState)
 	if err != nil {
@@ -186,7 +186,7 @@ func (pr *Prover) SetupHeadersForUpdate(dstChain core.ChainInfoICS02Querier, lat
 	}
 	csRes, err := dstChain.QueryClientState(core.NewQueryContext(context.TODO(), latestHeightOnDstChain))
 	if err != nil {
-		return nil, fmt.Errorf("SetupHeadersForUpdate: height = %d, %+v", latestHeightOnDstChain, err)
+		return nil, fmt.Errorf("no client state found : SetupHeadersForUpdate: height = %d, %+v", latestHeightOnDstChain.GetRevisionHeight(), err)
 	}
 	var cs exported.ClientState
 	if err = pr.chain.Codec().UnpackAny(csRes.ClientState, &cs); err != nil {
@@ -226,14 +226,6 @@ func (pr *Prover) SetupHeadersForUpdate(dstChain core.ChainInfoICS02Querier, lat
 			log.Printf("SetupHeadersForUpdate: target height = %d, trustedHeight = %d\n", h.GetHeight().GetRevisionHeight(), trustedHeight.GetRevisionHeight())
 		}
 	}
-
-	// debug log
-	if pr.config.Debug {
-		account, _ := header.Account(pr.chain.IBCAddress())
-		_, storageRoot, _ := pr.getAccountProof(int64(header.GetHeight().GetRevisionHeight()))
-		log.Printf("SetupHeadersForUpdate: last height = %d, accountRoot = %s, storageRoot=%s\n", header.GetHeight().GetRevisionHeight(), account.Root, storageRoot)
-	}
-
 	return targetHeaders, nil
 }
 
@@ -256,7 +248,6 @@ func (pr *Prover) QueryClientConsensusStateWithProof(ctx core.QueryContext, dstC
 
 // QueryClientStateWithProof returns the ClientState and its proof
 func (pr *Prover) QueryClientStateWithProof(ctx core.QueryContext) (*clienttypes.QueryClientStateResponse, error) {
-	log.Printf("QueryClientStateWithProof: height = %d\n", ctx.Height().GetRevisionHeight())
 	res, err := pr.chain.QueryClientState(ctx)
 	if err != nil {
 		return nil, err
@@ -277,7 +268,6 @@ func (pr *Prover) QueryConnectionWithProof(ctx core.QueryContext) (*conntypes.Qu
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("QueryConnectionWithProof: height = %d, path = %s\n", ctx.Height().GetRevisionHeight(), res.Connection.String())
 	if res.Connection.State == conntypes.UNINITIALIZED {
 		// connection not found
 		return res, nil
@@ -293,7 +283,6 @@ func (pr *Prover) QueryConnectionWithProof(ctx core.QueryContext) (*conntypes.Qu
 
 // QueryChannelWithProof returns the Channel and its proof
 func (pr *Prover) QueryChannelWithProof(ctx core.QueryContext) (chanRes *chantypes.QueryChannelResponse, err error) {
-	log.Printf("QueryClientWithProof: height = %d\n", ctx.Height().GetRevisionHeight())
 	res, err := pr.chain.QueryChannel(ctx)
 	if err != nil {
 		return nil, err
@@ -358,37 +347,17 @@ func (pr *Prover) toHeight(height exported.Height) clienttypes.Height {
 func (pr *Prover) queryHeaderAndAccountProof(height int64) (core.Header, error) {
 	ethHeaders, err := pr.queryETHHeaders(uint64(height))
 	if err != nil {
-		return nil, fmt.Errorf("height = %d, %+v", height, err)
+		return nil, fmt.Errorf("failed to get query : height = %d, %+v", height, err)
 	}
 	// get RLP-encoded account proof
 	rlpAccountProof, _, err := pr.getAccountProof(height)
 	if err != nil {
-		return nil, fmt.Errorf("height = %d, %+v", height, err)
+		return nil, fmt.Errorf("failed to get account proof : height = %d, %+v", height, err)
 	}
 	return &Header{
 		AccountProof: rlpAccountProof,
 		Headers:      ethHeaders,
 	}, nil
-}
-
-// queryHeader returns the header corresponding to the height
-func (pr *Prover) queryHeader(height int64) (core.Header, error) {
-	ethHeaders, err := pr.queryETHHeaders(uint64(height))
-	if err != nil {
-		return nil, fmt.Errorf("height = %d, %+v", height, err)
-	}
-	return &Header{
-		Headers: ethHeaders,
-	}, nil
-}
-
-func (pr *Prover) queryAccountProof(height int64) ([]byte, error) {
-	// get RLP-encoded account proof
-	rlpAccountProof, _, err := pr.getAccountProof(height)
-	if err != nil {
-		return nil, fmt.Errorf("height = %d, %+v", height, err)
-	}
-	return rlpAccountProof, nil
 }
 
 // queryETHHeaders returns the header corresponding to the height
@@ -398,7 +367,7 @@ func (pr *Prover) queryETHHeaders(height uint64) ([]*ETHHeader, error) {
 		previousEpochHeight := (epochCount - 1) * epochBlockPeriod
 		previousEpochBlock, err := pr.chain.Header(context.TODO(), previousEpochHeight)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get header : previousEpochHeight = %d %+v", previousEpochHeight, err)
 		}
 		threshold := requiredCountToFinalize(previousEpochBlock)
 		if height%epochBlockPeriod < uint64(threshold) {
@@ -410,7 +379,7 @@ func (pr *Prover) queryETHHeaders(height uint64) ([]*ETHHeader, error) {
 	lastEpochNumber := epochCount * epochBlockPeriod
 	currentEpochBlock, err := pr.chain.Header(context.TODO(), lastEpochNumber)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get header : currentEpochBlock = %d %+v", lastEpochNumber, err)
 	}
 	return pr.getETHHeaders(height, requiredCountToFinalize(currentEpochBlock))
 }
@@ -418,13 +387,14 @@ func (pr *Prover) queryETHHeaders(height uint64) ([]*ETHHeader, error) {
 func (pr *Prover) getETHHeaders(start uint64, requiredCountToFinalize int) ([]*ETHHeader, error) {
 	var ethHeaders []*ETHHeader
 	for i := 0; i < requiredCountToFinalize; i++ {
-		block, err := pr.chain.Header(context.TODO(), uint64(i)+start)
+		height := uint64(i) + start
+		block, err := pr.chain.Header(context.TODO(), height)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get ETHHeaders : requiredCountToFinalize = %d, height = %d, %+v", requiredCountToFinalize, height, err)
 		}
 		header, err := newETHHeader(block)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to encode rlp height=%d, %+v", block.Number.Uint64(), err)
 		}
 		ethHeaders = append(ethHeaders, header)
 	}

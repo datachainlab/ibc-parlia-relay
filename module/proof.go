@@ -4,16 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/cosmos/ibc-go/v4/modules/core/exported"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/gogo/protobuf/proto"
-	"log"
-	"math/big"
-	"strconv"
-	"strings"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
+	"github.com/gogo/protobuf/proto"
+	"math/big"
 )
 
 func (pr *Prover) getAccountProof(height int64) ([]byte, common.Hash, error) {
@@ -23,15 +19,8 @@ func (pr *Prover) getAccountProof(height int64) ([]byte, common.Hash, error) {
 		big.NewInt(height),
 	)
 	if err != nil {
-		return nil, [32]byte{}, err
+		return nil, common.Hash{}, fmt.Errorf("failed to get account proof %+v", err)
 	}
-	hash := stateProof.StorageHash[:]
-	v := make([]string, len(hash))
-	for i, e := range hash {
-		v[i] = strconv.Itoa(int(e))
-	}
-
-	log.Printf("storageRoot = %s", strings.Join(v, ","))
 	return stateProof.AccountProofRLP, common.BytesToHash(stateProof.StorageHash[:]), nil
 }
 
@@ -43,7 +32,7 @@ func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) (
 	))
 	marshaledSlot, err := slot.MarshalText()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to marshal slot: height = %d, %+v", height.GetRevisionHeight(), err)
 	}
 
 	// call eth_getProof
@@ -53,52 +42,10 @@ func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) (
 		big.NewInt(int64(height.GetRevisionHeight())),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get state commitment proof : address = %s, height = %d, slot = %v, %+v",
+			pr.chain.IBCAddress(), height.GetRevisionHeight(), marshaledSlot, err)
 	}
-	hash := stateProof.StorageHash[:]
-	v := make([]string, len(hash))
-	for i, e := range hash {
-		v[i] = strconv.Itoa(int(e))
-	}
-	vv := make([]string, len(stateProof.StorageProofRLP[0]))
-	for i, e := range stateProof.StorageProofRLP[0] {
-		vv[i] = strconv.Itoa(int(e))
-	}
-	//	log.Printf("path = %s, slot = %s, storageRoot = %s, proof = %s", path, marshaledSlot, strings.Join(v, ","), strings.Join(vv, ","))
 	return stateProof.StorageProofRLP[0], nil
-}
-
-func (pr *Prover) getStateCommitmentProofWithRoot(path []byte, height exported.Height) (common.Hash, []byte, error) {
-	// calculate slot for commitment
-	slot := crypto.Keccak256Hash(append(
-		crypto.Keccak256Hash(path).Bytes(),
-		common.Hash{}.Bytes()...,
-	))
-	marshaledSlot, err := slot.MarshalText()
-	if err != nil {
-		return common.Hash{}, nil, err
-	}
-
-	// call eth_getProof
-	stateProof, err := pr.chain.GetProof(
-		pr.chain.IBCAddress(),
-		[][]byte{marshaledSlot},
-		big.NewInt(int64(height.GetRevisionHeight())),
-	)
-	if err != nil {
-		return common.Hash{}, nil, err
-	}
-	hash := stateProof.StorageHash[:]
-	v := make([]string, len(hash))
-	for i, e := range hash {
-		v[i] = strconv.Itoa(int(e))
-	}
-	vv := make([]string, len(stateProof.StorageProofRLP[0]))
-	for i, e := range stateProof.StorageProofRLP[0] {
-		vv[i] = strconv.Itoa(int(e))
-	}
-	log.Printf("path = %s, slot = %s, storageRoot = %s, proof = %s", path, marshaledSlot, strings.Join(v, ","), strings.Join(vv, ","))
-	return common.BytesToHash(hash), stateProof.StorageProofRLP[0], nil
 }
 
 type proofList struct {
