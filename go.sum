@@ -664,6 +664,8 @@ github.com/huin/goupnp v1.0.3 h1:N8No57ls+MnjlB+JPiCVSOyy/ot7MJTqlo7rn+NYSqQ=
 github.com/hydrogen18/memlistener v0.0.0-20200120041712-dcc25e7acd91/go.mod h1:qEIFzExnS6016fRpRfxrExeVn2gbClQA99gQhnIcdhE=
 github.com/hyperledger-labs/yui-ibc-solidity v0.3.2 h1:9FSmbczgChwpYdqqRo6gJWjuzWW6o2lCX804u3/4Myc=
 github.com/hyperledger-labs/yui-ibc-solidity v0.3.2/go.mod h1:MoNJTQFfnEFQDTKioTn7YlgaAJrvGQfqurslbPMpV1c=
+github.com/hyperledger-labs/yui-relayer v0.3.2 h1:umpCOB+JvBOBHb7syrF1ZmP5f5Vj/l1wiiv52B18XX0=
+github.com/hyperledger-labs/yui-relayer v0.3.2/go.mod h1:L+UZLFBu/D6lrlL+etxg8SH3eW9Zm7eZDn/0SncdDOw=
 github.com/iancoleman/strcase v0.2.0/go.mod h1:iwCmte+B7n89clKwxIoIXy/HfoL7AsD47ZCWhYzw7ho=
 github.com/ianlancetaylor/demangle v0.0.0-20181102032728-5e5cf60278f6/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
 github.com/ianlancetaylor/demangle v0.0.0-20200824232613-28f6c0f3b639/go.mod h1:aSSvb/t6k1mPoxDqO4vJh6VOCGPwU4O0C2/Eqndh1Sc=
@@ -1217,8 +1219,6 @@ github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 h1:bAn7/zixMGCfxrRT
 github.com/yagipy/maintidx v1.0.0/go.mod h1:0qNf/I/CCZXSMhsRsrEPDZ+DkekpKLXAJfsTACwgXLk=
 github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0/go.mod h1:/LWChgwKmvncFJFHJ7Gvn9wZArjbV5/FppcK2fKk/tI=
 github.com/yeya24/promlinter v0.2.0/go.mod h1:u54lkmBOZrpEbQQ6gox2zWKKLKu2SGe+2KOiextY+IA=
-github.com/yoshidan/yui-relayer v0.0.0-20230418092837-c901ef3c6209 h1:XeTjXAf4fIXKUDf5wA1XkbMGsGoQLe7f/z/cUUuoT6g=
-github.com/yoshidan/yui-relayer v0.0.0-20230418092837-c901ef3c6209/go.mod h1:L+UZLFBu/D6lrlL+etxg8SH3eW9Zm7eZDn/0SncdDOw=
 github.com/yudai/gojsondiff v1.0.0/go.mod h1:AY32+k2cwILAkW1fbgxQ5mUmMiZFgLIV+FBNExI05xg=
 github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82/go.mod h1:lgjkn3NuSvDfVJdfcVVdX+jpBxNmX4rDAzaS45IcYoM=
 github.com/yudai/pp v2.0.1+incompatible/go.mod h1:PuxR/8QJ7cyCkFp/aUDS+JY727OFEZkTdatxwunjIkc=
