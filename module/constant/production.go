@@ -2,4 +2,4 @@
 
 package constant
 
-const EpochBlockPeriod uint64 = 200
+const BlocksPerEpoch uint64 = 200

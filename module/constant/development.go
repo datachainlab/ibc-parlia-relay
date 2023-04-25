@@ -8,15 +8,15 @@ import (
 )
 
 // can change by ldflags
-var epochBlockPeriod string = "200"
+var blocksPerEpoch string = "200"
 
-var EpochBlockPeriod uint64 = 200
+var BlocksPerEpoch uint64 = 200
 
 func init() {
-	v, err := strconv.Atoi(epochBlockPeriod)
+	v, err := strconv.Atoi(blocksPerEpoch)
 	if err != nil {
 		panic(err)
 	}
-	EpochBlockPeriod = uint64(v)
-	log.Printf("blocks per epoch = %d\n", EpochBlockPeriod)
+	BlocksPerEpoch = uint64(v)
+	log.Printf("blocks per epoch = %d\n", BlocksPerEpoch)
 }

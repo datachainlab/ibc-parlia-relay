@@ -59,7 +59,7 @@ func (r *mockChain) Header(_ context.Context, height uint64) (*types2.Header, er
 		Root: common.HexToHash("c84307dfe4ccfec4a851a77755d63228d8e0b9ba3345d1eee37ed729ee16eaa1"),
 	}
 	header.Number = big.NewInt(int64(height))
-	if header.Number.Uint64()%constant.EpochBlockPeriod == 0 {
+	if header.Number.Uint64()%constant.BlocksPerEpoch == 0 {
 		if header.Number.Int64() == 0 {
 			header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*4)
 		} else {

@@ -72,8 +72,8 @@ func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
 		return nil, err
 	}
 	latestBlockNumber := latestHeight.GetRevisionHeight()
-	epochCount := latestBlockNumber / constant.EpochBlockPeriod
-	currentEpoch, err := pr.chain.Header(context.TODO(), epochCount*constant.EpochBlockPeriod)
+	epochCount := latestBlockNumber / constant.BlocksPerEpoch
+	currentEpoch, err := pr.chain.Header(context.TODO(), epochCount*constant.BlocksPerEpoch)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
 		return nil, fmt.Errorf("no finalized header found : latest = %d", latestBlockNumber)
 	}
 
-	previousEpochHeight := (epochCount - 1) * constant.EpochBlockPeriod
+	previousEpochHeight := (epochCount - 1) * constant.BlocksPerEpoch
 	previousEpoch, err := pr.chain.Header(context.TODO(), previousEpochHeight)
 	if err != nil {
 		return nil, err
@@ -117,8 +117,8 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 
 	// Initial client_state must be previous epoch header because lcp-parlia requires validator set when update_client
 	blockNumber := target.Number.Int64()
-	epochCount := blockNumber / int64(constant.EpochBlockPeriod)
-	previousEpochHeight := math.MaxInt64((epochCount-1)*int64(constant.EpochBlockPeriod), 0)
+	epochCount := blockNumber / int64(constant.BlocksPerEpoch)
+	previousEpochHeight := math.MaxInt64((epochCount-1)*int64(constant.BlocksPerEpoch), 0)
 	ethHeaders, err := pr.queryETHHeaders(uint64(previousEpochHeight))
 	if err != nil {
 		return nil, err
@@ -203,8 +203,8 @@ func (pr *Prover) SetupHeadersForUpdate(dstChain core.ChainInfoICS02Querier, lat
 
 	// Append insufficient epoch blocks
 	savedLatestHeight := cs.GetLatestHeight().GetRevisionHeight()
-	firstUnsavedEpoch := (savedLatestHeight/constant.EpochBlockPeriod + 1) * constant.EpochBlockPeriod
-	for epochHeight := firstUnsavedEpoch; epochHeight < header.GetHeight().GetRevisionHeight(); epochHeight += constant.EpochBlockPeriod {
+	firstUnsavedEpoch := (savedLatestHeight/constant.BlocksPerEpoch + 1) * constant.BlocksPerEpoch
+	for epochHeight := firstUnsavedEpoch; epochHeight < header.GetHeight().GetRevisionHeight(); epochHeight += constant.BlocksPerEpoch {
 		epoch, err := pr.queryHeaderAndAccountProof(int64(epochHeight))
 		if err != nil {
 			return nil, fmt.Errorf("SetupHeadersForUpdate failed to get past epochs : saved_latest = %d : %+v", savedLatestHeight, err)
@@ -365,21 +365,21 @@ func (pr *Prover) queryHeaderAndAccountProof(height int64) (core.Header, error) 
 
 // queryETHHeaders returns the header corresponding to the height
 func (pr *Prover) queryETHHeaders(height uint64) ([]*ETHHeader, error) {
-	epochCount := height / constant.EpochBlockPeriod
+	epochCount := height / constant.BlocksPerEpoch
 	if epochCount > 0 {
-		previousEpochHeight := (epochCount - 1) * constant.EpochBlockPeriod
+		previousEpochHeight := (epochCount - 1) * constant.BlocksPerEpoch
 		previousEpochBlock, err := pr.chain.Header(context.TODO(), previousEpochHeight)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get header : previousEpochHeight = %d %+v", previousEpochHeight, err)
 		}
 		threshold := requiredCountToFinalize(previousEpochBlock)
-		if height%constant.EpochBlockPeriod < uint64(threshold) {
+		if height%constant.BlocksPerEpoch < uint64(threshold) {
 			// before checkpoint
 			return pr.getETHHeaders(height, threshold)
 		}
 	}
 	// genesis count or after checkpoint
-	lastEpochNumber := epochCount * constant.EpochBlockPeriod
+	lastEpochNumber := epochCount * constant.BlocksPerEpoch
 	currentEpochBlock, err := pr.chain.Header(context.TODO(), lastEpochNumber)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get header : currentEpochBlock = %d %+v", lastEpochNumber, err)
