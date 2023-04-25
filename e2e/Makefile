@@ -10,6 +10,7 @@ contracts:
 .PHONY:relayer
 relayer:
 	rm -rf .testrly
+	# go build -tags dev -ldflags="-X github.com/datachainlab/ibc-parlia-relay/module/constant.epochBlockPeriod=20" -o testrly .
 	go build -o testrly .
 	./testrly config init --home .testrly
 	./testrly chains add-dir config/demo/ --home .testrly

@@ -14,7 +14,6 @@ import (
 	"strings"
 )
 
-const epochBlockPeriod = 200
 const extraVanity = 32
 const extraSeal = 65
 const validatorBytesLength = 20

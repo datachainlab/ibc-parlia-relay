@@ -9,6 +9,7 @@ import (
 	types3 "github.com/cosmos/ibc-go/v4/modules/core/23-commitment/types"
 	host "github.com/cosmos/ibc-go/v4/modules/core/24-host"
 	"github.com/cosmos/ibc-go/v4/modules/core/exported"
+	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
 	types2 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -58,7 +59,7 @@ func (r *mockChain) Header(_ context.Context, height uint64) (*types2.Header, er
 		Root: common.HexToHash("c84307dfe4ccfec4a851a77755d63228d8e0b9ba3345d1eee37ed729ee16eaa1"),
 	}
 	header.Number = big.NewInt(int64(height))
-	if header.Number.Int64()%epochBlockPeriod == 0 {
+	if header.Number.Uint64()%constant.EpochBlockPeriod == 0 {
 		if header.Number.Int64() == 0 {
 			header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*4)
 		} else {
