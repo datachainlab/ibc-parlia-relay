@@ -10,14 +10,12 @@ contracts:
 .PHONY:relayer
 relayer:
 	rm -rf .testrly
-	# go build -tags dev -ldflags="-X github.com/datachainlab/ibc-parlia-relay/module/constant.blocksPerEpoch=20" -o testrly .
-	go build -o testrly .
+	go build -tags dev -ldflags="-X github.com/datachainlab/ibc-parlia-relay/module/constant.blocksPerEpoch=20" -o testrly .
+	# go build -o testrly .
 	./testrly config init --home .testrly
 	./testrly chains add-dir config/demo/ --home .testrly
 	./testrly paths add ibc0 ibc1 ibc01 --file=config/path.json --home .testrly
-	# Must wait for sufficient blocks (max 400 blocks) after contract creation
-	echo "Waiting contracts finalized"
-	sleep 1200
+	sleep 100
 	./testrly tx clients ibc01 --home .testrly
 	./testrly tx update-clients ibc01 --home .testrly
 	./testrly tx connection ibc01 --home .testrly
