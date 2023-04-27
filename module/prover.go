@@ -57,6 +57,15 @@ func (pr *Prover) SetupForRelay(ctx context.Context) error {
 }
 
 // GetLatestFinalizedHeader returns the latest finalized header from the chain
+func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
+	latestHeight, err := pr.chain.LatestHeight()
+	if err != nil {
+		return nil, err
+	}
+	return pr.getLatestFinalizedHeader(latestHeight.GetRevisionHeight())
+}
+
+// getLatestFinalizedHeader returns the latest finalized header from the chain
 // ex) previous validator : 4, current validator = 21
 // latest | target
 // 203    | 200
@@ -66,12 +75,7 @@ func (pr *Prover) SetupForRelay(ctx context.Context) error {
 // 213    | 203 ( checkpoint by previous validator )
 // 214    | 204
 // 215    | 205
-func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
-	latestHeight, err := pr.chain.LatestHeight()
-	if err != nil {
-		return nil, err
-	}
-	latestBlockNumber := latestHeight.GetRevisionHeight()
+func (pr *Prover) getLatestFinalizedHeader(latestBlockNumber uint64) (out core.Header, err error) {
 	epochCount := latestBlockNumber / constant.BlocksPerEpoch
 	currentEpoch, err := pr.chain.Header(context.TODO(), epochCount*constant.BlocksPerEpoch)
 	if err != nil {
