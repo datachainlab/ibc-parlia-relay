@@ -197,32 +197,36 @@ func (pr *Prover) SetupHeadersForUpdate(dstChain core.ChainInfoICS02Querier, lat
 	if err = pr.chain.Codec().UnpackAny(csRes.ClientState, &cs); err != nil {
 		return nil, err
 	}
+	return pr.setupHeadersForUpdate(cs.GetLatestHeight(), header)
+}
 
+func (pr *Prover) setupHeadersForUpdate(clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
 	targetHeaders := make([]core.Header, 0)
 
 	// Needless to update already saved state
-	if cs.GetLatestHeight().GetRevisionHeight() == header.GetHeight().GetRevisionHeight() {
+	if clientStateLatestHeight.GetRevisionHeight() == latestFinalizedHeader.GetHeight().GetRevisionHeight() {
 		return targetHeaders, nil
 	}
 
 	// Append insufficient epoch blocks
-	savedLatestHeight := cs.GetLatestHeight().GetRevisionHeight()
+	savedLatestHeight := clientStateLatestHeight.GetRevisionHeight()
 	firstUnsavedEpoch := (savedLatestHeight/constant.BlocksPerEpoch + 1) * constant.BlocksPerEpoch
-	for epochHeight := firstUnsavedEpoch; epochHeight < header.GetHeight().GetRevisionHeight(); epochHeight += constant.BlocksPerEpoch {
+	latestFinalizedHeight := latestFinalizedHeader.GetHeight().GetRevisionHeight()
+	for epochHeight := firstUnsavedEpoch; epochHeight < latestFinalizedHeight; epochHeight += constant.BlocksPerEpoch {
 		epoch, err := pr.queryHeaderAndAccountProof(int64(epochHeight))
 		if err != nil {
 			return nil, fmt.Errorf("SetupHeadersForUpdate failed to get past epochs : saved_latest = %d : %+v", savedLatestHeight, err)
 		}
 		targetHeaders = append(targetHeaders, epoch)
 	}
-	if len(targetHeaders) == 0 || targetHeaders[len(targetHeaders)-1].GetHeight() != header.GetHeight() {
-		targetHeaders = append(targetHeaders, header)
+	if len(targetHeaders) == 0 || targetHeaders[len(targetHeaders)-1].GetHeight() != latestFinalizedHeader.GetHeight() {
+		targetHeaders = append(targetHeaders, latestFinalizedHeader)
 	}
 
 	for i, h := range targetHeaders {
 		var trustedHeight clienttypes.Height
 		if i == 0 {
-			trustedHeight = pr.toHeight(cs.GetLatestHeight())
+			trustedHeight = pr.toHeight(clientStateLatestHeight)
 		} else {
 			trustedHeight = pr.toHeight(targetHeaders[i-1].GetHeight())
 		}

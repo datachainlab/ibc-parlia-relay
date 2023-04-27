@@ -1,6 +1,8 @@
 package module
 
 import (
+	"github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
+	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/hyperledger-labs/yui-ibc-solidity/pkg/relay/ethereum"
 	"github.com/hyperledger-labs/yui-relayer/core"
 	"github.com/stretchr/testify/suite"
@@ -27,7 +29,9 @@ func (ts *ProverMainnetTestSuite) SetupTest() {
 	})
 	ts.Require().NoError(err)
 
-	config := ProverConfig{}
+	config := ProverConfig{
+		Debug: true,
+	}
 	ts.prover = NewProver(NewChain(chain), &config).(*Prover)
 }
 
@@ -56,20 +60,47 @@ func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader_BeforeCheckpoin
 	validators, err := extractValidatorSet(target)
 	ts.Require().NoError(err)
 	ts.Require().Len(validators, 21)
+
+	clientStateLatestHeight := types.NewHeight(0, iHeader.GetHeight().GetRevisionHeight()-constant.BlocksPerEpoch-1)
+	headers, err := ts.prover.setupHeadersForUpdate(clientStateLatestHeight, header)
+	ts.Require().NoError(err)
+	ts.Require().Len(headers, 2)
+	ts.Require().Equal(headers[0].GetHeight().GetRevisionHeight(), uint64(27709800))
+	ts.Require().Equal(headers[1].GetHeight(), header.GetHeight())
 }
 
 func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader_Checkpoint() {
 	latest := uint64(27710011)
 	iHeader, err := ts.prover.getLatestFinalizedHeader(latest)
 	ts.Require().NoError(err)
-	_ = ts.assertSufficient(latest, iHeader)
+	header := ts.assertSufficient(latest, iHeader)
+
+	clientStateLatestHeight := types.NewHeight(0, iHeader.GetHeight().GetRevisionHeight()-1)
+	headers, err := ts.prover.setupHeadersForUpdate(clientStateLatestHeight, header)
+	ts.Require().NoError(err)
+	ts.Require().Len(headers, 1)
+	ts.Require().Equal(headers[0].GetHeight(), header.GetHeight())
 }
 
 func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader_AfterCheckpoint() {
 	latest := uint64(27710012)
 	iHeader, err := ts.prover.getLatestFinalizedHeader(latest)
 	ts.Require().NoError(err)
-	_ = ts.assertSufficient(latest, iHeader)
+	header := ts.assertSufficient(latest, iHeader)
+
+	clientStateLatestHeight := types.NewHeight(0, iHeader.GetHeight().GetRevisionHeight()-1)
+	headers, err := ts.prover.setupHeadersForUpdate(clientStateLatestHeight, header)
+	ts.Require().NoError(err)
+	ts.Require().Len(headers, 1)
+	ts.Require().Equal(headers[0].GetHeight().GetRevisionHeight(), uint64(27710001))
+
+	clientStateLatestHeight = types.NewHeight(0, latest-400)
+	headers, err = ts.prover.setupHeadersForUpdate(clientStateLatestHeight, header)
+	ts.Require().NoError(err)
+	ts.Require().Len(headers, 3)
+	ts.Require().Equal(headers[0].GetHeight().GetRevisionHeight(), uint64(27709800))
+	ts.Require().Equal(headers[2].GetHeight().GetRevisionHeight(), uint64(27710000))
+	ts.Require().Equal(headers[2].GetHeight().GetRevisionHeight(), uint64(27710002))
 }
 
 func (ts *ProverMainnetTestSuite) assertSufficient(latest uint64, iHeader core.Header) *Header {
