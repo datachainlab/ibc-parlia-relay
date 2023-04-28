@@ -2,9 +2,8 @@ package module
 
 import (
 	"github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
-	"github.com/datachainlab/ibc-parlia-relay/module/constant"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/hyperledger-labs/yui-ibc-solidity/pkg/relay/ethereum"
-	"github.com/hyperledger-labs/yui-relayer/core"
 	"github.com/stretchr/testify/suite"
 	"testing"
 )
@@ -20,12 +19,13 @@ func TestProverMainnetTestSuite(t *testing.T) {
 
 func (ts *ProverMainnetTestSuite) SetupTest() {
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
-		EthChainId:  56,
-		RpcAddr:     "https://bsc-dataseed1.binance.org",
+		EthChainId: 56,
+		// We can get accountProof by eth_geProof only from AllThatNode
+		RpcAddr:     "https://bsc-mainnet-rpc.allthatnode.com",
 		HdwMnemonic: hdwMnemonic,
 		HdwPath:     hdwPath,
 		// TODO change address after starting mainnet test
-		IbcAddress: "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d",
+		IbcAddress: "0x151f3951FA218cac426edFe078fA9e5C6dceA500",
 	})
 	ts.Require().NoError(err)
 
@@ -35,83 +35,23 @@ func (ts *ProverMainnetTestSuite) SetupTest() {
 	ts.prover = NewProver(NewChain(chain), &config).(*Prover)
 }
 
-func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader_BeforeEpoch() {
-	latest := uint64(2770999)
+func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader() {
+	latestHeight, err := ts.prover.chain.LatestHeight()
+	ts.Require().NoError(err)
+	latest := latestHeight.GetRevisionHeight()
 	iHeader, err := ts.prover.getLatestFinalizedHeader(latest)
 	ts.Require().NoError(err)
-	_ = ts.assertSufficient(latest, iHeader)
-}
 
-func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader_Epoch() {
-	latest := uint64(2771000)
-	iHeader, err := ts.prover.getLatestFinalizedHeader(latest)
-	ts.Require().NoError(err)
-	_ = ts.assertSufficient(latest, iHeader)
-}
-
-func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader_BeforeCheckpoint() {
-	latest := uint64(27710010)
-	iHeader, err := ts.prover.getLatestFinalizedHeader(latest)
-	ts.Require().NoError(err)
-	header := ts.assertSufficient(latest, iHeader)
-
-	// assert epoch
-	target, _ := header.Target()
-	validators, err := extractValidatorSet(target)
-	ts.Require().NoError(err)
-	ts.Require().Len(validators, 21)
-
-	clientStateLatestHeight := types.NewHeight(0, iHeader.GetHeight().GetRevisionHeight()-constant.BlocksPerEpoch-1)
-	headers, err := ts.prover.setupHeadersForUpdate(clientStateLatestHeight, header)
-	ts.Require().NoError(err)
-	ts.Require().Len(headers, 2)
-	ts.Require().Equal(headers[0].GetHeight().GetRevisionHeight(), uint64(27709800))
-	ts.Require().Equal(headers[1].GetHeight(), header.GetHeight())
-}
-
-func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader_Checkpoint() {
-	latest := uint64(27710011)
-	iHeader, err := ts.prover.getLatestFinalizedHeader(latest)
-	ts.Require().NoError(err)
-	header := ts.assertSufficient(latest, iHeader)
-
-	clientStateLatestHeight := types.NewHeight(0, iHeader.GetHeight().GetRevisionHeight()-1)
-	headers, err := ts.prover.setupHeadersForUpdate(clientStateLatestHeight, header)
-	ts.Require().NoError(err)
-	ts.Require().Len(headers, 1)
-	ts.Require().Equal(headers[0].GetHeight(), header.GetHeight())
-}
-
-func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader_AfterCheckpoint() {
-	latest := uint64(27710012)
-	iHeader, err := ts.prover.getLatestFinalizedHeader(latest)
-	ts.Require().NoError(err)
-	header := ts.assertSufficient(latest, iHeader)
-
-	clientStateLatestHeight := types.NewHeight(0, iHeader.GetHeight().GetRevisionHeight()-1)
-	headers, err := ts.prover.setupHeadersForUpdate(clientStateLatestHeight, header)
-	ts.Require().NoError(err)
-	ts.Require().Len(headers, 1)
-	ts.Require().Equal(headers[0].GetHeight().GetRevisionHeight(), uint64(27710001))
-
-	clientStateLatestHeight = types.NewHeight(0, latest-400)
-	headers, err = ts.prover.setupHeadersForUpdate(clientStateLatestHeight, header)
-	ts.Require().NoError(err)
-	ts.Require().Len(headers, 3)
-	ts.Require().Equal(headers[0].GetHeight().GetRevisionHeight(), uint64(27709800))
-	ts.Require().Equal(headers[2].GetHeight().GetRevisionHeight(), uint64(27710000))
-	ts.Require().Equal(headers[2].GetHeight().GetRevisionHeight(), uint64(27710002))
-}
-
-func (ts *ProverMainnetTestSuite) assertSufficient(latest uint64, iHeader core.Header) *Header {
 	requiredBlocksToFinalizeInCurrentMainnet := 11
 	header := iHeader.(*Header)
 	ts.Require().Len(header.Headers, requiredBlocksToFinalizeInCurrentMainnet)
 
+	// target header
 	target, err := header.Target()
 	ts.Require().NoError(err)
 	ts.Require().Equal(target.Number.Uint64(), latest-uint64(requiredBlocksToFinalizeInCurrentMainnet-1))
 
+	// headers to verify
 	ethHeaders, err := header.decodeEthHeaders()
 	ts.Require().NoError(err)
 	ts.Require().Equal(target.Number, ethHeaders[0].Number)
@@ -120,6 +60,21 @@ func (ts *ProverMainnetTestSuite) assertSufficient(latest uint64, iHeader core.H
 		if i > 0 {
 			ts.Require().Equal(eth.Number.Uint64()-1, ethHeaders[i-1].Number.Uint64())
 		}
+		if eth.Number.Uint64()%200 == 0 {
+			validators, err := extractValidatorSet(eth)
+			ts.Require().NoError(err)
+			ts.Require().Len(validators, 21)
+		}
 	}
-	return header
+
+	// account proof
+	account, err := header.Account(ts.prover.chain.IBCAddress())
+	ts.Require().NoError(err)
+	ts.Require().NotEqual(account.Root, common.Hash{})
+
+	updating, err := ts.prover.setupHeadersForUpdate(types.NewHeight(header.GetHeight().GetRevisionNumber(), target.Number.Uint64()-1), header)
+	ts.Require().NoError(err)
+	ts.Require().Len(updating, 1)
+	ts.Require().Equal(updating[0].(*Header).GetHeight(), header.GetHeight())
+
 }
