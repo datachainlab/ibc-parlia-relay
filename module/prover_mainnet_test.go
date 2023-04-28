@@ -5,6 +5,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/hyperledger-labs/yui-ibc-solidity/pkg/relay/ethereum"
 	"github.com/stretchr/testify/suite"
+	"log"
 	"testing"
 )
 
@@ -41,6 +42,7 @@ func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader() {
 	latest := latestHeight.GetRevisionHeight()
 	iHeader, err := ts.prover.getLatestFinalizedHeader(latest)
 	ts.Require().NoError(err)
+	ts.Require().NoError(iHeader.ValidateBasic())
 
 	requiredBlocksToFinalizeInCurrentMainnet := 11
 	header := iHeader.(*Header)
@@ -71,10 +73,19 @@ func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader() {
 	account, err := header.Account(ts.prover.chain.IBCAddress())
 	ts.Require().NoError(err)
 	ts.Require().NotEqual(account.Root, common.Hash{})
+	log.Println(account.Root)
 
+	// setup
 	updating, err := ts.prover.setupHeadersForUpdate(types.NewHeight(header.GetHeight().GetRevisionNumber(), target.Number.Uint64()-1), header)
 	ts.Require().NoError(err)
 	ts.Require().Len(updating, 1)
 	ts.Require().Equal(updating[0].(*Header).GetHeight(), header.GetHeight())
+
+	// updating msg
+	pack, err := types.PackHeader(updating[0])
+	ts.Require().NoError(err)
+	marshal, err := pack.Marshal()
+	ts.Require().NoError(err)
+	log.Println(common.Bytes2Hex(marshal))
 
 }
