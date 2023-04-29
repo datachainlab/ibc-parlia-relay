@@ -10,8 +10,8 @@ bootstrap:
 
 .PHONY:network
 network:
-	docker compose -f docker-compose.simple.yml up -d bsc-rpc bsc-validator1
-	docker compose -f docker-compose.simple.yml up -d bsc-rpc2 bsc-validator2
+	docker compose -f docker-compose.simple.yml up -d bsc-rpc bsc-validator1-1
+	docker compose -f docker-compose.simple.yml up -d bsc-rpc2 bsc-validator2-1
 
 .PHONY:network-down
 network-down:

@@ -2,9 +2,9 @@ version: "3.8"
 
 volumes:
   bsc-rpc:
-  bsc-validator1:
+  bsc-validator1-1:
   bsc-rpc2:
-  bsc-validator2:
+  bsc-validator2-1:
 
 services:
   bootstrap-simple:
@@ -18,7 +18,7 @@ services:
       NUMS_OF_VALIDATOR: 1
     volumes:
       - bsc-rpc:/root/storage/bsc-rpc
-      - bsc-validator1:/root/storage/bsc-validator1
+      - bsc-validator1-1:/root/storage/bsc-validator1
       - ./scripts:/root/scripts
       - ./config:/root/config
       - ./init-holders:/root/init-holders
@@ -35,7 +35,7 @@ services:
       NUMS_OF_VALIDATOR: 1
     volumes:
       - bsc-rpc2:/root/storage/bsc-rpc
-      - bsc-validator2:/root/storage/bsc-validator1
+      - bsc-validator2-1:/root/storage/bsc-validator1
       - ./scripts:/root/scripts
       - ./config:/root/config
       - ./init-holders:/root/init-holders
@@ -71,7 +71,7 @@ services:
       - ./config:/config
     command: ash /scripts/bsc-rpc.sh
 
-  bsc-validator1:
+  bsc-validator1-1:
     image: bsc-geth:docker-local
     env_file: .env
     environment:
@@ -80,20 +80,20 @@ services:
     networks:
       - bsc
     volumes:
-      - bsc-validator1:/root/.ethereum
+      - bsc-validator1-1:/root/.ethereum
       - ./scripts:/scripts
     command: ash /scripts/bsc-validator.sh
 
-  bsc-validator2:
+  bsc-validator2-1:
     image: bsc-geth:docker-local
     env_file: .env2
     environment:
-      NODE_ID: bsc-validator2
+      NODE_ID: bsc-validator1
       BOOTSTRAP_HOST: bsc-rpc2
     networks:
       - bsc2
     volumes:
-      - bsc-validator2:/root/.ethereum
+      - bsc-validator2-1:/root/.ethereum
       - ./scripts:/scripts
     command: ash /scripts/bsc-validator.sh
 
