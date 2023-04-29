@@ -33,7 +33,7 @@ function generate_genesis() {
 	node generate-validator.js
 	chainIDHex=$(printf '%04x\n' ${BSC_CHAIN_ID})
 	node generate-genesis.js --chainid ${BSC_CHAIN_ID} --bscChainId ${chainIDHex}
-	cat ${workspace}/genesis/genesis.json
+	#cat ${workspace}/genesis/genesis.json
 }
 
 function init_genesis_data() {

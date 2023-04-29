@@ -3,8 +3,10 @@ version: "3.8"
 volumes:
   bsc-rpc:
   bsc-validator1-1:
+  bsc-validator1-2:
   bsc-rpc2:
   bsc-validator2-1:
+  bsc-validator2-2:
 
 services:
   bootstrap-simple:
@@ -15,10 +17,11 @@ services:
     environment:
       BLOCKS_PER_EPOCH: 20
       INIT_HOLDER_BALANCE: "500000000000000000000"
-      NUMS_OF_VALIDATOR: 1
+      NUMS_OF_VALIDATOR: 2
     volumes:
       - bsc-rpc:/root/storage/bsc-rpc
       - bsc-validator1-1:/root/storage/bsc-validator1
+      - bsc-validator1-2:/root/storage/bsc-validator2
       - ./scripts:/root/scripts
       - ./config:/root/config
       - ./init-holders:/root/init-holders
@@ -32,10 +35,11 @@ services:
     environment:
       BLOCKS_PER_EPOCH: 20
       INIT_HOLDER_BALANCE: "500000000000000000000"
-      NUMS_OF_VALIDATOR: 1
+      NUMS_OF_VALIDATOR: 2
     volumes:
       - bsc-rpc2:/root/storage/bsc-rpc
       - bsc-validator2-1:/root/storage/bsc-validator1
+      - bsc-validator2-2:/root/storage/bsc-validator2
       - ./scripts:/root/scripts
       - ./config:/root/config
       - ./init-holders:/root/init-holders
@@ -84,6 +88,19 @@ services:
       - ./scripts:/scripts
     command: ash /scripts/bsc-validator.sh
 
+  bsc-validator1-2:
+    image: bsc-geth:docker-local
+    env_file: .env
+    environment:
+      NODE_ID: bsc-validator2
+      BOOTSTRAP_HOST: bsc-rpc
+    networks:
+      - bsc
+    volumes:
+      - bsc-validator1-2:/root/.ethereum
+      - ./scripts:/scripts
+    command: ash /scripts/bsc-validator.sh
+
   bsc-validator2-1:
     image: bsc-geth:docker-local
     env_file: .env2
@@ -94,6 +111,19 @@ services:
       - bsc2
     volumes:
       - bsc-validator2-1:/root/.ethereum
+      - ./scripts:/scripts
+    command: ash /scripts/bsc-validator.sh
+
+  bsc-validator2-2:
+    image: bsc-geth:docker-local
+    env_file: .env2
+    environment:
+      NODE_ID: bsc-validator2
+      BOOTSTRAP_HOST: bsc-rpc2
+    networks:
+      - bsc2
+    volumes:
+      - bsc-validator2-2:/root/.ethereum
       - ./scripts:/scripts
     command: ash /scripts/bsc-validator.sh
 

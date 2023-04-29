@@ -62,7 +62,14 @@ func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
 	if err != nil {
 		return nil, err
 	}
-	return pr.getLatestFinalizedHeader(latestHeight.GetRevisionHeight())
+	header, err := pr.getLatestFinalizedHeader(latestHeight.GetRevisionHeight())
+	if err != nil {
+		return nil, err
+	}
+	if pr.config.Debug {
+		log.Printf("GetLatestFinalizedHeader: finalized = %d, latest = %d\n", header.GetHeight().GetRevisionHeight(), latestHeight.GetRevisionHeight())
+	}
+	return header, err
 }
 
 // getLatestFinalizedHeader returns the latest finalized header from the chain
