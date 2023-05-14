@@ -178,10 +178,12 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 		if targetHeight == 0 {
 			ts.Require().Nil(downcast.CurrentValidators)
 		} else if targetHeight < 200 {
+			ts.Require().Equal(downcast.CurrentValidators.EpochHeight.RevisionHeight, uint64(0))
 			ts.Require().Len(downcast.CurrentValidators.Validators, 4, "index =", i)
 		} else if targetHeight == 200 {
 			ts.Require().Nil(downcast.CurrentValidators)
 		} else {
+			ts.Require().Equal(downcast.CurrentValidators.EpochHeight.RevisionHeight, uint64(200))
 			ts.Require().Len(downcast.CurrentValidators.Validators, 21, "index =", i)
 		}
 	}
@@ -198,7 +200,9 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 		height := header.GetHeight().GetRevisionHeight()
 		ts.Require().Equal(int(height), currentCheckpoint-1, i)
 		downcast := header.(*Header)
+		ts.Require().Equal(downcast.PreviousValidators.EpochHeight.RevisionHeight, uint64(0))
 		ts.Require().Len(downcast.PreviousValidators.Validators, 4, "index =", i)
+		ts.Require().Equal(downcast.CurrentValidators.EpochHeight.RevisionHeight, uint64(200))
 		ts.Require().Len(downcast.CurrentValidators.Validators, 21, "index =", i)
 	}
 
@@ -210,7 +214,9 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 		height := header.GetHeight().GetRevisionHeight()
 		ts.Require().Equal(int(height), int(ts.chain.latestHeight)-(secondEpochFinalizing-1), i)
 		downcast := header.(*Header)
+		ts.Require().Equal(downcast.PreviousValidators.EpochHeight.RevisionHeight, uint64(0))
 		ts.Require().Len(downcast.PreviousValidators.Validators, 4, "index =", i)
+		ts.Require().Equal(downcast.CurrentValidators.EpochHeight.RevisionHeight, uint64(200))
 		ts.Require().Len(downcast.CurrentValidators.Validators, 21, "index =", i)
 	}
 
@@ -340,12 +346,18 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.Require().NoError(err)
 	ts.Require().Len(setupDone, 3)
 	e = setupDone[0].(*Header)
+	ts.Require().Equal(uint64(22000), e.PreviousValidators.EpochHeight.GetRevisionHeight())
+	ts.Require().Nil(e.CurrentValidators)
 	ts.Require().Equal(uint64(22200), e.GetHeight().GetRevisionHeight())
 	ts.Require().Equal(uint64(22006), e.GetTrustedHeight().GetRevisionHeight())
 	e = setupDone[1].(*Header)
+	ts.Require().Equal(uint64(22200), e.PreviousValidators.EpochHeight.GetRevisionHeight())
+	ts.Require().Nil(e.CurrentValidators)
 	ts.Require().Equal(uint64(22400), e.GetHeight().GetRevisionHeight())
 	ts.Require().Equal(uint64(22200), e.GetTrustedHeight().GetRevisionHeight())
 	e = setupDone[2].(*Header)
+	ts.Require().Equal(uint64(22200), e.PreviousValidators.EpochHeight.GetRevisionHeight())
+	ts.Require().Equal(uint64(22400), e.CurrentValidators.EpochHeight.GetRevisionHeight())
 	ts.Require().Equal(uint64(22510), e.GetHeight().GetRevisionHeight())
 	ts.Require().Equal(uint64(22400), e.GetTrustedHeight().GetRevisionHeight())
 
