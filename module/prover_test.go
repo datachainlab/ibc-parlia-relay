@@ -144,7 +144,7 @@ func (ts *ProverTestSuite) SetupTest() {
 	ts.prover = NewProver(ts.chain, &config).(*Prover)
 }
 
-func (ts *ProverTestSuite) TestqueryVerifyingHeader() {
+func (ts *ProverTestSuite) TestQueryVerifyingHeader() {
 	header, err := ts.prover.queryVerifyingHeader(200)
 	ts.Require().NoError(err)
 	ts.Require().Equal(uint64(200), header.GetHeight().GetRevisionHeight())
