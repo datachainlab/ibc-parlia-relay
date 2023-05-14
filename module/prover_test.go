@@ -144,8 +144,8 @@ func (ts *ProverTestSuite) SetupTest() {
 	ts.prover = NewProver(ts.chain, &config).(*Prover)
 }
 
-func (ts *ProverTestSuite) TestQueryHeaderAndAccountProof() {
-	header, err := ts.prover.queryHeaderAndAccountProof(200)
+func (ts *ProverTestSuite) TestqueryVerifyingHeader() {
+	header, err := ts.prover.queryVerifyingHeader(200)
 	ts.Require().NoError(err)
 	ts.Require().Equal(uint64(200), header.GetHeight().GetRevisionHeight())
 }
@@ -171,7 +171,19 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 		ts.chain.latestHeight = uint64(i)
 		header, terr := ts.prover.GetLatestFinalizedHeader()
 		ts.Require().NoError(terr)
-		ts.Require().Equal(int(header.GetHeight().GetRevisionHeight()), int(ts.chain.latestHeight)-(firstEpochFinalizing-1), i)
+		targetHeight := header.GetHeight().GetRevisionHeight()
+		ts.Require().Equal(int(targetHeight), int(ts.chain.latestHeight)-(firstEpochFinalizing-1), i)
+		downcast := header.(*Header)
+		ts.Require().Len(downcast.PreviousValidators.Validators, 4, "index =", i)
+		if targetHeight == 0 {
+			ts.Require().Nil(downcast.CurrentValidators)
+		} else if targetHeight < 200 {
+			ts.Require().Len(downcast.CurrentValidators.Validators, 4, "index =", i)
+		} else if targetHeight == 200 {
+			ts.Require().Nil(downcast.CurrentValidators)
+		} else {
+			ts.Require().Len(downcast.CurrentValidators.Validators, 21, "index =", i)
+		}
 	}
 
 	secondEpochBlock, _ := ts.chain.Header(context.TODO(), 200)
@@ -185,6 +197,9 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 		ts.Require().NoError(terr)
 		height := header.GetHeight().GetRevisionHeight()
 		ts.Require().Equal(int(height), currentCheckpoint-1, i)
+		downcast := header.(*Header)
+		ts.Require().Len(downcast.PreviousValidators.Validators, 4, "index =", i)
+		ts.Require().Len(downcast.CurrentValidators.Validators, 21, "index =", i)
 	}
 
 	// target is greater than current checkpoint
@@ -194,6 +209,9 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 		ts.Require().NoError(terr)
 		height := header.GetHeight().GetRevisionHeight()
 		ts.Require().Equal(int(height), int(ts.chain.latestHeight)-(secondEpochFinalizing-1), i)
+		downcast := header.(*Header)
+		ts.Require().Len(downcast.PreviousValidators.Validators, 4, "index =", i)
+		ts.Require().Len(downcast.CurrentValidators.Validators, 21, "index =", i)
 	}
 
 }
@@ -230,7 +248,7 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 		ts.Require().NoError(err)
 		validatorSet, err := extractValidatorSet(target)
 		ts.Require().NoError(err)
-		ts.Require().Equal(cs2.ValidatorSet, validatorSet)
+		ts.Require().Equal(cs2.ValidatorsHash, crypto.Keccak256(validatorSet...))
 		ts.Require().Equal(cs2.Timestamp, target.Time)
 		ts.Require().Equal(cs2.StateRoot, crypto.Keccak256())
 	}
@@ -249,7 +267,7 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 		Prover: ts.prover,
 	}
 
-	header, err := ts.prover.queryHeaderAndAccountProof(21800)
+	header, err := ts.prover.queryVerifyingHeader(21800)
 	ts.Require().NoError(err)
 	setupDone, err := ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)
@@ -262,7 +280,7 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.Require().Equal(uint64(21800), e.GetHeight().GetRevisionHeight())
 	ts.Require().Equal(uint64(21600), e.GetTrustedHeight().GetRevisionHeight())
 
-	header, err = ts.prover.queryHeaderAndAccountProof(21401)
+	header, err = ts.prover.queryVerifyingHeader(21401)
 	ts.Require().NoError(err)
 	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)
@@ -271,13 +289,13 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.Require().Equal(uint64(21401), e.GetHeight().GetRevisionHeight())
 	ts.Require().Equal(uint64(21400), e.GetTrustedHeight().GetRevisionHeight())
 
-	header, err = ts.prover.queryHeaderAndAccountProof(21400)
+	header, err = ts.prover.queryVerifyingHeader(21400)
 	ts.Require().NoError(err)
 	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)
 	ts.Require().Len(setupDone, 0)
 
-	header, err = ts.prover.queryHeaderAndAccountProof(22005)
+	header, err = ts.prover.queryVerifyingHeader(22005)
 	ts.Require().NoError(err)
 	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)
@@ -305,7 +323,7 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.chain.latestHeight = e.GetHeight().GetRevisionHeight()
 
 	// for next update client
-	header, err = ts.prover.queryHeaderAndAccountProof(22006)
+	header, err = ts.prover.queryVerifyingHeader(22006)
 	ts.Require().NoError(err)
 	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)
@@ -316,7 +334,7 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 
 	// relayer had been stopped
 	ts.chain.latestHeight = e.GetHeight().GetRevisionHeight()
-	header, err = ts.prover.queryHeaderAndAccountProof(22510)
+	header, err = ts.prover.queryVerifyingHeader(22510)
 	ts.Require().NoError(err)
 	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)
