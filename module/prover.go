@@ -387,14 +387,14 @@ func (pr *Prover) queryVerifyingHeader(height int64) (core.Header, error) {
 	} else {
 		previousEpoch = (epochCount - 1) * constant.BlocksPerEpoch
 	}
-	header.PreviousValidators, err = pr.getValidatorSet(0, previousEpoch)
+	header.PreviousValidators, err = pr.getValidatorSet(previousEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
 	}
 	// Epoch doesn't need to get validator set because it contains validator set.
 	if uheight%constant.BlocksPerEpoch != 0 {
 		currentEpoch := epochCount * constant.BlocksPerEpoch
-		header.CurrentValidators, err = pr.getValidatorSet(0, currentEpoch)
+		header.CurrentValidators, err = pr.getValidatorSet(currentEpoch)
 		if err != nil {
 			return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
 		}
@@ -443,7 +443,7 @@ func (pr *Prover) getETHHeaders(start uint64, requiredCountToFinalize int) ([]*E
 	return ethHeaders, nil
 }
 
-func (pr *Prover) getValidatorSet(revisionNumber uint64, epochBlockNumber uint64) (*ValidatorSet, error) {
+func (pr *Prover) getValidatorSet(epochBlockNumber uint64) ([][]byte, error) {
 	header, err := pr.chain.Header(context.TODO(), epochBlockNumber)
 	if err != nil {
 		return nil, err
@@ -452,11 +452,7 @@ func (pr *Prover) getValidatorSet(revisionNumber uint64, epochBlockNumber uint64
 	if err != nil {
 		return nil, err
 	}
-	height := clienttypes.NewHeight(revisionNumber, epochBlockNumber)
-	return &ValidatorSet{
-		EpochHeight: &height,
-		Validators:  validatorSet,
-	}, nil
+	return validatorSet, nil
 }
 
 func newETHHeader(header *types.Header) (*ETHHeader, error) {
