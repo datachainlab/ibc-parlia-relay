@@ -4,7 +4,7 @@ const ICS20Bank = artifacts.require("ICS20Bank");
 const ParliaClient = artifacts.require("ParliaClient");
 
 const PortTransfer = "transfer"
-const ParliaClientType = "99-parlia"
+const ParliaClientType = "xx-parlia"
 
 module.exports = async function (deployer, network, accounts) {
   const ibcHandler = await IBCHandler.deployed();
