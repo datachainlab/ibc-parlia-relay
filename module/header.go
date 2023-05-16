@@ -19,7 +19,7 @@ const extraSeal = 65
 const validatorBytesLength = 20
 
 // Parlia TODO client_type
-const Parlia string = "99-parlia"
+const Parlia string = "xx-parlia"
 
 func (*Header) ClientType() string {
 	return Parlia
