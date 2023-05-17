@@ -403,7 +403,7 @@ func (ts *ProverTestSuite) TestRequireCountToFinalize() {
 func (ts *ProverTestSuite) TestConnection() {
 	res := &conntypes.QueryConnectionResponse{
 		Connection: &conntypes.ConnectionEnd{
-			ClientId: "xx-parlia-0",
+			ClientId: "99-parlia-0",
 			Versions: []*conntypes.Version{
 				{
 					Identifier: "1",
@@ -412,7 +412,7 @@ func (ts *ProverTestSuite) TestConnection() {
 			},
 			State: conntypes.OPEN,
 			Counterparty: conntypes.Counterparty{
-				ClientId:     "xx-parlia-0",
+				ClientId:     "99-parlia-0",
 				ConnectionId: "connection-0",
 				Prefix: types3.MerklePrefix{
 					KeyPrefix: []byte("ibc"),
