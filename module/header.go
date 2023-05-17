@@ -4,6 +4,7 @@ import (
 	"fmt"
 	clienttypes "github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
 	"github.com/cosmos/ibc-go/v4/modules/core/exported"
+	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -16,7 +17,8 @@ import (
 
 const extraVanity = 32
 const extraSeal = 65
-const validatorBytesLength = 20
+const validatorBytesLengthBeforeLuban = 20
+const validatorBytesLength = 68
 
 // Parlia TODO client_type
 const Parlia string = "xx-parlia"
@@ -163,10 +165,20 @@ func extractValidatorSet(h *types.Header) ([][]byte, error) {
 	}
 	var validatorSet [][]byte
 	validators := extra[extraVanity : len(extra)-extraSeal]
-	validatorCount := len(validators) / validatorBytesLength
-	for i := 0; i < validatorCount; i++ {
-		start := validatorBytesLength * i
-		validatorSet = append(validatorSet, validators[start:start+validatorBytesLength])
+	if h.Number.Uint64() >= constant.LubanFork {
+		validatorCount := int(validators[0])
+		validatorsWithBLS := validators[1 : validatorCount*validatorBytesLength]
+		for i := 0; i < validatorCount; i++ {
+			start := validatorBytesLength * i
+			validatorWithBLS := validatorsWithBLS[start : start+validatorBytesLength]
+			validatorSet = append(validatorSet, validatorWithBLS[:validatorBytesLengthBeforeLuban])
+		}
+	} else {
+		validatorCount := len(validators) / validatorBytesLengthBeforeLuban
+		for i := 0; i < validatorCount; i++ {
+			start := validatorBytesLengthBeforeLuban * i
+			validatorSet = append(validatorSet, validators[start:start+validatorBytesLengthBeforeLuban])
+		}
 	}
 	return validatorSet, nil
 }
