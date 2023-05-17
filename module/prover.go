@@ -88,7 +88,11 @@ func (pr *Prover) getLatestFinalizedHeader(latestBlockNumber uint64) (out core.H
 	if err != nil {
 		return nil, err
 	}
-	countToFinalizeCurrent := uint64(requiredCountToFinalize(currentEpoch))
+	currentEpochValidators, err := extractValidatorSet(currentEpoch)
+	if err != nil {
+		return nil, err
+	}
+	countToFinalizeCurrent := uint64(requiredCountToFinalize(len(currentEpochValidators)))
 
 	// genesis epoch
 	if epochCount == 0 {
@@ -105,7 +109,11 @@ func (pr *Prover) getLatestFinalizedHeader(latestBlockNumber uint64) (out core.H
 	if err != nil {
 		return nil, err
 	}
-	countToFinalizePrevious := uint64(requiredCountToFinalize(previousEpoch))
+	previousEpochValidators, err := extractValidatorSet(previousEpoch)
+	if err != nil {
+		return nil, err
+	}
+	countToFinalizePrevious := uint64(requiredCountToFinalize(len(previousEpochValidators)))
 
 	// finalized by current validator set
 	checkpoint := currentEpoch.Number.Uint64() + countToFinalizePrevious
@@ -411,19 +419,27 @@ func (pr *Prover) queryETHHeaders(height uint64) ([]*ETHHeader, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get header : previousEpochHeight = %d %+v", previousEpochHeight, err)
 		}
-		threshold := requiredCountToFinalize(previousEpochBlock)
+		previousEpochValidators, err := extractValidatorSet(previousEpochBlock)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get validator from header : previousEpochHeight = %d %+v", previousEpochHeight, err)
+		}
+		threshold := requiredCountToFinalize(len(previousEpochValidators))
 		if height%constant.BlocksPerEpoch < uint64(threshold) {
 			// before checkpoint
 			return pr.getETHHeaders(height, threshold)
 		}
 	}
 	// genesis count or after checkpoint
-	lastEpochNumber := epochCount * constant.BlocksPerEpoch
-	currentEpochBlock, err := pr.chain.Header(context.TODO(), lastEpochNumber)
+	currentEpochHeight := epochCount * constant.BlocksPerEpoch
+	currentEpochBlock, err := pr.chain.Header(context.TODO(), currentEpochHeight)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get header : currentEpochBlock = %d %+v", lastEpochNumber, err)
+		return nil, fmt.Errorf("failed to get header : currentEpochBlock = %d %+v", currentEpochHeight, err)
 	}
-	return pr.getETHHeaders(height, requiredCountToFinalize(currentEpochBlock))
+	currentEpochValidators, err := extractValidatorSet(currentEpochBlock)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get validator from header : currentEpochHeight = %d %+v", currentEpochHeight, err)
+	}
+	return pr.getETHHeaders(height, requiredCountToFinalize(len(currentEpochValidators)))
 }
 
 func (pr *Prover) getETHHeaders(start uint64, requiredCountToFinalize int) ([]*ETHHeader, error) {
@@ -463,11 +479,10 @@ func newETHHeader(header *types.Header) (*ETHHeader, error) {
 	return &ETHHeader{Header: rlpHeader}, nil
 }
 
-func requiredCountToFinalize(header *types.Header) int {
-	validators := len(header.Extra[extraVanity:len(header.Extra)-extraSeal]) / validatorBytesLength
+func requiredCountToFinalize(validatorCount int) int {
 	// The checkpoint is [(block - 1) % epochCount == len(previousValidatorCount / 2)]
 	// for example when the validator count is 21 the checkpoint is 211, 411, 611 ...
 	// https://github.com/bnb-chain/bsc/blob/master/consensus/parlia/parlia.go#L605
 	// https://github.com/bnb-chain/bsc/blob/master/consensus/parlia/snapshot.go#L191
-	return validators/2 + 1
+	return validatorCount/2 + 1
 }

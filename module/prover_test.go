@@ -61,9 +61,9 @@ func (r *mockChain) Header(_ context.Context, height uint64) (*types2.Header, er
 	header.Number = big.NewInt(int64(height))
 	if header.Number.Uint64()%constant.BlocksPerEpoch == 0 {
 		if header.Number.Int64() == 0 {
-			header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*4)
+			header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*4)
 		} else {
-			header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*21)
+			header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*21)
 		}
 	} else {
 		header.Extra = make([]byte, extraVanity+extraSeal)
@@ -164,7 +164,8 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 	ts.Require().Error(err, "no finalized header found : latest = 0")
 
 	firstEpochBlock, _ := ts.chain.Header(context.TODO(), 0)
-	firstEpochFinalizing := requiredCountToFinalize(firstEpochBlock)
+	validators, _ := extractValidatorSet(firstEpochBlock)
+	firstEpochFinalizing := requiredCountToFinalize(len(validators))
 
 	// finalized by previous epoch validators
 	for i := 2; i <= 200+firstEpochFinalizing; i++ {
@@ -187,7 +188,8 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 	}
 
 	secondEpochBlock, _ := ts.chain.Header(context.TODO(), 200)
-	secondEpochFinalizing := requiredCountToFinalize(secondEpochBlock)
+	validators, _ = extractValidatorSet(secondEpochBlock)
+	secondEpochFinalizing := requiredCountToFinalize(len(validators))
 	currentCheckpoint := 200 + firstEpochFinalizing
 
 	// target is less than checkpoint
@@ -385,19 +387,27 @@ func (ts *ProverTestSuite) TestQueryETHHeaders() {
 }
 
 func (ts *ProverTestSuite) TestRequireCountToFinalize() {
-	header := &types2.Header{}
-	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*1)
-	ts.Require().Equal(requiredCountToFinalize(header), 1)
-	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*2)
-	ts.Require().Equal(requiredCountToFinalize(header), 2)
-	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*3)
-	ts.Require().Equal(requiredCountToFinalize(header), 2)
-	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*4)
-	ts.Require().Equal(requiredCountToFinalize(header), 3)
-	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*5)
-	ts.Require().Equal(requiredCountToFinalize(header), 3)
-	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLength*21)
-	ts.Require().Equal(requiredCountToFinalize(header), 11)
+	header := &types2.Header{
+		Number: big.NewInt(1),
+	}
+	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*1)
+	validators, _ := extractValidatorSet(header)
+	ts.Require().Equal(requiredCountToFinalize(len(validators)), 1)
+	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*2)
+	validators, _ = extractValidatorSet(header)
+	ts.Require().Equal(requiredCountToFinalize(len(validators)), 2)
+	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*3)
+	validators, _ = extractValidatorSet(header)
+	ts.Require().Equal(requiredCountToFinalize(len(validators)), 2)
+	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*4)
+	validators, _ = extractValidatorSet(header)
+	ts.Require().Equal(requiredCountToFinalize(len(validators)), 3)
+	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*5)
+	validators, _ = extractValidatorSet(header)
+	ts.Require().Equal(requiredCountToFinalize(len(validators)), 3)
+	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*21)
+	validators, _ = extractValidatorSet(header)
+	ts.Require().Equal(requiredCountToFinalize(len(validators)), 11)
 }
 
 func (ts *ProverTestSuite) TestConnection() {
