@@ -464,11 +464,7 @@ func (pr *Prover) getValidatorSet(epochBlockNumber uint64) ([][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	validatorSet, err := extractValidatorSet(header)
-	if err != nil {
-		return nil, err
-	}
-	return validatorSet, nil
+	return extractValidatorSet(header)
 }
 
 func newETHHeader(header *types.Header) (*ETHHeader, error) {
