@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -413,6 +414,17 @@ func (pr *Prover) queryVerifyingHeader(height int64) (core.Header, error) {
 // queryETHHeaders returns the header corresponding to the height
 func (pr *Prover) queryETHHeaders(height uint64) ([]*ETHHeader, error) {
 	epochCount := height / constant.BlocksPerEpoch
+
+	currentEpochHeight := epochCount * constant.BlocksPerEpoch
+	currentEpochBlock, err := pr.chain.Header(context.TODO(), currentEpochHeight)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get header : currentEpochBlock = %d %+v", currentEpochHeight, err)
+	}
+	currentEpochValidators, err := extractValidatorSet(currentEpochBlock)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get validator from header : currentEpochHeight = %d %+v", currentEpochHeight, err)
+	}
+
 	if epochCount > 0 {
 		previousEpochHeight := (epochCount - 1) * constant.BlocksPerEpoch
 		previousEpochBlock, err := pr.chain.Header(context.TODO(), previousEpochHeight)
@@ -424,21 +436,18 @@ func (pr *Prover) queryETHHeaders(height uint64) ([]*ETHHeader, error) {
 			return nil, fmt.Errorf("failed to get validator from header : previousEpochHeight = %d %+v", previousEpochHeight, err)
 		}
 		threshold := requiredCountToFinalize(len(previousEpochValidators))
-		if height%constant.BlocksPerEpoch < uint64(threshold) {
-			// before checkpoint
-			return pr.getETHHeaders(height, threshold)
+		heightFromEpoch := height % constant.BlocksPerEpoch
+		// target block is before checkpoint
+		if heightFromEpoch < uint64(threshold) {
+			headerCountToVerify := threshold
+			if heightFromEpoch > 0 {
+				// verifying headers is between checkpoint
+				headerCountToVerify = pr.requiredHeaderCountToVerifyBetweenCheckpoint(heightFromEpoch, threshold, previousEpochValidators, currentEpochValidators)
+			}
+			return pr.getETHHeaders(height, headerCountToVerify)
 		}
 	}
 	// genesis count or after checkpoint
-	currentEpochHeight := epochCount * constant.BlocksPerEpoch
-	currentEpochBlock, err := pr.chain.Header(context.TODO(), currentEpochHeight)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get header : currentEpochBlock = %d %+v", currentEpochHeight, err)
-	}
-	currentEpochValidators, err := extractValidatorSet(currentEpochBlock)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get validator from header : currentEpochHeight = %d %+v", currentEpochHeight, err)
-	}
 	return pr.getETHHeaders(height, requiredCountToFinalize(len(currentEpochValidators)))
 }
 
@@ -467,6 +476,50 @@ func (pr *Prover) getValidatorSet(epochBlockNumber uint64) ([][]byte, error) {
 	return extractValidatorSet(header)
 }
 
+func (pr *Prover) requiredHeaderCountToVerifyBetweenCheckpoint(heightFromEpoch uint64, threshold int, previousEpochValidators [][]byte, currentEpochValidators [][]byte) int {
+	beforeCheckpointCount := uint64(threshold) - heightFromEpoch
+	afterCheckpointCount := heightFromEpoch
+
+	// Get duplicated validators between current epoch and previous epoch.
+	validatorsToVerifyBeforeCheckpoint := previousEpochValidators[0:beforeCheckpointCount]
+	duplicatedValidatorsCount := 0
+	validatorsToVerifyAfterCheckpoint := currentEpochValidators[0:afterCheckpointCount]
+	for _, aValidator := range validatorsToVerifyAfterCheckpoint {
+		for _, bValidator := range validatorsToVerifyBeforeCheckpoint {
+			// same validator is used
+			if common.Bytes2Hex(aValidator) == common.Bytes2Hex(bValidator) {
+				duplicatedValidatorsCount++
+			}
+		}
+	}
+
+	// Increase the number of header to verify by the amount of duplicates
+	increasing := 0
+	restValidatorsAfterCheckpoint := currentEpochValidators[afterCheckpointCount:]
+	for _, rValidator := range restValidatorsAfterCheckpoint {
+		if duplicatedValidatorsCount == 0 {
+			break
+		}
+		increasing++
+		if !contains(rValidator, validatorsToVerifyBeforeCheckpoint) {
+			duplicatedValidatorsCount--
+		}
+	}
+	if pr.config.Debug {
+		for i, e := range validatorsToVerifyBeforeCheckpoint {
+			log.Printf(" before Val %d: %s\n", i, common.Bytes2Hex(e))
+		}
+		for i, e := range validatorsToVerifyAfterCheckpoint {
+			log.Printf(" after Val %d: %s\n", i, common.Bytes2Hex(e))
+		}
+		for i, e := range restValidatorsAfterCheckpoint {
+			log.Printf(" rest Val %d: %s\n", i, common.Bytes2Hex(e))
+		}
+	}
+	log.Printf("getHeaderCountToVerifyBetweenCheckpoint heightFromEpoch=%d, duplciate=%d, threshold=%d, increasing=%d", heightFromEpoch, duplicatedValidatorsCount, threshold, increasing)
+	return threshold + increasing
+}
+
 func newETHHeader(header *types.Header) (*ETHHeader, error) {
 	rlpHeader, err := rlp.EncodeToBytes(header)
 	if err != nil {
@@ -481,4 +534,13 @@ func requiredCountToFinalize(validatorCount int) int {
 	// https://github.com/bnb-chain/bsc/blob/master/consensus/parlia/parlia.go#L605
 	// https://github.com/bnb-chain/bsc/blob/master/consensus/parlia/snapshot.go#L191
 	return validatorCount/2 + 1
+}
+
+func contains(target []byte, list [][]byte) bool {
+	for _, e := range list {
+		if common.Bytes2Hex(target) == common.Bytes2Hex(e) {
+			return true
+		}
+	}
+	return false
 }

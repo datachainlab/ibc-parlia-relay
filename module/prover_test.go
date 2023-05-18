@@ -2,6 +2,7 @@ package module
 
 import (
 	"context"
+	"fmt"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/types"
 	clienttypes "github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
@@ -61,9 +62,20 @@ func (r *mockChain) Header(_ context.Context, height uint64) (*types2.Header, er
 	header.Number = big.NewInt(int64(height))
 	if header.Number.Uint64()%constant.BlocksPerEpoch == 0 {
 		if header.Number.Int64() == 0 {
-			header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*4)
+			header.Extra = append(header.Extra, make([]byte, extraVanity)...)
+			for i := 1; i <= 4; i++ {
+				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("100000000000000000000000000000000000000%d", i))...)
+			}
+			header.Extra = append(header.Extra, make([]byte, extraSeal)...)
 		} else {
-			header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*21)
+			header.Extra = make([]byte, extraVanity)
+			for i := 1; i <= 9; i++ {
+				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("100000000000000000000000000000000000000%d", i))...)
+			}
+			for i := 10; i <= 21; i++ {
+				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("10000000000000000000000000000000000000%d", i))...)
+			}
+			header.Extra = append(header.Extra, make([]byte, extraSeal)...)
 		}
 	} else {
 		header.Extra = make([]byte, extraVanity+extraSeal)
@@ -380,10 +392,10 @@ func (ts *ProverTestSuite) TestQueryETHHeaders() {
 	}
 	assertHeader(0, 3)
 	assertHeader(1, 3)
-	assertHeader(200, 3)
-	assertHeader(201, 3)
-	assertHeader(202, 3)
-	assertHeader(203, 11)
+	assertHeader(200, 3)  // don't include checkpoint header
+	assertHeader(201, 5)  // previous validator for (200,201) are same as current epoch validator for (202,203)
+	assertHeader(202, 4)  // previous validator for (202) are same as current epoch validator for (203)
+	assertHeader(203, 11) // don't include before checkpoint header
 }
 
 func (ts *ProverTestSuite) TestRequireCountToFinalize() {
