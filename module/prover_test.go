@@ -185,37 +185,46 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 	//	maxBlocksToFinalizingBetweenCheckpoint := firstEpochFinalizing + uint64(len(secondValidators))
 
 	// finalized by previous epoch validators
-	println("test target >= checkpoint")
+	println("finalized by previous epoch validators")
 	checkpoint := 200 + int(firstEpochFinalizing)
 	for i := 2; i < checkpoint; i++ {
 		ts.chain.latestHeight = uint64(i)
 		header, terr := ts.prover.GetLatestFinalizedHeader()
 		ts.Require().NoError(terr)
-		targetHeight := header.GetHeight().GetRevisionHeight()
-		ts.Require().Equal(targetHeight, ts.chain.latestHeight-(firstEpochFinalizing-1), "latest = ", i, "target =", targetHeight)
+		height := header.GetHeight().GetRevisionHeight()
+		ts.Require().Equal(height, ts.chain.latestHeight-(firstEpochFinalizing-1), "latest = ", i, "target =", int(height))
 		downcast := header.(*Header)
-		ts.Require().Len(downcast.PreviousValidators, 4, "latest =", i, "target =", targetHeight)
-		if targetHeight%constant.BlocksPerEpoch == 0 {
-			ts.Require().Nil(downcast.CurrentValidators, "latest =", i, "target =", targetHeight)
+		ts.Require().Len(downcast.PreviousValidators, 4, "latest =", i, "target =", int(height))
+		if height%constant.BlocksPerEpoch == 0 {
+			ts.Require().Nil(downcast.CurrentValidators, "latest =", i, "target =", int(height))
 		} else {
-			ts.Require().Len(downcast.CurrentValidators, 4, "latest =", i, "target =", targetHeight)
+			ts.Require().Len(downcast.CurrentValidators, 4, "latest =", i, "target =", int(height))
 		}
 	}
-	println("test epoch <= target < checkpoint")
+	println("across checkpoint")
 	// target is less than checkpoint
 	for i := checkpoint; i < checkpoint+int(secondEpochFinalizing)-1; i++ {
 		ts.chain.latestHeight = uint64(i)
 		header, terr := ts.prover.GetLatestFinalizedHeader()
 		ts.Require().NoError(terr)
 		height := header.GetHeight().GetRevisionHeight()
-		ts.Require().Equal(int(height), 200, i)
 		downcast := header.(*Header)
-		ts.Require().Len(downcast.PreviousValidators, 4, "index =", i)
-		ts.Require().Nil(downcast.CurrentValidators)
+		ts.Require().Len(downcast.PreviousValidators, 4, "latest =", i, "target =", int(height))
+		ts.Require().Len(downcast.CurrentValidators, 21, "latest =", i, "target =", int(height))
+
+		// at the case of there are no duplicated validators between previous and current.
+		if i == checkpoint {
+			//  finalized = {0 201}, latest = {0 203}
+			ts.Require().Equal(int(height), int(ts.chain.latestHeight-(firstEpochFinalizing-1)), "latest =", i, "target =", int(height))
+		} else {
+			//  finalized = {0 202}, latest = {0 204}
+			//  finalized = {0 202}, latest = {0 212}
+			ts.Require().Equal(int(height), checkpoint-1, "latest =", i, "target =", int(height))
+		}
 	}
 
 	// target is greater than current checkpoint
-	println("target >= checkpoint")
+	println("finalized by current epoch validators")
 	for i := checkpoint + int(secondEpochFinalizing) - 1; i < 400; i++ {
 		ts.chain.latestHeight = uint64(i)
 		header, terr := ts.prover.GetLatestFinalizedHeader()
@@ -223,8 +232,8 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 		height := header.GetHeight().GetRevisionHeight()
 		ts.Require().Equal(height, ts.chain.latestHeight-(secondEpochFinalizing-1), i)
 		downcast := header.(*Header)
-		ts.Require().Len(downcast.PreviousValidators, 4, "index =", i)
-		ts.Require().Len(downcast.CurrentValidators, 21, "index =", i)
+		ts.Require().Len(downcast.PreviousValidators, 4, "latest =", i, "target =", int(height))
+		ts.Require().Len(downcast.CurrentValidators, 21, "latest =", i, "target =", int(height))
 	}
 
 }

@@ -118,11 +118,15 @@ func (pr *Prover) getLatestFinalizedHeader(latestBlockNumber uint64) (out core.H
 	target = uint64(math.MinInt64(int64(checkpoint-1), int64(latestBlockNumber-(countToFinalizePrevious-1))))
 	if target > currentEpoch {
 		// across checkpoint.
-		maxRequiredHeaderCountBetweenCheckpoint := countToFinalizePrevious + uint64(len(currentEpochValidators))
-		if target+maxRequiredHeaderCountBetweenCheckpoint > latestBlockNumber {
+		heightFromEpoch := target - currentEpoch
+		requiredHeaderCount, err := pr.requiredHeaderCountToVerifyBetweenCheckpoint(heightFromEpoch, countToFinalizePrevious, previousEpochValidators, currentEpochValidators)
+		if err != nil {
+			return nil, err
+		}
+		if target+(requiredHeaderCount-1) > latestBlockNumber {
 			return pr.queryVerifyingHeader(int64(currentEpoch), countToFinalizePrevious)
 		}
-		return pr.queryVerifyingHeader(int64(target), maxRequiredHeaderCountBetweenCheckpoint)
+		return pr.queryVerifyingHeader(int64(target), requiredHeaderCount)
 	}
 	// finalized by previous validator set
 	return pr.queryVerifyingHeader(int64(target), countToFinalizePrevious)
@@ -454,7 +458,6 @@ func (pr *Prover) requiredHeaderCountToVerifyBetweenCheckpoint(heightFromEpoch u
 			}
 		}
 	}
-	log.Printf("duplicatedValidatorsCount=%d\n", duplicatedValidatorsCount)
 	// Increase the number of header to verify by the amount of duplicates
 	increasing := uint64(0)
 	restValidatorsAfterCheckpoint := currentEpochValidators[afterCheckpointCount:]
@@ -467,18 +470,20 @@ func (pr *Prover) requiredHeaderCountToVerifyBetweenCheckpoint(heightFromEpoch u
 			duplicatedValidatorsCount--
 		}
 	}
-	if pr.config.Debug {
-		for i, e := range validatorsToVerifyBeforeCheckpoint {
-			log.Printf(" before Val %d: %s\n", i, common.Bytes2Hex(e))
+	/*
+		if pr.config.Debug {
+			for i, e := range validatorsToVerifyBeforeCheckpoint {
+				log.Printf(" before Val %d: %s\n", i, common.Bytes2Hex(e))
+			}
+			for i, e := range validatorsToVerifyAfterCheckpoint {
+				log.Printf(" after Val %d: %s\n", i, common.Bytes2Hex(e))
+			}
+			for i, e := range restValidatorsAfterCheckpoint {
+				log.Printf(" rest Val %d: %s\n", i, common.Bytes2Hex(e))
+			}
 		}
-		for i, e := range validatorsToVerifyAfterCheckpoint {
-			log.Printf(" after Val %d: %s\n", i, common.Bytes2Hex(e))
-		}
-		for i, e := range restValidatorsAfterCheckpoint {
-			log.Printf(" rest Val %d: %s\n", i, common.Bytes2Hex(e))
-		}
-	}
-	log.Printf("getHeaderCountToVerifyBetweenCheckpoint heightFromEpoch=%d, duplciate=%d, threshold=%d, increasing=%d", heightFromEpoch, duplicatedValidatorsCount, threshold, increasing)
+	*/
+	log.Printf("getHeaderCountToVerifyBetweenCheckpoint heightFromEpoch=%d, duplciated=%d, threshold=%d, increasing=%d", heightFromEpoch, duplicatedValidatorsCount, threshold, increasing)
 	return threshold + increasing, nil
 }
 
