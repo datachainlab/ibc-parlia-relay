@@ -70,10 +70,10 @@ func (r *mockChain) Header(_ context.Context, height uint64) (*types2.Header, er
 		} else {
 			header.Extra = make([]byte, extraVanity)
 			for i := 1; i <= 9; i++ {
-				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("100000000000000000000000000000000000000%d", i))...)
+				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("200000000000000000000000000000000000000%d", i))...)
 			}
 			for i := 10; i <= 21; i++ {
-				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("10000000000000000000000000000000000000%d", i))...)
+				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("20000000000000000000000000000000000000%d", i))...)
 			}
 			header.Extra = append(header.Extra, make([]byte, extraSeal)...)
 		}
@@ -157,7 +157,7 @@ func (ts *ProverTestSuite) SetupTest() {
 }
 
 func (ts *ProverTestSuite) TestQueryVerifyingHeader() {
-	header, err := ts.prover.queryVerifyingHeader(200)
+	header, err := ts.prover.queryVerifyingHeader(200, 10)
 	ts.Require().NoError(err)
 	ts.Require().Equal(uint64(200), header.GetHeight().GetRevisionHeight())
 }
@@ -176,53 +176,52 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 	ts.Require().Error(err, "no finalized header found : latest = 0")
 
 	firstEpochBlock, _ := ts.chain.Header(context.TODO(), 0)
-	validators, _ := extractValidatorSet(firstEpochBlock)
-	firstEpochFinalizing := requiredCountToFinalize(len(validators))
+	firstValidators, _ := extractValidatorSet(firstEpochBlock)
+	firstEpochFinalizing := requiredHeaderCountToFinalize(len(firstValidators))
+
+	secondEpochBlock, _ := ts.chain.Header(context.TODO(), 200)
+	secondValidators, _ := extractValidatorSet(secondEpochBlock)
+	secondEpochFinalizing := requiredHeaderCountToFinalize(len(secondValidators))
+	//	maxBlocksToFinalizingBetweenCheckpoint := firstEpochFinalizing + uint64(len(secondValidators))
 
 	// finalized by previous epoch validators
-	for i := 2; i <= 200+firstEpochFinalizing; i++ {
+	println("test target >= checkpoint")
+	checkpoint := 200 + int(firstEpochFinalizing)
+	for i := 2; i < checkpoint; i++ {
 		ts.chain.latestHeight = uint64(i)
 		header, terr := ts.prover.GetLatestFinalizedHeader()
 		ts.Require().NoError(terr)
 		targetHeight := header.GetHeight().GetRevisionHeight()
-		ts.Require().Equal(int(targetHeight), int(ts.chain.latestHeight)-(firstEpochFinalizing-1), i)
+		ts.Require().Equal(targetHeight, ts.chain.latestHeight-(firstEpochFinalizing-1), "latest = ", i, "target =", targetHeight)
 		downcast := header.(*Header)
-		ts.Require().Len(downcast.PreviousValidators, 4, "index =", i)
-		if targetHeight == 0 {
-			ts.Require().Nil(downcast.CurrentValidators)
-		} else if targetHeight < 200 {
-			ts.Require().Len(downcast.CurrentValidators, 4, "index =", i)
-		} else if targetHeight == 200 {
-			ts.Require().Nil(downcast.CurrentValidators)
+		ts.Require().Len(downcast.PreviousValidators, 4, "latest =", i, "target =", targetHeight)
+		if targetHeight%constant.BlocksPerEpoch == 0 {
+			ts.Require().Nil(downcast.CurrentValidators, "latest =", i, "target =", targetHeight)
 		} else {
-			ts.Require().Len(downcast.CurrentValidators, 21, "index =", i)
+			ts.Require().Len(downcast.CurrentValidators, 4, "latest =", i, "target =", targetHeight)
 		}
 	}
-
-	secondEpochBlock, _ := ts.chain.Header(context.TODO(), 200)
-	validators, _ = extractValidatorSet(secondEpochBlock)
-	secondEpochFinalizing := requiredCountToFinalize(len(validators))
-	currentCheckpoint := 200 + firstEpochFinalizing
-
+	println("test epoch <= target < checkpoint")
 	// target is less than checkpoint
-	for i := 200 + firstEpochFinalizing + 1; i < 200+firstEpochFinalizing+secondEpochFinalizing-1; i++ {
+	for i := checkpoint; i < checkpoint+int(secondEpochFinalizing)-1; i++ {
 		ts.chain.latestHeight = uint64(i)
 		header, terr := ts.prover.GetLatestFinalizedHeader()
 		ts.Require().NoError(terr)
 		height := header.GetHeight().GetRevisionHeight()
-		ts.Require().Equal(int(height), currentCheckpoint-1, i)
+		ts.Require().Equal(int(height), 200, i)
 		downcast := header.(*Header)
 		ts.Require().Len(downcast.PreviousValidators, 4, "index =", i)
-		ts.Require().Len(downcast.CurrentValidators, 21, "index =", i)
+		ts.Require().Nil(downcast.CurrentValidators)
 	}
 
 	// target is greater than current checkpoint
-	for i := 200 + firstEpochFinalizing + secondEpochFinalizing - 1; i < 400; i++ {
+	println("target >= checkpoint")
+	for i := checkpoint + int(secondEpochFinalizing) - 1; i < 400; i++ {
 		ts.chain.latestHeight = uint64(i)
 		header, terr := ts.prover.GetLatestFinalizedHeader()
 		ts.Require().NoError(terr)
 		height := header.GetHeight().GetRevisionHeight()
-		ts.Require().Equal(int(height), int(ts.chain.latestHeight)-(secondEpochFinalizing-1), i)
+		ts.Require().Equal(height, ts.chain.latestHeight-(secondEpochFinalizing-1), i)
 		downcast := header.(*Header)
 		ts.Require().Len(downcast.PreviousValidators, 4, "index =", i)
 		ts.Require().Len(downcast.CurrentValidators, 21, "index =", i)
@@ -232,12 +231,12 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 
 func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 
-	previousEpochETHHeader, tErr := ts.prover.queryETHHeaders(uint64(200))
+	previousEpochETHHeader, tErr := ts.prover.getETHHeaders(uint64(200), 4)
 	ts.Require().NoError(tErr)
 	previousEpochHeader := &Header{Headers: previousEpochETHHeader}
 
 	assertFn := func(finalizedHeight int64) {
-		finalizedETHHeader, err := ts.prover.queryETHHeaders(uint64(finalizedHeight))
+		finalizedETHHeader, err := ts.prover.getETHHeaders(uint64(finalizedHeight), 1)
 		ts.Require().NoError(err)
 		finalizedHeader := &Header{Headers: finalizedETHHeader}
 		msg, err := ts.prover.CreateMsgCreateClient("", finalizedHeader, types.AccAddress{})
@@ -251,7 +250,7 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 		ts.Require().Equal(cs.TrustLevel.Denominator, uint64(3))
 		ts.Require().False(cs.Frozen)
 		ts.Require().Equal(common.Bytes2Hex(cs.IbcStoreAddress), ibcHandlerAddress)
-		ts.Require().Equal(cs.GetLatestHeight().GetRevisionHeight(), uint64(200))
+		ts.Require().Equal(int64(cs.GetLatestHeight().GetRevisionHeight()), int64(200))
 		ts.Require().Equal(cs.GetLatestHeight().GetRevisionNumber(), uint64(0))
 
 		// assert same epoch
@@ -281,7 +280,7 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 		Prover: ts.prover,
 	}
 
-	header, err := ts.prover.queryVerifyingHeader(21800)
+	header, err := ts.prover.queryVerifyingHeader(21800, 11)
 	ts.Require().NoError(err)
 	setupDone, err := ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)
@@ -294,7 +293,7 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.Require().Equal(uint64(21800), e.GetHeight().GetRevisionHeight())
 	ts.Require().Equal(uint64(21600), e.GetTrustedHeight().GetRevisionHeight())
 
-	header, err = ts.prover.queryVerifyingHeader(21401)
+	header, err = ts.prover.queryVerifyingHeader(21401, 11)
 	ts.Require().NoError(err)
 	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)
@@ -303,13 +302,13 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.Require().Equal(uint64(21401), e.GetHeight().GetRevisionHeight())
 	ts.Require().Equal(uint64(21400), e.GetTrustedHeight().GetRevisionHeight())
 
-	header, err = ts.prover.queryVerifyingHeader(21400)
+	header, err = ts.prover.queryVerifyingHeader(21400, 11)
 	ts.Require().NoError(err)
 	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)
 	ts.Require().Len(setupDone, 0)
 
-	header, err = ts.prover.queryVerifyingHeader(22005)
+	header, err = ts.prover.queryVerifyingHeader(22005, 11)
 	ts.Require().NoError(err)
 	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)
@@ -337,7 +336,7 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.chain.latestHeight = e.GetHeight().GetRevisionHeight()
 
 	// for next update client
-	header, err = ts.prover.queryVerifyingHeader(22006)
+	header, err = ts.prover.queryVerifyingHeader(22006, 11)
 	ts.Require().NoError(err)
 	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)
@@ -348,7 +347,7 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 
 	// relayer had been stopped
 	ts.chain.latestHeight = e.GetHeight().GetRevisionHeight()
-	header, err = ts.prover.queryVerifyingHeader(22510)
+	header, err = ts.prover.queryVerifyingHeader(22510, 11)
 	ts.Require().NoError(err)
 	setupDone, err = ts.prover.SetupHeadersForUpdate(&dst, header)
 	ts.Require().NoError(err)
@@ -378,48 +377,28 @@ func (ts *ProverTestSuite) TestQueryClientStateWithProof() {
 	ts.Require().Equal(common.Bytes2Hex(res.Proof), "f853f8518080a0143145e818eeff83817419a6632ea193fd1acaa4f791eb17282f623f38117f568080808080808080a016cbf6e0ba10512eb618d99a1e34025adb7e6f31d335bda7fb20c8bb95fb5b978080808080")
 }
 
-func (ts *ProverTestSuite) TestQueryETHHeaders() {
-	assertHeader := func(height uint64, count int) {
-		ethHeaders, err := ts.prover.queryETHHeaders(height)
-		assert := ts.Require()
-		assert.NoError(err)
-		assert.Len(ethHeaders, count) // only one validator
-		var header types2.Header
-		for i := 0; i < count; i++ {
-			assert.NoError(rlp.DecodeBytes(ethHeaders[i].Header, &header))
-			assert.Equal(header.Number.Uint64(), height+uint64(i))
-		}
-	}
-	assertHeader(0, 3)
-	assertHeader(1, 3)
-	assertHeader(200, 3)  // don't include checkpoint header
-	assertHeader(201, 5)  // previous validator for (200,201) are same as current epoch validator for (202,203)
-	assertHeader(202, 4)  // previous validator for (202) are same as current epoch validator for (203)
-	assertHeader(203, 11) // don't include before checkpoint header
-}
-
 func (ts *ProverTestSuite) TestRequireCountToFinalize() {
 	header := &types2.Header{
 		Number: big.NewInt(1),
 	}
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*1)
 	validators, _ := extractValidatorSet(header)
-	ts.Require().Equal(requiredCountToFinalize(len(validators)), 1)
+	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(1))
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*2)
 	validators, _ = extractValidatorSet(header)
-	ts.Require().Equal(requiredCountToFinalize(len(validators)), 2)
+	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(2))
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*3)
 	validators, _ = extractValidatorSet(header)
-	ts.Require().Equal(requiredCountToFinalize(len(validators)), 2)
+	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(2))
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*4)
 	validators, _ = extractValidatorSet(header)
-	ts.Require().Equal(requiredCountToFinalize(len(validators)), 3)
+	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(3))
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*5)
 	validators, _ = extractValidatorSet(header)
-	ts.Require().Equal(requiredCountToFinalize(len(validators)), 3)
+	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(3))
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*21)
 	validators, _ = extractValidatorSet(header)
-	ts.Require().Equal(requiredCountToFinalize(len(validators)), 11)
+	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(11))
 }
 
 func (ts *ProverTestSuite) TestConnection() {
@@ -482,4 +461,14 @@ func (ts *ProverTestSuite) TestConnectionStateProofAsLCPCommitment() {
 	ts.Require().Equal(commitmentValue.String(), "0x22ab576a7df38bb4860ffbc65f30d5a66536fb2d8ec3d5d7d4ab9a3ead0e4312")
 	ts.Require().Equal(commitmentHeight, uint64(317))
 	ts.Require().Equal(commitmentStateId.String(), "0xee0b5f32ae2bff0d82149ea22b02e350fbbe467a514ba80bbadd89007df1d167")
+}
+
+func (ts *ProverTestSuite) TestRequiredHeaderCountToVerifyBetweenCheckpoint() {
+	heightFromEpoch := uint64(1)
+	threshold := uint64(5)
+	previousValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}} // 1,2,3,4 is used
+	currentValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}}  // 1 is used, duplicated count is 1, so 2->3->4->5.
+	result, err := ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(heightFromEpoch, threshold, previousValidator, currentValidator)
+	ts.Require().NoError(err)
+	ts.Require().Equal(int(result), int(threshold)+4)
 }
