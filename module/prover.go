@@ -435,6 +435,9 @@ func (pr *Prover) getValidatorSet(epochBlockNumber uint64) ([][]byte, error) {
 }
 
 func (pr *Prover) requiredHeaderCountToVerifyBetweenCheckpoint(target uint64, requiredCountToFinalize uint64, latest uint64) (bool, uint64, error) {
+	if requiredCountToFinalize == 1 {
+		return false, 1, nil
+	}
 	heightFromEpoch := target % constant.BlocksPerEpoch
 	requiredCountForPrevious := requiredCountToFinalize - heightFromEpoch
 	var validatorsToVerifyBeforeCheckpoint []common.Address
