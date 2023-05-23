@@ -523,76 +523,47 @@ func (ts *ProverTestSuite) TestRequiredHeaderCountToVerifyBetweenCheckpoint_AllS
 	}
 }
 
-/*
 func (ts *ProverTestSuite) TestRequiredHeaderCountToVerifyBetweenCheckpoint_HalfUnique() {
 	previousValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20}, {21}}
-	currentValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {110}, {111}, {112}, {113}, {114}, {115}, {116}, {117}, {118}, {119}, {120}, {121}}
-	requiredCount := int(requiredHeaderCountToFinalize(len(previousValidator)))
+	currentValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {111}, {112}, {113}, {114}, {115}, {116}, {117}, {118}, {119}, {120}, {121}}
+	blockMap := map[uint64]*types2.Header{}
+	for i := 201; i <= 210; i++ {
+		blockMap[uint64(i)] = &types2.Header{Coinbase: common.BytesToAddress(previousValidator[i-201])}
+	}
+	for i := 211; i <= 231; i++ {
+		blockMap[uint64(i)] = &types2.Header{Coinbase: common.BytesToAddress(currentValidator[i-211])}
+	}
+	requiredCount := requiredHeaderCountToFinalize(len(previousValidator))
+	ts.chain.blockMap = blockMap
+	defer func() {
+		ts.chain.blockMap = nil
+	}()
 
-	// requiredForCurrent = 1
-	// previousValidator={1-10} -> currentValidatorStartAt = {1} -> {1-9} is duplicated
-	target := &types2.Header{Number: big.NewInt(int64(201)), Coinbase: common.BytesToAddress(previousValidator[0])}
-	result, err := ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
+	// prev={1-10}, cur={1-10} used, {111} unused = 10 + 10 + 1 = 21
+	notFinalized, result, err := ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(201, requiredCount, 231)
 	ts.Require().NoError(err)
-	ts.Require().Equal(int(result), requiredCount+9)
+	ts.Require().False(notFinalized)
+	ts.Require().Equal(int(requiredCount+10), int(result))
 
-	// requiredForCurrent = 1
-	// previousValidator={2-11} -> currentValidatorStartAt = {1} -> {1} is unused
-	target = &types2.Header{Number: big.NewInt(int64(201)), Coinbase: common.BytesToAddress(previousValidator[1])}
-	result, err = ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
+	// prev={1-10}, cur={1-10} used, {111} unused = 10 + 10 + 1 = 21
+	notFinalized, result, err = ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(201, requiredCount, 212)
+	ts.Require().True(notFinalized)
 	ts.Require().NoError(err)
-	ts.Require().Equal(int(result), requiredCount)
 
-	// requiredForCurrent = 1
-	// previousValidator={10-19} -> currentValidatorStartAt = {1} -> {1} is unused
-	target = &types2.Header{Number: big.NewInt(int64(201)), Coinbase: common.BytesToAddress(previousValidator[9])}
-	result, err = ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
+	// prev={5-10}, cur={1-4} unused, {5-10} used, {111} unused = 6 + 4 + 6 + 1 = 17
+	notFinalized, result, err = ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(205, requiredCount, 231)
 	ts.Require().NoError(err)
-	ts.Require().Equal(int(result), requiredCount)
+	ts.Require().False(notFinalized)
+	ts.Require().Equal(int(requiredCount+6), int(result))
 
-	// requiredForCurrent = 1
-	// previousValidator={13-1} -> currentValidatorStartAt = {2} -> {2} is unused
-	target = &types2.Header{Number: big.NewInt(int64(201)), Coinbase: common.BytesToAddress(previousValidator[12])}
-	result, err = ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
+	// prev={10}, cur={1-9} unused, {10} used, {111} unused = 1 + 9 + 1 + 1 = 12
+	notFinalized, result, err = ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(210, requiredCount, 231)
 	ts.Require().NoError(err)
-	ts.Require().Equal(int(result), requiredCount)
-
-	// requiredForCurrent = 1
-	// previousValidator={21-8} -> currentValidatorStartAt = {9} -> {9} is unused
-	target = &types2.Header{Number: big.NewInt(int64(201)), Coinbase: common.BytesToAddress(previousValidator[20])}
-	result, err = ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
-	ts.Require().NoError(err)
-	ts.Require().Equal(int(result), requiredCount)
-
-	// requiredForCurrent = 10
-	// previousValidator={1} -> currentValidatorStartAt = {2} -> {2-112} is unused
-	target = &types2.Header{Number: big.NewInt(int64(210)), Coinbase: common.BytesToAddress(previousValidator[0])}
-	result, err = ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
-	ts.Require().NoError(err)
-	ts.Require().Equal(int(result), requiredCount)
-
-	// requiredForCurrent = 10
-	// previousValidator={9} -> currentValidatorStartAt = {110} -> {110-120} is unused
-	target = &types2.Header{Number: big.NewInt(int64(210)), Coinbase: common.BytesToAddress(previousValidator[8])}
-	result, err = ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
-	ts.Require().NoError(err)
-	ts.Require().Equal(int(result), requiredCount)
-
-	// requiredForCurrent = 10
-	// previousValidator={10} -> currentValidatorStartAt = {1} -> {1-110} is unused
-	target = &types2.Header{Number: big.NewInt(int64(210)), Coinbase: common.BytesToAddress(previousValidator[9])}
-	result, err = ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
-	ts.Require().NoError(err)
-	ts.Require().Equal(int(result), requiredCount)
-
-	// requiredForCurrent = 10
-	// previousValidator={21} -> currentValidatorStartAt = {1} -> {1-110} is unused
-	target = &types2.Header{Number: big.NewInt(int64(210)), Coinbase: common.BytesToAddress(previousValidator[20])}
-	result, err = ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
-	ts.Require().NoError(err)
-	ts.Require().Equal(int(result), requiredCount)
+	ts.Require().False(notFinalized)
+	ts.Require().Equal(int(requiredCount+1), int(result))
 }
 
+/*
 func (ts *ProverTestSuite) TestRequiredHeaderCountToVerifyBetweenCheckpoint_HalfUnique2() {
 	previousValidator := [][]byte{{1}, {2}, {4}, {5}, {7}, {8}, {10}, {11}, {13}, {14}, {16}, {17}, {19}, {20}, {22}, {23}, {25}, {26}, {28}, {29}, {31}}
 	currentValidator := [][]byte{{1}, {3}, {4}, {6}, {7}, {9}, {10}, {12}, {13}, {15}, {16}, {18}, {19}, {21}, {22}, {24}, {25}, {27}, {28}, {30}, {31}}
