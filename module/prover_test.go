@@ -631,3 +631,37 @@ func (ts *ProverTestSuite) TestRequiredHeaderCountToVerifyBetweenCheckpoint_Half
 	ts.Require().Equal(int(result), requiredCount)
 
 }
+
+func (ts *ProverTestSuite) TestRequiredHeaderCountToVerifyBetweenCheckpoint_NotUnique() {
+	previousValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20}, {21}}
+	currentValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20}, {21}}
+	requiredCount := int(requiredHeaderCountToFinalize(len(previousValidator)))
+	for j := 201; j <= 210; j++ {
+		for i := 0; i < len(previousValidator); i++ {
+			target := &types2.Header{Number: big.NewInt(int64(j)), Coinbase: common.BytesToAddress(previousValidator[i])}
+			result, err := ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
+			ts.Require().NoError(err)
+			ts.Require().Equal(int(result), requiredCount, fmt.Sprintf("j=%d,i=%d", j, i))
+		}
+	}
+
+	// requiredForCurrent = 0
+	previousValidator = [][]byte{{1}}
+	currentValidator = [][]byte{{1}}
+	requiredCount = int(requiredHeaderCountToFinalize(len(previousValidator)))
+	target := &types2.Header{Number: big.NewInt(int64(200)), Coinbase: common.BytesToAddress(previousValidator[0])}
+	result, err := ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
+	ts.Require().NoError(err)
+	ts.Require().Equal(int(result), requiredCount)
+
+	// requiredForCurrent = 1
+	// previousValidator={1} -> currentValidatorStartAt = {2} -> {1-} is unused
+	previousValidator = [][]byte{{1}, {2}}
+	currentValidator = [][]byte{{1}, {2}}
+	requiredCount = int(requiredHeaderCountToFinalize(len(previousValidator)))
+	target = &types2.Header{Number: big.NewInt(int64(201)), Coinbase: common.BytesToAddress(previousValidator[0])}
+	result, err = ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
+	ts.Require().NoError(err)
+	ts.Require().Equal(int(result), requiredCount)
+
+}

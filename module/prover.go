@@ -440,6 +440,9 @@ func (pr *Prover) getValidatorSet(epochBlockNumber uint64) ([][]byte, error) {
 
 func (pr *Prover) requiredHeaderCountToVerifyBetweenCheckpoint(target *types.Header, previousEpochValidators Ring, currentEpochValidators Ring) (uint64, error) {
 	requiredCountToFinalize := requiredHeaderCountToFinalize(len(previousEpochValidators))
+	if requiredCountToFinalize == 1 {
+		return requiredCountToFinalize, nil
+	}
 	heightFromEpoch := target.Number.Uint64() % constant.BlocksPerEpoch
 	coinbase := target.Coinbase
 	index := previousEpochValidators.IndexOf(coinbase)
