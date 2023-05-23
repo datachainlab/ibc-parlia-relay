@@ -83,6 +83,11 @@ func (r *mockChain) Header(_ context.Context, height uint64) (*types2.Header, er
 		}
 	} else {
 		header.Extra = make([]byte, extraVanity+extraSeal)
+		if header.Number.Uint64()/constant.BlocksPerEpoch < 203 {
+			header.Coinbase = common.BytesToAddress(common.Hex2Bytes(fmt.Sprintf("100000000000000000000000000000000000000%d", 1+header.Number.Uint64()%4)))
+		} else {
+			header.Coinbase = common.BytesToAddress(common.Hex2Bytes(fmt.Sprintf("200000000000000000000000000000000000000%d", 1+header.Number.Uint64()%21)))
+		}
 	}
 	return header, nil
 }
@@ -186,7 +191,6 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 	secondEpochBlock, _ := ts.chain.Header(context.TODO(), 200)
 	secondValidators, _ := extractValidatorSet(secondEpochBlock)
 	secondEpochFinalizing := requiredHeaderCountToFinalize(len(secondValidators))
-	//	maxBlocksToFinalizingBetweenCheckpoint := firstEpochFinalizing + uint64(len(secondValidators))
 
 	// finalized by previous epoch validators
 	println("finalized by previous epoch validators")
@@ -206,23 +210,18 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 		}
 	}
 	println("across checkpoint")
-	// target is less than checkpoint
 	for i := checkpoint; i < checkpoint+int(secondEpochFinalizing)-1; i++ {
 		ts.chain.latestHeight = uint64(i)
 		header, terr := ts.prover.GetLatestFinalizedHeader()
 		ts.Require().NoError(terr)
 		height := header.GetHeight().GetRevisionHeight()
 		downcast := header.(*Header)
+		// Upper limit is checkpoint - 1 because there are insufficient blocks to finalize by current epoch validators.
 		ts.Require().Len(downcast.PreviousValidators, 4, "latest =", i, "target =", int(height))
 		ts.Require().Len(downcast.CurrentValidators, 21, "latest =", i, "target =", int(height))
-
-		// at the case of there are no duplicated validators between previous and current.
 		if i == checkpoint {
-			//  finalized = {0 201}, latest = {0 203}
-			ts.Require().Equal(int(height), int(ts.chain.latestHeight-(firstEpochFinalizing-1)), "latest =", i, "target =", int(height))
+			ts.Require().Equal(int(height), i-int(firstEpochFinalizing-1), "latest =", i, "target =", int(height))
 		} else {
-			//  finalized = {0 202}, latest = {0 204}
-			//  finalized = {0 202}, latest = {0 212}
 			ts.Require().Equal(int(height), checkpoint-1, "latest =", i, "target =", int(height))
 		}
 	}
