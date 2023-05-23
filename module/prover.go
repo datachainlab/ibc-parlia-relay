@@ -118,8 +118,11 @@ func (pr *Prover) getLatestFinalizedHeader(latestBlockNumber uint64) (out core.H
 	target = uint64(math.MinInt64(int64(checkpoint-1), int64(latestBlockNumber-(countToFinalizePrevious-1))))
 	if target > currentEpoch {
 		// across checkpoint.
-		heightFromEpoch := target - currentEpoch
-		requiredHeaderCount, err := pr.requiredHeaderCountToVerifyBetweenCheckpoint(heightFromEpoch, countToFinalizePrevious, previousEpochValidators, currentEpochValidators)
+		targetHeader, err := pr.chain.Header(context.TODO(), target)
+		if err != nil {
+			return nil, err
+		}
+		requiredHeaderCount, err := pr.requiredHeaderCountToVerifyBetweenCheckpoint(targetHeader, countToFinalizePrevious, previousEpochValidators, currentEpochValidators)
 		if err != nil {
 			return nil, err
 		}
@@ -435,39 +438,33 @@ func (pr *Prover) getValidatorSet(epochBlockNumber uint64) ([][]byte, error) {
 	return extractValidatorSet(header)
 }
 
-func (pr *Prover) requiredHeaderCountToVerifyBetweenCheckpoint(heightFromEpoch uint64, threshold uint64, previousEpochValidators [][]byte, currentEpochValidators [][]byte) (uint64, error) {
-	beforeCheckpointCount := threshold - heightFromEpoch
-	afterCheckpointCount := heightFromEpoch
-
-	if len(previousEpochValidators) < int(beforeCheckpointCount) {
-		return 0, fmt.Errorf("insufficient validator count actual=%d, expected=%d", len(previousEpochValidators), beforeCheckpointCount)
+func (pr *Prover) requiredHeaderCountToVerifyBetweenCheckpoint(target *types.Header, threshold uint64, previousEpochValidators Ring, currentEpochValidators Ring) (uint64, error) {
+	heightFromEpoch := target.Number.Uint64()
+	coinbase := target.Coinbase
+	index := previousEpochValidators.IndexOf(coinbase)
+	if index < 0 {
+		return 0, fmt.Errorf("validator not found number=%d, coinbase=%s", target.Number, coinbase.String())
 	}
-	if len(currentEpochValidators) < int(afterCheckpointCount) {
-		return 0, fmt.Errorf("insufficient validator count actual=%d, expected=%d", len(currentEpochValidators), afterCheckpointCount)
+	validatorsToVerifyBeforeCheckpoint := previousEpochValidators.Range(index, int(threshold-heightFromEpoch))
+	finalValidator := validatorsToVerifyBeforeCheckpoint[len(validatorsToVerifyBeforeCheckpoint)-1]
+	finalValidatorIndexInCurrentEpoch := currentEpochValidators.IndexOf(common.BytesToAddress(finalValidator))
+	currentValidatorStartAt := 0
+	if finalValidatorIndexInCurrentEpoch > 0 {
+		currentValidatorStartAt = currentEpochValidators.NextIndex(finalValidatorIndexInCurrentEpoch)
 	}
 
-	// Get duplicated validators between current epoch and previous epoch.
-	validatorsToVerifyBeforeCheckpoint := previousEpochValidators[0:beforeCheckpointCount]
-	duplicatedValidatorsCount := 0
-	validatorsToVerifyAfterCheckpoint := currentEpochValidators[0:afterCheckpointCount]
-	for _, aValidator := range validatorsToVerifyAfterCheckpoint {
-		for _, bValidator := range validatorsToVerifyBeforeCheckpoint {
-			// same validator is used
-			if common.Bytes2Hex(aValidator) == common.Bytes2Hex(bValidator) {
-				duplicatedValidatorsCount++
-			}
+	requiredAdditionalCountForFinality := uint64(0)
+	requiredCountForCurrent := heightFromEpoch
+	for i := 0; i < len(currentEpochValidators); i++ {
+		aValidator := common.BytesToAddress(currentEpochValidators.Get(currentValidatorStartAt + i))
+		if validatorsToVerifyBeforeCheckpoint.Contains(aValidator) {
+			log.Printf("validator %s signed previous epoch ", aValidator.String())
+			requiredAdditionalCountForFinality++
+		} else {
+			requiredCountForCurrent--
 		}
-	}
-	// Increase the number of header to verify by the amount of duplicates
-	increasing := uint64(0)
-	restValidatorsAfterCheckpoint := currentEpochValidators[afterCheckpointCount:]
-	for _, rValidator := range restValidatorsAfterCheckpoint {
-		if duplicatedValidatorsCount == 0 {
+		if requiredCountForCurrent <= 0 {
 			break
-		}
-		increasing++
-		if !contains(rValidator, validatorsToVerifyBeforeCheckpoint) {
-			duplicatedValidatorsCount--
 		}
 	}
 	/*
@@ -483,8 +480,8 @@ func (pr *Prover) requiredHeaderCountToVerifyBetweenCheckpoint(heightFromEpoch u
 			}
 		}
 	*/
-	log.Printf("getHeaderCountToVerifyBetweenCheckpoint heightFromEpoch=%d, duplciated=%d, threshold=%d, increasing=%d", heightFromEpoch, duplicatedValidatorsCount, threshold, increasing)
-	return threshold + increasing, nil
+	log.Printf("getHeaderCountToVerifyBetweenCheckpoint heightFromEpoch=%d, threshold=%d, requiredAdditionalCountForFinality=%d", heightFromEpoch, threshold, requiredAdditionalCountForFinality)
+	return threshold + requiredAdditionalCountForFinality, nil
 }
 
 func newETHHeader(header *types.Header) (*ETHHeader, error) {
