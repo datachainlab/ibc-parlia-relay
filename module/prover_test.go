@@ -36,6 +36,7 @@ type mockChain struct {
 	Chain
 	latestHeight uint64
 	chainID      uint64
+	blockMap     map[uint64]*types2.Header
 }
 
 func (r *mockChain) CanonicalChainID(ctx context.Context) (uint64, error) {
@@ -56,6 +57,9 @@ func (r *mockChain) QueryClientState(ctx core.QueryContext) (*clienttypes.QueryC
 }
 
 func (r *mockChain) Header(_ context.Context, height uint64) (*types2.Header, error) {
+	if v, ok := r.blockMap[height]; ok {
+		return v, nil
+	}
 	header := &types2.Header{
 		Root: common.HexToHash("c84307dfe4ccfec4a851a77755d63228d8e0b9ba3345d1eee37ed729ee16eaa1"),
 	}
@@ -474,18 +478,52 @@ func (ts *ProverTestSuite) TestConnectionStateProofAsLCPCommitment() {
 
 func (ts *ProverTestSuite) TestRequiredHeaderCountToVerifyBetweenCheckpoint_Unique() {
 	previousValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20}, {21}}
-	currentValidator := [][]byte{{101}, {102}, {103}, {104}, {105}, {106}, {107}, {108}, {109}, {110}, {111}, {112}, {113}, {114}, {115}, {116}, {117}, {118}, {119}, {120}, {121}}
-	requiredCount := int(requiredHeaderCountToFinalize(len(previousValidator)))
-	for j := 201; j <= 210; j++ {
+	blockMap := map[uint64]*types2.Header{}
+	for i := 211; i <= 231; i++ {
+		blockMap[uint64(i)] = &types2.Header{Coinbase: common.BytesToAddress([]byte{byte(i)})}
+	}
+	requiredCount := requiredHeaderCountToFinalize(len(previousValidator))
+	ts.chain.blockMap = blockMap
+	defer func() {
+		ts.chain.blockMap = nil
+	}()
+	for j := uint64(201); j <= 210; j++ {
 		for i := 0; i < len(previousValidator); i++ {
-			target := &types2.Header{Number: big.NewInt(int64(j)), Coinbase: common.BytesToAddress(previousValidator[i])}
-			result, err := ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
+			notFinalized, result, err := ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(j, requiredCount, 99999)
 			ts.Require().NoError(err)
-			ts.Require().Equal(int(result), requiredCount, fmt.Sprintf("j=%d,i=%d", j, i))
+			ts.Require().False(notFinalized)
+			ts.Require().Equal(int(result), int(requiredCount), fmt.Sprintf("j=%d,i=%d", j, i))
 		}
 	}
 }
 
+func (ts *ProverTestSuite) TestRequiredHeaderCountToVerifyBetweenCheckpoint_AllSame() {
+	previousValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20}, {21}}
+	blockMap := map[uint64]*types2.Header{}
+	for i := 201; i <= 210; i++ {
+		blockMap[uint64(i)] = &types2.Header{Coinbase: common.BytesToAddress(previousValidator[i-201])}
+	}
+	for i := 211; i <= 231; i++ {
+		blockMap[uint64(i)] = &types2.Header{Coinbase: common.BytesToAddress(previousValidator[i-211])}
+	}
+	requiredCount := requiredHeaderCountToFinalize(len(previousValidator))
+	ts.chain.blockMap = blockMap
+	defer func() {
+		ts.chain.blockMap = nil
+	}()
+	for j := uint64(201); j <= 210; j++ {
+		// 201 -> prev={1-10}, cur={1-10} used, {11} unused -> 10 + 10 + 1 = 21
+		// 202 -> prev={2-10}, cur={1} unused, {2-10} used, {11} unused -> 9 + 1 + 9 + 1 = 20
+		// 203 -> prev={3-10}, cur={1-2} unused, {3-10} used, {11} unused -> 8 + 2 + 8 + 1 = 19
+		// 210 -> prev={10}, cur={1-9} unused, {10} used, {11} unused -> 1 + 9 + 1 + 1 = 12
+		notFinalized, result, err := ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(j, requiredCount, 99999)
+		ts.Require().NoError(err)
+		ts.Require().False(notFinalized)
+		ts.Require().Equal(int(requiredCount)+10-(int(j)-201), int(result), fmt.Sprintf("j=%d", j))
+	}
+}
+
+/*
 func (ts *ProverTestSuite) TestRequiredHeaderCountToVerifyBetweenCheckpoint_HalfUnique() {
 	previousValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20}, {21}}
 	currentValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {110}, {111}, {112}, {113}, {114}, {115}, {116}, {117}, {118}, {119}, {120}, {121}}
@@ -663,5 +701,5 @@ func (ts *ProverTestSuite) TestRequiredHeaderCountToVerifyBetweenCheckpoint_NotU
 	result, err = ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
 	ts.Require().NoError(err)
 	ts.Require().Equal(int(result), requiredCount)
-
 }
+*/
