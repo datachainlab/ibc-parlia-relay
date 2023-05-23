@@ -122,7 +122,7 @@ func (pr *Prover) getLatestFinalizedHeader(latestBlockNumber uint64) (out core.H
 		if err != nil {
 			return nil, err
 		}
-		requiredHeaderCount, err := pr.requiredHeaderCountToVerifyBetweenCheckpoint(targetHeader, countToFinalizePrevious, previousEpochValidators, currentEpochValidators)
+		requiredHeaderCount, err := pr.requiredHeaderCountToVerifyBetweenCheckpoint(targetHeader, previousEpochValidators, currentEpochValidators)
 		if err != nil {
 			return nil, err
 		}
@@ -438,28 +438,29 @@ func (pr *Prover) getValidatorSet(epochBlockNumber uint64) ([][]byte, error) {
 	return extractValidatorSet(header)
 }
 
-func (pr *Prover) requiredHeaderCountToVerifyBetweenCheckpoint(target *types.Header, threshold uint64, previousEpochValidators Ring, currentEpochValidators Ring) (uint64, error) {
-	heightFromEpoch := target.Number.Uint64()
+func (pr *Prover) requiredHeaderCountToVerifyBetweenCheckpoint(target *types.Header, previousEpochValidators Ring, currentEpochValidators Ring) (uint64, error) {
+	requiredCountToFinalize := requiredHeaderCountToFinalize(len(previousEpochValidators))
+	heightFromEpoch := target.Number.Uint64() % constant.BlocksPerEpoch
 	coinbase := target.Coinbase
 	index := previousEpochValidators.IndexOf(coinbase)
 	if index < 0 {
 		return 0, fmt.Errorf("validator not found number=%d, coinbase=%s", target.Number, coinbase.String())
 	}
-	validatorsToVerifyBeforeCheckpoint := previousEpochValidators.Range(index, int(threshold-heightFromEpoch))
+	validatorsToVerifyBeforeCheckpoint := previousEpochValidators.Range(index, int(requiredCountToFinalize-heightFromEpoch))
 	finalValidator := validatorsToVerifyBeforeCheckpoint[len(validatorsToVerifyBeforeCheckpoint)-1]
 	finalValidatorIndexInCurrentEpoch := currentEpochValidators.IndexOf(common.BytesToAddress(finalValidator))
 	currentValidatorStartAt := 0
-	if finalValidatorIndexInCurrentEpoch > 0 {
+	if finalValidatorIndexInCurrentEpoch >= 0 {
 		currentValidatorStartAt = currentEpochValidators.NextIndex(finalValidatorIndexInCurrentEpoch)
 	}
 
-	requiredAdditionalCountForFinality := uint64(0)
+	requiredAdditionalCountToFinalize := uint64(0)
 	requiredCountForCurrent := heightFromEpoch
 	for i := 0; i < len(currentEpochValidators); i++ {
 		aValidator := common.BytesToAddress(currentEpochValidators.Get(currentValidatorStartAt + i))
 		if validatorsToVerifyBeforeCheckpoint.Contains(aValidator) {
 			log.Printf("validator %s signed previous epoch ", aValidator.String())
-			requiredAdditionalCountForFinality++
+			requiredAdditionalCountToFinalize++
 		} else {
 			requiredCountForCurrent--
 		}
@@ -480,8 +481,8 @@ func (pr *Prover) requiredHeaderCountToVerifyBetweenCheckpoint(target *types.Hea
 			}
 		}
 	*/
-	log.Printf("getHeaderCountToVerifyBetweenCheckpoint heightFromEpoch=%d, threshold=%d, requiredAdditionalCountForFinality=%d", heightFromEpoch, threshold, requiredAdditionalCountForFinality)
-	return threshold + requiredAdditionalCountForFinality, nil
+	log.Printf("getHeaderCountToVerifyBetweenCheckpoint heightFromEpoch=%d, requiredCountToFinalize=%d, requiredAdditionalCountToFinalize=%d", heightFromEpoch, requiredCountToFinalize, requiredAdditionalCountToFinalize)
+	return requiredCountToFinalize + requiredAdditionalCountToFinalize, nil
 }
 
 func newETHHeader(header *types.Header) (*ETHHeader, error) {
@@ -498,13 +499,4 @@ func requiredHeaderCountToFinalize(validatorCount int) uint64 {
 	// https://github.com/bnb-chain/bsc/blob/master/consensus/parlia/parlia.go#L605
 	// https://github.com/bnb-chain/bsc/blob/master/consensus/parlia/snapshot.go#L191
 	return uint64(validatorCount/2 + 1)
-}
-
-func contains(target []byte, list [][]byte) bool {
-	for _, e := range list {
-		if common.Bytes2Hex(target) == common.Bytes2Hex(e) {
-			return true
-		}
-	}
-	return false
 }

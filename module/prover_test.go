@@ -472,12 +472,57 @@ func (ts *ProverTestSuite) TestConnectionStateProofAsLCPCommitment() {
 	ts.Require().Equal(commitmentStateId.String(), "0xee0b5f32ae2bff0d82149ea22b02e350fbbe467a514ba80bbadd89007df1d167")
 }
 
-func (ts *ProverTestSuite) TestRequiredHeaderCountToVerifyBetweenCheckpoint() {
-	heightFromEpoch := uint64(1)
-	threshold := uint64(5)
-	previousValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}} // 1,2,3,4 is used
-	currentValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}}  // 1 is used, duplicated count is 1, so 2->3->4->5.
-	result, err := ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(heightFromEpoch, threshold, previousValidator, currentValidator)
+func (ts *ProverTestSuite) TestRequiredHeaderCountToVerifyBetweenCheckpoint_Unique() {
+	previousValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20}, {21}}
+	currentValidator := [][]byte{{101}, {102}, {103}, {104}, {105}, {106}, {107}, {108}, {109}, {110}, {111}, {112}, {113}, {114}, {115}, {116}, {117}, {118}, {119}, {120}, {121}}
+	requiredCount := int(requiredHeaderCountToFinalize(len(previousValidator)))
+	for j := 201; j <= 210; j++ {
+		for i := 0; i < len(previousValidator); i++ {
+			target := &types2.Header{Number: big.NewInt(int64(j)), Coinbase: common.BytesToAddress(previousValidator[i])}
+			result, err := ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
+			ts.Require().NoError(err)
+			ts.Require().Equal(int(result), requiredCount, fmt.Sprintf("j=%d,i=%d", j, i))
+		}
+	}
+}
+func (ts *ProverTestSuite) TestRequiredHeaderCountToVerifyBetweenCheckpoint_HalfUnique() {
+	previousValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20}, {21}}
+	currentValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {110}, {111}, {112}, {113}, {114}, {115}, {116}, {117}, {118}, {119}, {120}, {121}}
+	requiredCount := int(requiredHeaderCountToFinalize(len(previousValidator)))
+
+	// requiredForCurrent = 1
+	// previousValidator={1-10} -> currentValidatorStartAt = {1} -> {1-9} is duplicated
+	target := &types2.Header{Number: big.NewInt(int64(201)), Coinbase: common.BytesToAddress(previousValidator[0])}
+	result, err := ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
 	ts.Require().NoError(err)
-	ts.Require().Equal(int(result), int(threshold)+4)
+	ts.Require().Equal(int(result), requiredCount+9)
+
+	// requiredForCurrent = 1
+	// previousValidator={2-11} -> currentValidatorStartAt = {1} -> {1} is unused
+	target = &types2.Header{Number: big.NewInt(int64(201)), Coinbase: common.BytesToAddress(previousValidator[1])}
+	result, err = ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
+	ts.Require().NoError(err)
+	ts.Require().Equal(int(result), requiredCount)
+
+	// requiredForCurrent = 1
+	// previousValidator={10-19} -> currentValidatorStartAt = {1} -> {1} is unused
+	target = &types2.Header{Number: big.NewInt(int64(201)), Coinbase: common.BytesToAddress(previousValidator[9])}
+	result, err = ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
+	ts.Require().NoError(err)
+	ts.Require().Equal(int(result), requiredCount)
+
+	// requiredForCurrent = 1
+	// previousValidator={13-1} -> currentValidatorStartAt = {2} -> {2} is unused
+	target = &types2.Header{Number: big.NewInt(int64(201)), Coinbase: common.BytesToAddress(previousValidator[12])}
+	result, err = ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
+	ts.Require().NoError(err)
+	ts.Require().Equal(int(result), requiredCount)
+
+	// requiredForCurrent = 1
+	// previousValidator={21-8} -> currentValidatorStartAt = {9} -> {9} is unused
+	target = &types2.Header{Number: big.NewInt(int64(201)), Coinbase: common.BytesToAddress(previousValidator[20])}
+	result, err = ts.prover.requiredHeaderCountToVerifyBetweenCheckpoint(target, previousValidator, currentValidator)
+	ts.Require().NoError(err)
+	ts.Require().Equal(int(result), requiredCount)
+
 }
