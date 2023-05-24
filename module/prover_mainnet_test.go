@@ -40,6 +40,7 @@ func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader() {
 	latestHeight, err := ts.prover.chain.LatestHeight()
 	ts.Require().NoError(err)
 	latest := latestHeight.GetRevisionHeight()
+	println(latest)
 	iHeader, err := ts.prover.getLatestFinalizedHeader(latest)
 	ts.Require().NoError(err)
 	ts.Require().NoError(iHeader.ValidateBasic())

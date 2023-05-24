@@ -215,26 +215,25 @@ func (pr *Prover) setupHeadersForUpdate(clientStateLatestHeight exported.Height,
 	if clientStateLatestHeight.GetRevisionHeight() == latestFinalizedHeader.GetHeight().GetRevisionHeight() {
 		return targetHeaders, nil
 	}
-
 	// Append insufficient epoch blocks
 	savedLatestHeight := clientStateLatestHeight.GetRevisionHeight()
 	firstUnsavedEpoch := (savedLatestHeight/constant.BlocksPerEpoch + 1) * constant.BlocksPerEpoch
 	latestFinalizedHeight := latestFinalizedHeader.GetHeight().GetRevisionHeight()
-	previousValidatorSet, err := pr.getValidatorSet(firstUnsavedEpoch)
-	if err != nil {
-		return nil, fmt.Errorf("SetupHeadersForUpdate failed to get previous validator set : firstUnsavedEpoch = %d : %+v", firstUnsavedEpoch, err)
-	}
-	for epochHeight := firstUnsavedEpoch; epochHeight < latestFinalizedHeight; epochHeight += constant.BlocksPerEpoch {
-		epoch, err := pr.queryVerifyingHeader(int64(epochHeight), requiredHeaderCountToFinalize(len(previousValidatorSet)))
+	if latestFinalizedHeight > firstUnsavedEpoch {
+		previousValidatorSet, err := pr.getValidatorSet(firstUnsavedEpoch)
 		if err != nil {
-			return nil, fmt.Errorf("SetupHeadersForUpdate failed to get past epochs : saved_latest = %d : %+v", savedLatestHeight, err)
+			return nil, fmt.Errorf("SetupHeadersForUpdate failed to get previous validator set : firstUnsavedEpoch = %d : %+v", firstUnsavedEpoch, err)
 		}
-		previousValidatorSet = epoch.(*Header).CurrentValidators
-		targetHeaders = append(targetHeaders, epoch)
+		for epochHeight := firstUnsavedEpoch; epochHeight < latestFinalizedHeight; epochHeight += constant.BlocksPerEpoch {
+			epoch, err := pr.queryVerifyingHeader(int64(epochHeight), requiredHeaderCountToFinalize(len(previousValidatorSet)))
+			if err != nil {
+				return nil, fmt.Errorf("SetupHeadersForUpdate failed to get past epochs : saved_latest = %d : %+v", savedLatestHeight, err)
+			}
+			previousValidatorSet = epoch.(*Header).CurrentValidators
+			targetHeaders = append(targetHeaders, epoch)
+		}
 	}
-	if len(targetHeaders) == 0 || targetHeaders[len(targetHeaders)-1].GetHeight() != latestFinalizedHeader.GetHeight() {
-		targetHeaders = append(targetHeaders, latestFinalizedHeader)
-	}
+	targetHeaders = append(targetHeaders, latestFinalizedHeader)
 
 	for i, h := range targetHeaders {
 		var trustedHeight clienttypes.Height
