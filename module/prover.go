@@ -118,7 +118,7 @@ func (pr *Prover) getLatestFinalizedHeader(latestBlockNumber uint64) (out core.H
 	target = uint64(math.MinInt64(int64(checkpoint-1), int64(latestBlockNumber-(countToFinalizePrevious-1))))
 	if target > currentEpoch {
 		// across checkpoint.
-		notFinalized, requiredHeaderCount, err := pr.requiredHeaderCountToVerifyBetweenCheckpoint(target, countToFinalizePrevious, latestBlockNumber)
+		notFinalized, requiredHeaderCount, err := pr.requiredHeaderCountToFinalizeAcrossCheckpoints(target, countToFinalizePrevious, latestBlockNumber)
 		if err != nil {
 			return nil, err
 		}
@@ -434,7 +434,7 @@ func (pr *Prover) getValidatorSet(epochBlockNumber uint64) ([][]byte, error) {
 	return extractValidatorSet(header)
 }
 
-func (pr *Prover) requiredHeaderCountToVerifyBetweenCheckpoint(target uint64, requiredCountToFinalize uint64, latest uint64) (bool, uint64, error) {
+func (pr *Prover) requiredHeaderCountToFinalizeAcrossCheckpoints(target uint64, requiredCountToFinalize uint64, latest uint64) (bool, uint64, error) {
 	if requiredCountToFinalize == 1 {
 		return false, 1, nil
 	}
@@ -449,6 +449,7 @@ func (pr *Prover) requiredHeaderCountToVerifyBetweenCheckpoint(target uint64, re
 		validatorsToVerifyBeforeCheckpoint = append(validatorsToVerifyBeforeCheckpoint, header.Coinbase)
 	}
 
+	// Validators used for verification of the previous epoch are not included in the finalization of the current epoch.
 	requiredCountForCurrent := requiredCountToFinalize - requiredCountForPrevious
 	requiredAdditionalCountToFinalize := uint64(0)
 	for i := target + requiredCountForPrevious; i <= latest; i++ {
@@ -458,7 +459,9 @@ func (pr *Prover) requiredHeaderCountToVerifyBetweenCheckpoint(target uint64, re
 		}
 		aValidator := header.Coinbase
 		if contains(aValidator, validatorsToVerifyBeforeCheckpoint) {
-			log.Printf("validator %s signed previous epoch ", aValidator.String())
+			if pr.config.Debug {
+				log.Printf("validator %s signed previous epoch ", aValidator.String())
+			}
 			requiredAdditionalCountToFinalize++
 		} else {
 			requiredCountForCurrent--
@@ -467,22 +470,11 @@ func (pr *Prover) requiredHeaderCountToVerifyBetweenCheckpoint(target uint64, re
 			break
 		}
 	}
-
-	/*
-		if pr.config.Debug {
-			for i, e := range validatorsToVerifyBeforeCheckpoint {
-				log.Printf(" before Val %d: %s\n", i, common.Bytes2Hex(e))
-			}
-			for i, e := range validatorsToVerifyAfterCheckpoint {
-				log.Printf(" after Val %d: %s\n", i, common.Bytes2Hex(e))
-			}
-			for i, e := range restValidatorsAfterCheckpoint {
-				log.Printf(" rest Val %d: %s\n", i, common.Bytes2Hex(e))
-			}
-		}
-	*/
+	// The latest block is reached before the number of headers to be considered finalized is acquired.
 	notFinalized := requiredCountForCurrent > 0
-	log.Printf("getHeaderCountToVerifyBetweenCheckpoint heightFromEpoch=%d, requiredCountToFinalize=%d, requiredAdditionalCountToFinalize=%d, notfinalized=%t", heightFromEpoch, requiredCountToFinalize, requiredAdditionalCountToFinalize, notFinalized)
+	if pr.config.Debug {
+		log.Printf("getHeaderCountToVerifyBetweenCheckpoint heightFromEpoch=%d, requiredCountToFinalize=%d, requiredAdditionalCountToFinalize=%d, notfinalized=%t", heightFromEpoch, requiredCountToFinalize, requiredAdditionalCountToFinalize, notFinalized)
+	}
 	return notFinalized, requiredCountToFinalize + requiredAdditionalCountToFinalize, nil
 }
 
