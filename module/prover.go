@@ -74,18 +74,8 @@ func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
 }
 
 // getLatestFinalizedHeader returns the latest finalized header from the chain
-// ex) previous validator : 4, current validator = 21
-// latest | target
-// 203    | 200
-// 204    | 201
-// 205    | 202
-// 212    | 202
-// 213    | 203 ( checkpoint by previous validator )
-// 214    | 204
-// 215    | 205
 func (pr *Prover) getLatestFinalizedHeader(latestBlockNumber uint64) (out core.Header, err error) {
-	epochCount := latestBlockNumber / constant.BlocksPerEpoch
-	currentEpoch := epochCount * constant.BlocksPerEpoch
+	currentEpoch := getCurrentEpoch(latestBlockNumber)
 	currentEpochValidators, err := pr.getValidatorSet(currentEpoch)
 	if err != nil {
 		return nil, err
@@ -93,42 +83,41 @@ func (pr *Prover) getLatestFinalizedHeader(latestBlockNumber uint64) (out core.H
 	countToFinalizeCurrent := requiredHeaderCountToFinalize(len(currentEpochValidators))
 
 	// genesis epoch
-	if epochCount == 0 {
+	if currentEpoch == 0 {
 		countToFinalizeCurrentExceptTarget := countToFinalizeCurrent - 1
 		if latestBlockNumber >= countToFinalizeCurrentExceptTarget {
 			target := latestBlockNumber - countToFinalizeCurrentExceptTarget
-			return pr.queryVerifyingHeader(int64(target), countToFinalizeCurrent)
+			return pr.queryVerifyingHeader(target, countToFinalizeCurrent)
 		}
 		return nil, fmt.Errorf("no finalized header found : latest = %d", latestBlockNumber)
 	}
 
-	previousEpoch := (epochCount - 1) * constant.BlocksPerEpoch
+	previousEpoch := getPreviousEpoch(latestBlockNumber)
 	previousEpochValidators, err := pr.getValidatorSet(previousEpoch)
 	if err != nil {
 		return nil, err
 	}
 	countToFinalizePrevious := requiredHeaderCountToFinalize(len(previousEpochValidators))
-
 	checkpoint := currentEpoch + countToFinalizePrevious
 	target := latestBlockNumber - (countToFinalizeCurrent - 1)
 	if target >= checkpoint {
 		// finalized by current validator set
-		return pr.queryVerifyingHeader(int64(target), countToFinalizeCurrent)
+		return pr.queryVerifyingHeader(target, countToFinalizeCurrent)
 	}
 	target = uint64(math.MinInt64(int64(checkpoint-1), int64(latestBlockNumber-(countToFinalizePrevious-1))))
 	if target > currentEpoch {
 		// across checkpoint.
-		notFinalized, requiredHeaderCount, err := pr.requiredHeaderCountToFinalizeAcrossCheckpoints(target, countToFinalizePrevious, latestBlockNumber)
+		mustWaitMoreBlocks, requiredHeaderCount, err := pr.requiredHeaderCountToFinalizeAcrossCheckpoints(target, countToFinalizePrevious, latestBlockNumber)
 		if err != nil {
 			return nil, err
 		}
-		if notFinalized {
-			return pr.queryVerifyingHeader(int64(currentEpoch), countToFinalizePrevious)
+		if mustWaitMoreBlocks {
+			return pr.queryVerifyingHeader(currentEpoch, countToFinalizePrevious)
 		}
-		return pr.queryVerifyingHeader(int64(target), requiredHeaderCount)
+		return pr.queryVerifyingHeader(target, requiredHeaderCount)
 	}
 	// finalized by previous validator set
-	return pr.queryVerifyingHeader(int64(target), countToFinalizePrevious)
+	return pr.queryVerifyingHeader(target, countToFinalizePrevious)
 }
 
 // CreateMsgCreateClient creates a CreateClientMsg to this chain
@@ -140,9 +129,7 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 	}
 
 	// Initial client_state must be previous epoch header because lcp-parlia requires validator set when update_client
-	blockNumber := target.Number.Uint64()
-	epochCount := blockNumber / constant.BlocksPerEpoch
-	previousEpoch := uint64(math.MaxInt64(int64((epochCount-1)*constant.BlocksPerEpoch), 0))
+	previousEpoch := getPreviousEpoch(target.Number.Uint64())
 	previousValidators, err := pr.getValidatorSet(previousEpoch)
 	if err != nil {
 		return nil, err
@@ -225,7 +212,7 @@ func (pr *Prover) setupHeadersForUpdate(clientStateLatestHeight exported.Height,
 			return nil, fmt.Errorf("SetupHeadersForUpdate failed to get previous validator set : firstUnsavedEpoch = %d : %+v", firstUnsavedEpoch, err)
 		}
 		for epochHeight := firstUnsavedEpoch; epochHeight < latestFinalizedHeight; epochHeight += constant.BlocksPerEpoch {
-			epoch, err := pr.queryVerifyingHeader(int64(epochHeight), requiredHeaderCountToFinalize(len(previousValidatorSet)))
+			epoch, err := pr.queryVerifyingHeader(epochHeight, requiredHeaderCountToFinalize(len(previousValidatorSet)))
 			if err != nil {
 				return nil, fmt.Errorf("SetupHeadersForUpdate failed to get past epochs : saved_latest = %d : %+v", savedLatestHeight, err)
 			}
@@ -368,14 +355,13 @@ func (pr *Prover) toHeight(height exported.Height) clienttypes.Height {
 }
 
 // queryHeader returns the header corresponding to the height
-func (pr *Prover) queryVerifyingHeader(height int64, count uint64) (core.Header, error) {
-	uheight := uint64(height)
-	ethHeaders, err := pr.getETHHeaders(uheight, count)
+func (pr *Prover) queryVerifyingHeader(height uint64, count uint64) (core.Header, error) {
+	ethHeaders, err := pr.getETHHeaders(height, count)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get query : height = %d, %+v", height, err)
 	}
 	// get RLP-encoded account proof
-	rlpAccountProof, _, err := pr.getAccountProof(height)
+	rlpAccountProof, _, err := pr.getAccountProof(int64(height))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get account proof : height = %d, %+v", height, err)
 	}
@@ -386,20 +372,14 @@ func (pr *Prover) queryVerifyingHeader(height int64, count uint64) (core.Header,
 	}
 
 	// Get validator set for verify headers
-	epochCount := uheight / constant.BlocksPerEpoch
-	var previousEpoch uint64
-	if epochCount == 0 {
-		previousEpoch = epochCount * constant.BlocksPerEpoch
-	} else {
-		previousEpoch = (epochCount - 1) * constant.BlocksPerEpoch
-	}
+	previousEpoch := getPreviousEpoch(height)
 	header.PreviousValidators, err = pr.getValidatorSet(previousEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
 	}
 	// Epoch doesn't need to get validator set because it contains validator set.
-	if uheight%constant.BlocksPerEpoch != 0 {
-		currentEpoch := epochCount * constant.BlocksPerEpoch
+	if !isEpoch(height) {
+		currentEpoch := getCurrentEpoch(height)
 		header.CurrentValidators, err = pr.getValidatorSet(currentEpoch)
 		if err != nil {
 			return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
@@ -438,9 +418,9 @@ func (pr *Prover) requiredHeaderCountToFinalizeAcrossCheckpoints(target uint64, 
 		return false, 1, nil
 	}
 	heightFromEpoch := target % constant.BlocksPerEpoch
-	requiredCountForPrevious := requiredCountToFinalize - heightFromEpoch
+	requiredCountToFinalizePreviousEpoch := requiredCountToFinalize - heightFromEpoch
 	var validatorsToVerifyBeforeCheckpoint []common.Address
-	for i := target; i < target+requiredCountForPrevious; i++ {
+	for i := target; i < target+requiredCountToFinalizePreviousEpoch; i++ {
 		header, err := pr.chain.Header(context.TODO(), i)
 		if err != nil {
 			return false, 0, err
@@ -449,32 +429,31 @@ func (pr *Prover) requiredHeaderCountToFinalizeAcrossCheckpoints(target uint64, 
 	}
 
 	// Validators used for verification of the previous epoch are not included in the finalization of the current epoch.
-	requiredCountForCurrent := requiredCountToFinalize - requiredCountForPrevious
+	requiredCountToFinalizeCurrentEpoch := requiredCountToFinalize - requiredCountToFinalizePreviousEpoch
 	requiredAdditionalCountToFinalize := uint64(0)
-	for i := target + requiredCountForPrevious; i <= latest; i++ {
+	for i := target + requiredCountToFinalizePreviousEpoch; i <= latest; i++ {
 		header, err := pr.chain.Header(context.TODO(), i)
 		if err != nil {
 			return false, 0, err
 		}
-		aValidator := header.Coinbase
-		if contains(aValidator, validatorsToVerifyBeforeCheckpoint) {
+		if contains(header.Coinbase, validatorsToVerifyBeforeCheckpoint) {
 			if pr.config.Debug {
-				log.Printf("validator %s signed previous epoch ", aValidator.String())
+				log.Printf("validator %s signed previous epoch ", header.Coinbase.String())
 			}
 			requiredAdditionalCountToFinalize++
 		} else {
-			requiredCountForCurrent--
+			requiredCountToFinalizeCurrentEpoch--
 		}
-		if requiredCountForCurrent <= 0 {
+		if requiredCountToFinalizeCurrentEpoch <= 0 {
 			break
 		}
 	}
 	// The latest block is reached before the number of headers to be considered finalized is acquired.
-	notFinalized := requiredCountForCurrent > 0
+	mustWaitMoreBlocks := requiredCountToFinalizeCurrentEpoch > 0
 	if pr.config.Debug {
-		log.Printf("getHeaderCountToVerifyBetweenCheckpoint heightFromEpoch=%d, requiredCountToFinalize=%d, requiredAdditionalCountToFinalize=%d, notfinalized=%t", heightFromEpoch, requiredCountToFinalize, requiredAdditionalCountToFinalize, notFinalized)
+		log.Printf("getHeaderCountToVerifyBetweenCheckpoint heightFromEpoch=%d, requiredCountToFinalize=%d, requiredAdditionalCountToFinalize=%d, mustWaitMoreBlocks=%t", heightFromEpoch, requiredCountToFinalize, requiredAdditionalCountToFinalize, mustWaitMoreBlocks)
 	}
-	return notFinalized, requiredCountToFinalize + requiredAdditionalCountToFinalize, nil
+	return mustWaitMoreBlocks, requiredCountToFinalize + requiredAdditionalCountToFinalize, nil
 }
 
 func newETHHeader(header *types.Header) (*ETHHeader, error) {
@@ -500,4 +479,18 @@ func contains(target common.Address, list []common.Address) bool {
 		}
 	}
 	return false
+}
+
+func getPreviousEpoch(v uint64) uint64 {
+	epochCount := v / constant.BlocksPerEpoch
+	return uint64(math.MaxInt64(0, int64(epochCount)-1)) * constant.BlocksPerEpoch
+}
+
+func isEpoch(v uint64) bool {
+	return uint64(v)%constant.BlocksPerEpoch == 0
+}
+
+func getCurrentEpoch(v uint64) uint64 {
+	epochCount := v / constant.BlocksPerEpoch
+	return epochCount * constant.BlocksPerEpoch
 }
