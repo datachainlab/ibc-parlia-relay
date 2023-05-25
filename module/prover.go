@@ -218,9 +218,16 @@ func (pr *Prover) setupHeadersForUpdate(clientStateLatestHeight exported.Height,
 		for epochHeight := firstUnsavedEpoch; epochHeight < latestFinalizedHeight; epochHeight += constant.BlocksPerEpoch {
 			epoch, err := pr.queryVerifyingHeader(epochHeight, requiredHeaderCountToFinalize(len(previousValidatorSet)))
 			if err != nil {
-				return nil, fmt.Errorf("SetupHeadersForUpdate failed to get past epochs : saved_latest = %d : %+v", savedLatestHeight, err)
+				return nil, fmt.Errorf("SetupHeadersForUpdate failed to get past epochs : height=%d : %+v", epochHeight, err)
 			}
-			previousValidatorSet = epoch.(*Header).CurrentValidators
+			unwrap, err := epoch.(*Header).Target()
+			if err != nil {
+				return nil, fmt.Errorf("SetupHeadersForUpdate failed to unwrap header : height=%d : %+v", epoch.GetHeight(), err)
+			}
+			previousValidatorSet, err = extractValidatorSet(unwrap)
+			if err != nil {
+				return nil, fmt.Errorf("SetupHeadersForUpdate failed to extract validator : height=%d : %+v", epoch.GetHeight(), err)
+			}
 			targetHeaders = append(targetHeaders, epoch)
 		}
 	}
