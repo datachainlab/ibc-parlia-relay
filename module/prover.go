@@ -76,7 +76,7 @@ func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
 // getLatestFinalizedHeader returns the latest finalized header from the chain
 func (pr *Prover) getLatestFinalizedHeader(latestBlockNumber uint64) (out core.Header, err error) {
 	currentEpoch := getCurrentEpoch(latestBlockNumber)
-	currentEpochValidators, err := pr.getValidatorSet(currentEpoch)
+	currentEpochValidators, err := pr.queryValidatorSet(currentEpoch)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func (pr *Prover) getLatestFinalizedHeader(latestBlockNumber uint64) (out core.H
 	}
 
 	previousEpoch := getPreviousEpoch(latestBlockNumber)
-	previousEpochValidators, err := pr.getValidatorSet(previousEpoch)
+	previousEpochValidators, err := pr.queryValidatorSet(previousEpoch)
 	if err != nil {
 		return nil, err
 	}
@@ -122,14 +122,8 @@ func (pr *Prover) getLatestFinalizedHeader(latestBlockNumber uint64) (out core.H
 
 // CreateMsgCreateClient creates a CreateClientMsg to this chain
 func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.AccAddress) (*clienttypes.MsgCreateClient, error) {
-	header := dstHeader.(*Header)
-	target, err := header.Target()
-	if err != nil {
-		return nil, err
-	}
-
 	// Initial client_state must be previous epoch header because lcp-parlia requires validator set when update_client
-	previousEpoch := getPreviousEpoch(target.Number.Uint64())
+	previousEpoch := getPreviousEpoch(dstHeader.GetHeight().GetRevisionHeight())
 	previousEpochHeader, err := pr.chain.Header(context.TODO(), previousEpoch)
 	if err != nil {
 		return nil, err
@@ -166,7 +160,7 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 		Timestamp:      previousEpochHeader.Time,
 		ValidatorsHash: crypto.Keccak256(previousValidators...),
 		// Since ibc handler may not be deployed at the target epoch when create_client is used, state_root is not obtained.
-		StateRoot: crypto.Keccak256(),
+		StateRoot: pr.getStateRootOrEmpty(previousEpochHeader).Bytes(),
 	}
 	anyConsensusState, err := codectypes.NewAnyWithValue(&consensusState)
 	if err != nil {
@@ -211,7 +205,7 @@ func (pr *Prover) setupHeadersForUpdate(clientStateLatestHeight exported.Height,
 	firstUnsavedEpoch := (savedLatestHeight/constant.BlocksPerEpoch + 1) * constant.BlocksPerEpoch
 	latestFinalizedHeight := latestFinalizedHeader.GetHeight().GetRevisionHeight()
 	if latestFinalizedHeight > firstUnsavedEpoch {
-		previousValidatorSet, err := pr.getValidatorSet(firstUnsavedEpoch)
+		previousValidatorSet, err := pr.queryValidatorSet(firstUnsavedEpoch)
 		if err != nil {
 			return nil, fmt.Errorf("SetupHeadersForUpdate failed to get previous validator set : firstUnsavedEpoch = %d : %+v", firstUnsavedEpoch, err)
 		}
@@ -236,9 +230,9 @@ func (pr *Prover) setupHeadersForUpdate(clientStateLatestHeight exported.Height,
 	for i, h := range targetHeaders {
 		var trustedHeight clienttypes.Height
 		if i == 0 {
-			trustedHeight = pr.toHeight(clientStateLatestHeight)
+			trustedHeight = toHeight(clientStateLatestHeight)
 		} else {
-			trustedHeight = pr.toHeight(targetHeaders[i-1].GetHeight())
+			trustedHeight = toHeight(targetHeaders[i-1].GetHeight())
 		}
 		h.(*Header).TrustedHeight = &trustedHeight
 
@@ -255,7 +249,7 @@ func (pr *Prover) QueryClientConsensusStateWithProof(ctx core.QueryContext, dstC
 	if err != nil {
 		return nil, err
 	}
-	res.ProofHeight = pr.toHeight(ctx.Height())
+	res.ProofHeight = toHeight(ctx.Height())
 	res.Proof, err = pr.getStateCommitmentProof(host.FullConsensusStateKey(
 		pr.chain.Path().ClientID,
 		dstClientConsHeight,
@@ -272,7 +266,7 @@ func (pr *Prover) QueryClientStateWithProof(ctx core.QueryContext) (*clienttypes
 	if err != nil {
 		return nil, err
 	}
-	res.ProofHeight = pr.toHeight(ctx.Height())
+	res.ProofHeight = toHeight(ctx.Height())
 	res.Proof, err = pr.getStateCommitmentProof(host.FullClientStateKey(
 		pr.chain.Path().ClientID,
 	), ctx.Height())
@@ -295,7 +289,7 @@ func (pr *Prover) QueryConnectionWithProof(ctx core.QueryContext) (*conntypes.Qu
 	key := host.ConnectionKey(
 		pr.chain.Path().ConnectionID,
 	)
-	res.ProofHeight = pr.toHeight(ctx.Height())
+	res.ProofHeight = toHeight(ctx.Height())
 	res.Proof, err = pr.getStateCommitmentProof(key, ctx.Height())
 	if err != nil {
 		return nil, err
@@ -313,7 +307,7 @@ func (pr *Prover) QueryChannelWithProof(ctx core.QueryContext) (chanRes *chantyp
 		// channel not found
 		return res, nil
 	}
-	res.ProofHeight = pr.toHeight(ctx.Height())
+	res.ProofHeight = toHeight(ctx.Height())
 	key := host.ChannelKey(
 		pr.chain.Path().PortID,
 		pr.chain.Path().ChannelID,
@@ -331,7 +325,7 @@ func (pr *Prover) QueryPacketCommitmentWithProof(ctx core.QueryContext, seq uint
 	if err != nil {
 		return nil, err
 	}
-	res.ProofHeight = pr.toHeight(ctx.Height())
+	res.ProofHeight = toHeight(ctx.Height())
 	res.Proof, err = pr.getStateCommitmentProof(host.PacketCommitmentKey(
 		pr.chain.Path().PortID,
 		pr.chain.Path().ChannelID,
@@ -349,7 +343,7 @@ func (pr *Prover) QueryPacketAcknowledgementCommitmentWithProof(ctx core.QueryCo
 	if err != nil {
 		return nil, err
 	}
-	res.ProofHeight = pr.toHeight(ctx.Height())
+	res.ProofHeight = toHeight(ctx.Height())
 	res.Proof, err = pr.getStateCommitmentProof(host.PacketAcknowledgementKey(
 		pr.chain.Path().PortID,
 		pr.chain.Path().ChannelID,
@@ -361,13 +355,9 @@ func (pr *Prover) QueryPacketAcknowledgementCommitmentWithProof(ctx core.QueryCo
 	return res, nil
 }
 
-func (pr *Prover) toHeight(height exported.Height) clienttypes.Height {
-	return clienttypes.NewHeight(height.GetRevisionNumber(), height.GetRevisionHeight())
-}
-
-// queryHeader returns the header corresponding to the height
+// queryVerifyingHeader returns headers to finalize
 func (pr *Prover) queryVerifyingHeader(height uint64, count uint64) (core.Header, error) {
-	ethHeaders, err := pr.getETHHeaders(height, count)
+	ethHeaders, err := pr.queryETHHeaders(height, count)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get query : height = %d, %+v", height, err)
 	}
@@ -384,14 +374,14 @@ func (pr *Prover) queryVerifyingHeader(height uint64, count uint64) (core.Header
 
 	// Get validator set for verify headers
 	previousEpoch := getPreviousEpoch(height)
-	header.PreviousValidators, err = pr.getValidatorSet(previousEpoch)
+	header.PreviousValidators, err = pr.queryValidatorSet(previousEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
 	}
 	// Epoch doesn't need to get validator set because it contains validator set.
 	if !isEpoch(height) {
 		currentEpoch := getCurrentEpoch(height)
-		header.CurrentValidators, err = pr.getValidatorSet(currentEpoch)
+		header.CurrentValidators, err = pr.queryValidatorSet(currentEpoch)
 		if err != nil {
 			return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
 		}
@@ -399,7 +389,8 @@ func (pr *Prover) queryVerifyingHeader(height uint64, count uint64) (core.Header
 	return header, nil
 }
 
-func (pr *Prover) getETHHeaders(start uint64, count uint64) ([]*ETHHeader, error) {
+// queryETHHeaders returns the ETHHeaders
+func (pr *Prover) queryETHHeaders(start uint64, count uint64) ([]*ETHHeader, error) {
 	var ethHeaders []*ETHHeader
 	for i := 0; i < int(count); i++ {
 		height := uint64(i) + start
@@ -416,7 +407,8 @@ func (pr *Prover) getETHHeaders(start uint64, count uint64) ([]*ETHHeader, error
 	return ethHeaders, nil
 }
 
-func (pr *Prover) getValidatorSet(epochBlockNumber uint64) ([][]byte, error) {
+// queryValidatorSet returns the validator set
+func (pr *Prover) queryValidatorSet(epochBlockNumber uint64) ([][]byte, error) {
 	header, err := pr.chain.Header(context.TODO(), epochBlockNumber)
 	if err != nil {
 		return nil, err
@@ -424,6 +416,7 @@ func (pr *Prover) getValidatorSet(epochBlockNumber uint64) ([][]byte, error) {
 	return extractValidatorSet(header)
 }
 
+// requiredHeaderCountToFinalizeAcrossCheckpoints returns the block count to finalize across checkpoints
 func (pr *Prover) requiredHeaderCountToFinalizeAcrossCheckpoints(target uint64, requiredCountToFinalize uint64, latest uint64) (uint64, error) {
 	if requiredCountToFinalize == 1 {
 		return 1, nil
@@ -455,7 +448,7 @@ func (pr *Prover) requiredHeaderCountToFinalizeAcrossCheckpoints(target uint64, 
 		checked = append(checked, header.Coinbase)
 		if contains(header.Coinbase, validatorsToVerifyBeforeCheckpoint) {
 			if pr.config.Debug {
-				log.Printf("validator %s signed previous epoch ", header.Coinbase.String())
+				log.Printf("acrossCheckpoints target=%d : validator %s signed previous epoch ", target, header.Coinbase.String())
 			}
 			requiredAdditionalCountToFinalize++
 		} else {
@@ -466,11 +459,12 @@ func (pr *Prover) requiredHeaderCountToFinalizeAcrossCheckpoints(target uint64, 
 		}
 	}
 	if pr.config.Debug {
-		log.Printf("getHeaderCountToVerifyBetweenCheckpoint heightFromEpoch=%d, requiredCountToFinalize=%d, requiredAdditionalCountToFinalize=%d", heightFromEpoch, requiredCountToFinalize, requiredAdditionalCountToFinalize)
+		log.Printf("acrossCheckpoints target=%d : heightFromEpoch=%d, requiredCountToFinalize=%d, requiredAdditionalCountToFinalize=%d", target, heightFromEpoch, requiredCountToFinalize, requiredAdditionalCountToFinalize)
 	}
 	return requiredCountToFinalize + requiredAdditionalCountToFinalize, nil
 }
 
+// newETHHeader returns the new ETHHeader
 func newETHHeader(header *types.Header) (*ETHHeader, error) {
 	rlpHeader, err := rlp.EncodeToBytes(header)
 	if err != nil {
@@ -479,6 +473,7 @@ func newETHHeader(header *types.Header) (*ETHHeader, error) {
 	return &ETHHeader{Header: rlpHeader}, nil
 }
 
+// requiredHeaderCountToFinalize return the header count to finalize
 func requiredHeaderCountToFinalize(validatorCount int) uint64 {
 	// The checkpoint is [(block - 1) % epochCount == len(previousValidatorCount / 2)]
 	// for example when the validator count is 21 the checkpoint is 211, 411, 611 ...
@@ -502,10 +497,14 @@ func getPreviousEpoch(v uint64) uint64 {
 }
 
 func isEpoch(v uint64) bool {
-	return uint64(v)%constant.BlocksPerEpoch == 0
+	return v%constant.BlocksPerEpoch == 0
 }
 
 func getCurrentEpoch(v uint64) uint64 {
 	epochCount := v / constant.BlocksPerEpoch
 	return epochCount * constant.BlocksPerEpoch
+}
+
+func toHeight(height exported.Height) clienttypes.Height {
+	return clienttypes.NewHeight(height.GetRevisionNumber(), height.GetRevisionHeight())
 }
