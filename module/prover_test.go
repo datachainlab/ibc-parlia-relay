@@ -275,7 +275,7 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 		ts.Require().NoError(err)
 		ts.Require().Equal(cs2.ValidatorsHash, crypto.Keccak256(validatorSet...))
 		ts.Require().Equal(cs2.Timestamp, target.Time)
-		ts.Require().Equal(cs2.StateRoot, crypto.Keccak256())
+		ts.Require().Equal(cs2.StateRoot, common.HexToHash("0xc3608871098f21b59607ef3fb9412a091de9246ad1281a92f5b07dc2f465b7a0").Bytes())
 	}
 	assertFn(400)
 	assertFn(401)
