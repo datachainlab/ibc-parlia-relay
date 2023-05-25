@@ -243,12 +243,12 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 
 func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 
-	previousEpochETHHeader, tErr := ts.prover.getETHHeaders(uint64(200), 4)
+	previousEpochETHHeader, tErr := ts.prover.queryETHHeaders(uint64(200), 4)
 	ts.Require().NoError(tErr)
 	previousEpochHeader := &Header{Headers: previousEpochETHHeader}
 
 	assertFn := func(finalizedHeight int64) {
-		finalizedETHHeader, err := ts.prover.getETHHeaders(uint64(finalizedHeight), 1)
+		finalizedETHHeader, err := ts.prover.queryETHHeaders(uint64(finalizedHeight), 1)
 		ts.Require().NoError(err)
 		finalizedHeader := &Header{Headers: finalizedETHHeader}
 		msg, err := ts.prover.CreateMsgCreateClient("", finalizedHeader, types.AccAddress{})
