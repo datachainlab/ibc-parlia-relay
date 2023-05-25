@@ -232,7 +232,7 @@ func (pr *Prover) setupHeadersForUpdate(clientStateLatestHeight exported.Height,
 		h.(*Header).TrustedHeight = &trustedHeight
 
 		if pr.config.Debug {
-			log.Printf("SetupHeadersForUpdate: target height = %v, trustedHeight = %v\n", h.GetHeight(), trustedHeight)
+			log.Printf("SetupHeadersForUpdate: targetHeight=%v, trustedHeight=%v, headerLength=%d, \n", h.GetHeight(), trustedHeight, len(h.(*Header).Headers))
 		}
 	}
 	return targetHeaders, nil
