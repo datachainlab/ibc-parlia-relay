@@ -130,7 +130,11 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 
 	// Initial client_state must be previous epoch header because lcp-parlia requires validator set when update_client
 	previousEpoch := getPreviousEpoch(target.Number.Uint64())
-	previousValidators, err := pr.getValidatorSet(previousEpoch)
+	previousEpochHeader, err := pr.chain.Header(context.TODO(), previousEpoch)
+	if err != nil {
+		return nil, err
+	}
+	previousValidators, err := extractValidatorSet(previousEpochHeader)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +163,7 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 		return nil, err
 	}
 	consensusState := ConsensusState{
-		Timestamp:      target.Time,
+		Timestamp:      previousEpochHeader.Time,
 		ValidatorsHash: crypto.Keccak256(previousValidators...),
 		// Since ibc handler may not be deployed at the target epoch when create_client is used, state_root is not obtained.
 		StateRoot: crypto.Keccak256(),
@@ -232,8 +236,7 @@ func (pr *Prover) setupHeadersForUpdate(clientStateLatestHeight exported.Height,
 		h.(*Header).TrustedHeight = &trustedHeight
 
 		if pr.config.Debug {
-			t, _ := h.(*Header).Target()
-			log.Printf("SetupHeadersForUpdate: targetHeight=%v, targetTimestamp=%s, trustedHeight=%v, headerLength=%d, \n", h.GetHeight(), time.Unix(int64(t.Time), 0).String(), trustedHeight, len(h.(*Header).Headers))
+			log.Printf("SetupHeadersForUpdate: targetHeight=%v, trustedHeight=%v, headerLength=%d, \n", h.GetHeight(), trustedHeight, len(h.(*Header).Headers))
 		}
 	}
 	return targetHeaders, nil
