@@ -475,7 +475,7 @@ func (ts *ProverTestSuite) TestConnectionStateProofAsLCPCommitment() {
 	ts.Require().Equal(commitmentStateId.String(), "0xee0b5f32ae2bff0d82149ea22b02e350fbbe467a514ba80bbadd89007df1d167")
 }
 
-func (ts *ProverTestSuite) TestrequiredHeaderCountToFinalizeAcrossCheckpoints_Unique() {
+func (ts *ProverTestSuite) TestRequiredHeaderCountToFinalizeAcrossCheckpoints_Unique() {
 	blockMap := map[uint64]*types2.Header{}
 	for i := 211; i <= 231; i++ {
 		blockMap[uint64(i)] = &types2.Header{Coinbase: common.BytesToAddress([]byte{byte(i)})}
@@ -487,15 +487,14 @@ func (ts *ProverTestSuite) TestrequiredHeaderCountToFinalizeAcrossCheckpoints_Un
 	}()
 	for j := uint64(201); j <= 210; j++ {
 		for i := 0; i < 21; i++ {
-			notFinalized, result, err := ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(j, requiredCount, 99999)
+			result, err := ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(j, requiredCount, 99999)
 			ts.Require().NoError(err)
-			ts.Require().False(notFinalized)
 			ts.Require().Equal(int(result), int(requiredCount), fmt.Sprintf("j=%d,i=%d", j, i))
 		}
 	}
 }
 
-func (ts *ProverTestSuite) TestrequiredHeaderCountToFinalizeAcrossCheckpoints_AllSame() {
+func (ts *ProverTestSuite) TestRequiredHeaderCountToFinalizeAcrossCheckpoints_AllSame() {
 	previousValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20}, {21}}
 	blockMap := map[uint64]*types2.Header{}
 	for i := 201; i <= 210; i++ {
@@ -514,14 +513,13 @@ func (ts *ProverTestSuite) TestrequiredHeaderCountToFinalizeAcrossCheckpoints_Al
 		// 202 -> prev={2-10}, cur={1} unused, {2-10} used, {11} unused -> 9 + 1 + 9 + 1 = 20
 		// 203 -> prev={3-10}, cur={1-2} unused, {3-10} used, {11} unused -> 8 + 2 + 8 + 1 = 19
 		// 210 -> prev={10}, cur={1-9} unused, {10} used, {11} unused -> 1 + 9 + 1 + 1 = 12
-		notFinalized, result, err := ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(j, requiredCount, 99999)
+		result, err := ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(j, requiredCount, 99999)
 		ts.Require().NoError(err)
-		ts.Require().False(notFinalized)
 		ts.Require().Equal(int(requiredCount)+10-(int(j)-201), int(result), fmt.Sprintf("j=%d", j))
 	}
 }
 
-func (ts *ProverTestSuite) TestrequiredHeaderCountToFinalizeAcrossCheckpoints_HalfUnique() {
+func (ts *ProverTestSuite) TestRequiredHeaderCountToFinalizeAcrossCheckpoints_HalfUnique() {
 	previousValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20}, {21}}
 	currentValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {111}, {112}, {113}, {114}, {115}, {116}, {117}, {118}, {119}, {120}, {121}}
 	blockMap := map[uint64]*types2.Header{}
@@ -538,37 +536,32 @@ func (ts *ProverTestSuite) TestrequiredHeaderCountToFinalizeAcrossCheckpoints_Ha
 	}()
 
 	// prev={1-10}, cur={1-10} used, {111} unused = 10 + 10 + 1 = 21
-	notFinalized, result, err := ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(201, requiredCount, 231)
+	result, err := ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(201, requiredCount, 231)
 	ts.Require().NoError(err)
-	ts.Require().False(notFinalized)
 	ts.Require().Equal(int(requiredCount+10), int(result))
 
 	// prev={1-10}, cur={1-10} used, {111} unused = 10 + 10 + 1 = 21
-	notFinalized, _, err = ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(201, requiredCount, 212)
-	ts.Require().True(notFinalized)
+	_, err = ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(201, requiredCount, 212)
 	ts.Require().NoError(err)
 
 	// prev={5-10}, cur={1-4} unused, {5-10} used, {111} unused = 6 + 4 + 6 + 1 = 17
-	notFinalized, result, err = ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(205, requiredCount, 231)
+	result, err = ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(205, requiredCount, 231)
 	ts.Require().NoError(err)
-	ts.Require().False(notFinalized)
 	ts.Require().Equal(int(requiredCount+6), int(result))
 
 	// prev={10}, cur={1-9} unused, {10} used, {111} unused = 1 + 9 + 1 + 1 = 12
-	notFinalized, result, err = ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(210, requiredCount, 231)
+	result, err = ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(210, requiredCount, 231)
 	ts.Require().NoError(err)
-	ts.Require().False(notFinalized)
 	ts.Require().Equal(int(requiredCount+1), int(result))
 }
 
-func (ts *ProverTestSuite) TestrequiredHeaderCountToFinalizeAcrossCheckpoints_AllSameOneValidator() {
-	notFinalized, result, err := ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(200, 1, 99999)
+func (ts *ProverTestSuite) TestRequiredHeaderCountToFinalizeAcrossCheckpoints_AllSameOneValidator() {
+	result, err := ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(200, 1, 99999)
 	ts.Require().NoError(err)
-	ts.Require().False(notFinalized)
 	ts.Require().Equal(1, int(result))
 }
 
-func (ts *ProverTestSuite) TestrequiredHeaderCountToFinalizeAcrossCheckpoints_AllSameTwoValidators() {
+func (ts *ProverTestSuite) TestRequiredHeaderCountToFinalizeAcrossCheckpoints_AllSameTwoValidators() {
 	previousValidator := [][]byte{{1}, {2}}
 	blockMap := map[uint64]*types2.Header{}
 	blockMap[201] = &types2.Header{Coinbase: common.BytesToAddress(previousValidator[1])}
@@ -579,9 +572,8 @@ func (ts *ProverTestSuite) TestrequiredHeaderCountToFinalizeAcrossCheckpoints_Al
 	defer func() {
 		ts.chain.blockMap = nil
 	}()
-	notFinalized, result, err := ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(201, requiredCount, 99999)
+	result, err := ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(201, requiredCount, 99999)
 	ts.Require().NoError(err)
-	ts.Require().False(notFinalized)
 	// prev={2}, cur={2} used -> {1} unused : 1 + 1 + 1 = 3
 	ts.Require().Equal(int(requiredCount)+1, int(result))
 }
