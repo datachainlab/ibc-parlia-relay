@@ -36,9 +36,9 @@ go build -tags dev -ldflags="-X github.com/datachainlab/ibc-parlia-relay/module/
 ## Change luban fork
 
 * You can change block for luban fork
-* This is only for local net.
 ```
-go build -tags dev -ldflags="-X github.com/datachainlab/ibc-parlia-relay/module/constant.lubanFork=6" -o testrly .
+go build -o testrly .
+BSC_LUBAN_FORK=1000000 ./testrly
 ```
 
 ## Development

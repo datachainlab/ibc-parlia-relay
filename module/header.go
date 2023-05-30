@@ -4,7 +4,7 @@ import (
 	"fmt"
 	clienttypes "github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
 	"github.com/cosmos/ibc-go/v4/modules/core/exported"
-	"github.com/datachainlab/ibc-parlia-relay/module/constant"
+	"github.com/datachainlab/ibc-parlia-relay/module/env"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -165,7 +165,7 @@ func extractValidatorSet(h *types.Header) ([][]byte, error) {
 	}
 	var validatorSet [][]byte
 	validators := extra[extraVanity : len(extra)-extraSeal]
-	if h.Number.Uint64() >= constant.LubanFork {
+	if h.Number.Uint64() >= env.LubanFork {
 		validatorCount := int(validators[0])
 		validatorsWithBLS := validators[1 : validatorCount*validatorBytesLength]
 		for i := 0; i < validatorCount; i++ {
