@@ -2,9 +2,17 @@ version: "3.8"
 
 volumes:
   bsc-rpc:
-  bsc-validator1:
+  bsc-validator1-1:
+  bsc-validator1-2:
+  bsc-validator1-3:
+  bsc-validator1-4:
+  bsc-validator1-5:
   bsc-rpc2:
-  bsc-validator2:
+  bsc-validator2-1:
+  bsc-validator2-2:
+  bsc-validator2-3:
+  bsc-validator2-4:
+  bsc-validator2-5:
 
 services:
   bootstrap-simple:
@@ -13,11 +21,16 @@ services:
       dockerfile: Dockerfile.bootstrap
     env_file: .env
     environment:
+      BLOCKS_PER_EPOCH: 20
       INIT_HOLDER_BALANCE: "500000000000000000000"
-      NUMS_OF_VALIDATOR: 1
+      NUMS_OF_VALIDATOR: 5
     volumes:
       - bsc-rpc:/root/storage/bsc-rpc
-      - bsc-validator1:/root/storage/bsc-validator1
+      - bsc-validator1-1:/root/storage/bsc-validator1
+      - bsc-validator1-2:/root/storage/bsc-validator2
+      - bsc-validator1-3:/root/storage/bsc-validator3
+      - bsc-validator1-4:/root/storage/bsc-validator4
+      - bsc-validator1-5:/root/storage/bsc-validator5
       - ./scripts:/root/scripts
       - ./config:/root/config
       - ./init-holders:/root/init-holders
@@ -29,11 +42,16 @@ services:
       dockerfile: Dockerfile.bootstrap
     env_file: .env2
     environment:
+      BLOCKS_PER_EPOCH: 20
       INIT_HOLDER_BALANCE: "500000000000000000000"
-      NUMS_OF_VALIDATOR: 1
+      NUMS_OF_VALIDATOR: 5
     volumes:
       - bsc-rpc2:/root/storage/bsc-rpc
-      - bsc-validator2:/root/storage/bsc-validator1
+      - bsc-validator2-1:/root/storage/bsc-validator1
+      - bsc-validator2-2:/root/storage/bsc-validator2
+      - bsc-validator2-3:/root/storage/bsc-validator3
+      - bsc-validator2-4:/root/storage/bsc-validator4
+      - bsc-validator2-5:/root/storage/bsc-validator5
       - ./scripts:/root/scripts
       - ./config:/root/config
       - ./init-holders:/root/init-holders
@@ -69,7 +87,7 @@ services:
       - ./config:/config
     command: ash /scripts/bsc-rpc.sh
 
-  bsc-validator1:
+  bsc-validator1-1:
     image: bsc-geth:docker-local
     env_file: .env
     environment:
@@ -78,11 +96,76 @@ services:
     networks:
       - bsc
     volumes:
-      - bsc-validator1:/root/.ethereum
+      - bsc-validator1-1:/root/.ethereum
       - ./scripts:/scripts
     command: ash /scripts/bsc-validator.sh
 
-  bsc-validator2:
+  bsc-validator1-2:
+    image: bsc-geth:docker-local
+    env_file: .env
+    environment:
+      NODE_ID: bsc-validator2
+      BOOTSTRAP_HOST: bsc-rpc
+    networks:
+      - bsc
+    volumes:
+      - bsc-validator1-2:/root/.ethereum
+      - ./scripts:/scripts
+    command: ash /scripts/bsc-validator.sh
+
+  bsc-validator1-3:
+    image: bsc-geth:docker-local
+    env_file: .env
+    environment:
+      NODE_ID: bsc-validator3
+      BOOTSTRAP_HOST: bsc-rpc
+    networks:
+      - bsc
+    volumes:
+      - bsc-validator1-3:/root/.ethereum
+      - ./scripts:/scripts
+    command: ash /scripts/bsc-validator.sh
+
+  bsc-validator1-4:
+    image: bsc-geth:docker-local
+    env_file: .env
+    environment:
+      NODE_ID: bsc-validator4
+      BOOTSTRAP_HOST: bsc-rpc
+    networks:
+      - bsc
+    volumes:
+      - bsc-validator1-4:/root/.ethereum
+      - ./scripts:/scripts
+    command: ash /scripts/bsc-validator.sh
+
+  bsc-validator1-5:
+    image: bsc-geth:docker-local
+    env_file: .env
+    environment:
+      NODE_ID: bsc-validator5
+      BOOTSTRAP_HOST: bsc-rpc
+    networks:
+      - bsc
+    volumes:
+      - bsc-validator1-5:/root/.ethereum
+      - ./scripts:/scripts
+    command: ash /scripts/bsc-validator.sh
+
+  bsc-validator2-1:
+    image: bsc-geth:docker-local
+    env_file: .env2
+    environment:
+      NODE_ID: bsc-validator1
+      BOOTSTRAP_HOST: bsc-rpc2
+    networks:
+      - bsc2
+    volumes:
+      - bsc-validator2-1:/root/.ethereum
+      - ./scripts:/scripts
+    command: ash /scripts/bsc-validator.sh
+
+  bsc-validator2-2:
     image: bsc-geth:docker-local
     env_file: .env2
     environment:
@@ -91,7 +174,46 @@ services:
     networks:
       - bsc2
     volumes:
-      - bsc-validator2:/root/.ethereum
+      - bsc-validator2-2:/root/.ethereum
+      - ./scripts:/scripts
+    command: ash /scripts/bsc-validator.sh
+
+  bsc-validator2-3:
+    image: bsc-geth:docker-local
+    env_file: .env2
+    environment:
+      NODE_ID: bsc-validator3
+      BOOTSTRAP_HOST: bsc-rpc2
+    networks:
+      - bsc2
+    volumes:
+      - bsc-validator2-3:/root/.ethereum
+      - ./scripts:/scripts
+    command: ash /scripts/bsc-validator.sh
+
+  bsc-validator2-4:
+    image: bsc-geth:docker-local
+    env_file: .env2
+    environment:
+      NODE_ID: bsc-validator2
+      BOOTSTRAP_HOST: bsc-rpc2
+    networks:
+      - bsc2
+    volumes:
+      - bsc-validator2-4:/root/.ethereum
+      - ./scripts:/scripts
+    command: ash /scripts/bsc-validator.sh
+
+  bsc-validator2-5:
+    image: bsc-geth:docker-local
+    env_file: .env2
+    environment:
+      NODE_ID: bsc-validator2
+      BOOTSTRAP_HOST: bsc-rpc2
+    networks:
+      - bsc2
+    volumes:
+      - bsc-validator2-5:/root/.ethereum
       - ./scripts:/scripts
     command: ash /scripts/bsc-validator.sh
 

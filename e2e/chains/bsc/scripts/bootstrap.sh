@@ -27,10 +27,13 @@ function init_validator() {
 function generate_genesis() {
 	INIT_HOLDER_ADDRESSES=$(ls ${workspace}/init-holders | tr '\n' ',')
 	INIT_HOLDER_ADDRESSES=${INIT_HOLDER_ADDRESSES/%,/}
+	echo "blocks per epoch = ${BLOCKS_PER_EPOCH}"
+	sed "s/{{BLOCKS_PER_EPOCH}}/${BLOCKS_PER_EPOCH}/g" ${workspace}/genesis/genesis-template.template >${workspace}/genesis/genesis-template.json
 	sed "s/{{INIT_HOLDER_ADDRESSES}}/${INIT_HOLDER_ADDRESSES}/g" ${workspace}/genesis/init_holders.template | sed "s/{{INIT_HOLDER_BALANCE}}/${INIT_HOLDER_BALANCE}/g" >${workspace}/genesis/init_holders.js
 	node generate-validator.js
 	chainIDHex=$(printf '%04x\n' ${BSC_CHAIN_ID})
 	node generate-genesis.js --chainid ${BSC_CHAIN_ID} --bscChainId ${chainIDHex}
+	#cat ${workspace}/genesis/genesis.json
 }
 
 function init_genesis_data() {
