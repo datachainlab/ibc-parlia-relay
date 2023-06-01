@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package ibc.core.client.v1;
+
+option go_package = "github.com/cosmos/ibc-go/v4/modules/core/02-client/types";
+
+message Height {
+  uint64 revision_number = 1;
+  uint64 revision_height = 2;
+}
