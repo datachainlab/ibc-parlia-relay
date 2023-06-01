@@ -262,6 +262,8 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 		ts.Require().Equal(cs.TrustLevel.Denominator, uint64(3))
 		ts.Require().False(cs.Frozen)
 		ts.Require().Equal(common.Bytes2Hex(cs.IbcStoreAddress), ibcHandlerAddress)
+		var commitment [32]byte
+		ts.Require().Equal(common.Bytes2Hex(cs.IbcCommitmentsSlot), common.Bytes2Hex(commitment[:]))
 		ts.Require().Equal(int64(cs.GetLatestHeight().GetRevisionHeight()), int64(200))
 		ts.Require().Equal(cs.GetLatestHeight().GetRevisionNumber(), uint64(0))
 
