@@ -477,8 +477,8 @@ func newETHHeader(header *types.Header) (*ETHHeader, error) {
 func requiredHeaderCountToFinalize(validatorCount int) uint64 {
 	// The checkpoint is [(block - 1) % epochCount == len(previousValidatorCount / 2)]
 	// for example when the validator count is 21 the checkpoint is 211, 411, 611 ...
-	// https://github.com/bnb-chain/bsc/blob/master/consensus/parlia/parlia.go#L605
-	// https://github.com/bnb-chain/bsc/blob/master/consensus/parlia/snapshot.go#L191
+	// https://github.com/bnb-chain/bsc/blob/48aaee69e9cb50fc2cedf1398ae4b98b099697db/consensus/parlia/parlia.go#L607
+	// https://github.com/bnb-chain/bsc/blob/48aaee69e9cb50fc2cedf1398ae4b98b099697db/consensus/parlia/snapshot.go#L191
 	return uint64(validatorCount/2 + 1)
 }
 
