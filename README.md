@@ -1,5 +1,7 @@
 # ibc-parlia-relay
 
+![CI](https://github.com/datachainlab/ibc-parlia-relay/workflows/CI/badge.svg?branch=main)
+
 ## Setup Relayer
 
 Add this module to [yui-relayer](https://github.com/hyperledger-labs/yui-relayer) and activate it.
@@ -29,6 +31,14 @@ func main() {
 * This is only for local net.
 ```
 go build -tags dev -ldflags="-X github.com/datachainlab/ibc-parlia-relay/module/constant.blocksPerEpoch=20" -o testrly .
+```
+
+## Change luban fork
+
+* You can change block for luban fork
+```
+go build -o testrly .
+BSC_LUBAN_FORK=1000000 ./testrly
 ```
 
 ## Development

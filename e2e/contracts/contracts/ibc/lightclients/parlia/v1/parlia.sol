@@ -925,6 +925,8 @@ library IbcLightclientsParliaV1Header {
     IbcLightclientsParliaV1ETHHeader.Data[] headers;
     IbcCoreClientV1Height.Data trusted_height;
     bytes account_proof;
+    bytes[] previous_validators;
+    bytes[] current_validators;
   }
 
   // Decoder section
@@ -964,7 +966,7 @@ library IbcLightclientsParliaV1Header {
     returns (Data memory, uint)
   {
     Data memory r;
-    uint[4] memory counters;
+    uint[6] memory counters;
     uint256 fieldId;
     ProtoBufRuntime.WireType wireType;
     uint256 bytesRead;
@@ -982,6 +984,12 @@ library IbcLightclientsParliaV1Header {
       if (fieldId == 3) {
         pointer += _read_account_proof(pointer, bs, r);
       } else
+      if (fieldId == 4) {
+        pointer += _read_unpacked_repeated_previous_validators(pointer, bs, nil(), counters);
+      } else
+      if (fieldId == 5) {
+        pointer += _read_unpacked_repeated_current_validators(pointer, bs, nil(), counters);
+      } else
       {
         pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
@@ -992,12 +1000,26 @@ library IbcLightclientsParliaV1Header {
       require(r.headers.length == 0);
       r.headers = new IbcLightclientsParliaV1ETHHeader.Data[](counters[1]);
     }
+    if (counters[4] > 0) {
+      require(r.previous_validators.length == 0);
+      r.previous_validators = new bytes[](counters[4]);
+    }
+    if (counters[5] > 0) {
+      require(r.current_validators.length == 0);
+      r.current_validators = new bytes[](counters[5]);
+    }
 
     while (pointer < offset + sz) {
       (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
       pointer += bytesRead;
       if (fieldId == 1) {
         pointer += _read_unpacked_repeated_headers(pointer, bs, r, counters);
+      } else
+      if (fieldId == 4) {
+        pointer += _read_unpacked_repeated_previous_validators(pointer, bs, r, counters);
+      } else
+      if (fieldId == 5) {
+        pointer += _read_unpacked_repeated_current_validators(pointer, bs, r, counters);
       } else
       {
         pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
@@ -1020,7 +1042,7 @@ library IbcLightclientsParliaV1Header {
     uint256 p,
     bytes memory bs,
     Data memory r,
-    uint[4] memory counters
+    uint[6] memory counters
   ) internal pure returns (uint) {
     /**
      * if `r` is NULL, then only counting the number of fields.
@@ -1066,6 +1088,60 @@ library IbcLightclientsParliaV1Header {
   ) internal pure returns (uint) {
     (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
     r.account_proof = x;
+    return sz;
+  }
+
+  /**
+   * @dev The decoder for reading a field
+   * @param p The offset of bytes array to start decode
+   * @param bs The bytes array to be decoded
+   * @param r The in-memory struct
+   * @param counters The counters for repeated fields
+   * @return The number of bytes decoded
+   */
+  function _read_unpacked_repeated_previous_validators(
+    uint256 p,
+    bytes memory bs,
+    Data memory r,
+    uint[6] memory counters
+  ) internal pure returns (uint) {
+    /**
+     * if `r` is NULL, then only counting the number of fields.
+     */
+    (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
+    if (isNil(r)) {
+      counters[4] += 1;
+    } else {
+      r.previous_validators[r.previous_validators.length - counters[4]] = x;
+      counters[4] -= 1;
+    }
+    return sz;
+  }
+
+  /**
+   * @dev The decoder for reading a field
+   * @param p The offset of bytes array to start decode
+   * @param bs The bytes array to be decoded
+   * @param r The in-memory struct
+   * @param counters The counters for repeated fields
+   * @return The number of bytes decoded
+   */
+  function _read_unpacked_repeated_current_validators(
+    uint256 p,
+    bytes memory bs,
+    Data memory r,
+    uint[6] memory counters
+  ) internal pure returns (uint) {
+    /**
+     * if `r` is NULL, then only counting the number of fields.
+     */
+    (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
+    if (isNil(r)) {
+      counters[5] += 1;
+    } else {
+      r.current_validators[r.current_validators.length - counters[5]] = x;
+      counters[5] -= 1;
+    }
     return sz;
   }
 
@@ -1170,6 +1246,28 @@ library IbcLightclientsParliaV1Header {
     );
     pointer += ProtoBufRuntime._encode_bytes(r.account_proof, pointer, bs);
     }
+    if (r.previous_validators.length != 0) {
+    for(i = 0; i < r.previous_validators.length; i++) {
+      pointer += ProtoBufRuntime._encode_key(
+        4,
+        ProtoBufRuntime.WireType.LengthDelim,
+        pointer,
+        bs)
+      ;
+      pointer += ProtoBufRuntime._encode_bytes(r.previous_validators[i], pointer, bs);
+    }
+    }
+    if (r.current_validators.length != 0) {
+    for(i = 0; i < r.current_validators.length; i++) {
+      pointer += ProtoBufRuntime._encode_key(
+        5,
+        ProtoBufRuntime.WireType.LengthDelim,
+        pointer,
+        bs)
+      ;
+      pointer += ProtoBufRuntime._encode_bytes(r.current_validators[i], pointer, bs);
+    }
+    }
     return pointer - offset;
   }
   // nested encoder
@@ -1218,6 +1316,12 @@ library IbcLightclientsParliaV1Header {
     }
     e += 1 + ProtoBufRuntime._sz_lendelim(IbcCoreClientV1Height._estimate(r.trusted_height));
     e += 1 + ProtoBufRuntime._sz_lendelim(r.account_proof.length);
+    for(i = 0; i < r.previous_validators.length; i++) {
+      e += 1 + ProtoBufRuntime._sz_lendelim(r.previous_validators[i].length);
+    }
+    for(i = 0; i < r.current_validators.length; i++) {
+      e += 1 + ProtoBufRuntime._sz_lendelim(r.current_validators[i].length);
+    }
     return e;
   }
   // empty checker
@@ -1231,6 +1335,14 @@ library IbcLightclientsParliaV1Header {
   }
 
   if (r.account_proof.length != 0) {
+    return false;
+  }
+
+  if (r.previous_validators.length != 0) {
+    return false;
+  }
+
+  if (r.current_validators.length != 0) {
     return false;
   }
 
@@ -1252,6 +1364,8 @@ library IbcLightclientsParliaV1Header {
     
     IbcCoreClientV1Height.store(input.trusted_height, output.trusted_height);
     output.account_proof = input.account_proof;
+    output.previous_validators = input.previous_validators;
+    output.current_validators = input.current_validators;
 
   }
 
@@ -1272,6 +1386,42 @@ library IbcLightclientsParliaV1Header {
     }
     tmp[self.headers.length] = value;
     self.headers = tmp;
+  }
+
+  //array helpers for PreviousValidators
+  /**
+   * @dev Add value to an array
+   * @param self The in-memory struct
+   * @param value The value to add
+   */
+  function addPreviousValidators(Data memory self, bytes memory value) internal pure {
+    /**
+     * First resize the array. Then add the new element to the end.
+     */
+    bytes[] memory tmp = new bytes[](self.previous_validators.length + 1);
+    for (uint256 i = 0; i < self.previous_validators.length; i++) {
+      tmp[i] = self.previous_validators[i];
+    }
+    tmp[self.previous_validators.length] = value;
+    self.previous_validators = tmp;
+  }
+
+  //array helpers for CurrentValidators
+  /**
+   * @dev Add value to an array
+   * @param self The in-memory struct
+   * @param value The value to add
+   */
+  function addCurrentValidators(Data memory self, bytes memory value) internal pure {
+    /**
+     * First resize the array. Then add the new element to the end.
+     */
+    bytes[] memory tmp = new bytes[](self.current_validators.length + 1);
+    for (uint256 i = 0; i < self.current_validators.length; i++) {
+      tmp[i] = self.current_validators[i];
+    }
+    tmp[self.current_validators.length] = value;
+    self.current_validators = tmp;
   }
 
 
@@ -1306,7 +1456,7 @@ library IbcLightclientsParliaV1ConsensusState {
   struct Data {
     bytes state_root;
     uint64 timestamp;
-    bytes[] validator_set;
+    bytes validators_hash;
   }
 
   // Decoder section
@@ -1346,7 +1496,6 @@ library IbcLightclientsParliaV1ConsensusState {
     returns (Data memory, uint)
   {
     Data memory r;
-    uint[4] memory counters;
     uint256 fieldId;
     ProtoBufRuntime.WireType wireType;
     uint256 bytesRead;
@@ -1362,28 +1511,12 @@ library IbcLightclientsParliaV1ConsensusState {
         pointer += _read_timestamp(pointer, bs, r);
       } else
       if (fieldId == 3) {
-        pointer += _read_unpacked_repeated_validator_set(pointer, bs, nil(), counters);
+        pointer += _read_validators_hash(pointer, bs, r);
       } else
       {
         pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
       }
 
-    }
-    pointer = offset;
-    if (counters[3] > 0) {
-      require(r.validator_set.length == 0);
-      r.validator_set = new bytes[](counters[3]);
-    }
-
-    while (pointer < offset + sz) {
-      (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
-      pointer += bytesRead;
-      if (fieldId == 3) {
-        pointer += _read_unpacked_repeated_validator_set(pointer, bs, r, counters);
-      } else
-      {
-        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
-      }
     }
     return (r, sz);
   }
@@ -1429,25 +1562,15 @@ library IbcLightclientsParliaV1ConsensusState {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
-  function _read_unpacked_repeated_validator_set(
+  function _read_validators_hash(
     uint256 p,
     bytes memory bs,
-    Data memory r,
-    uint[4] memory counters
+    Data memory r
   ) internal pure returns (uint) {
-    /**
-     * if `r` is NULL, then only counting the number of fields.
-     */
     (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
-    if (isNil(r)) {
-      counters[3] += 1;
-    } else {
-      r.validator_set[r.validator_set.length - counters[3]] = x;
-      counters[3] -= 1;
-    }
+    r.validators_hash = x;
     return sz;
   }
 
@@ -1483,7 +1606,7 @@ library IbcLightclientsParliaV1ConsensusState {
   {
     uint256 offset = p;
     uint256 pointer = p;
-    uint256 i;
+    
     if (r.state_root.length != 0) {
     pointer += ProtoBufRuntime._encode_key(
       1,
@@ -1502,16 +1625,14 @@ library IbcLightclientsParliaV1ConsensusState {
     );
     pointer += ProtoBufRuntime._encode_uint64(r.timestamp, pointer, bs);
     }
-    if (r.validator_set.length != 0) {
-    for(i = 0; i < r.validator_set.length; i++) {
-      pointer += ProtoBufRuntime._encode_key(
-        3,
-        ProtoBufRuntime.WireType.LengthDelim,
-        pointer,
-        bs)
-      ;
-      pointer += ProtoBufRuntime._encode_bytes(r.validator_set[i], pointer, bs);
-    }
+    if (r.validators_hash.length != 0) {
+    pointer += ProtoBufRuntime._encode_key(
+      3,
+      ProtoBufRuntime.WireType.LengthDelim,
+      pointer,
+      bs
+    );
+    pointer += ProtoBufRuntime._encode_bytes(r.validators_hash, pointer, bs);
     }
     return pointer - offset;
   }
@@ -1555,12 +1676,10 @@ library IbcLightclientsParliaV1ConsensusState {
   function _estimate(
     Data memory r
   ) internal pure returns (uint) {
-    uint256 e;uint256 i;
+    uint256 e;
     e += 1 + ProtoBufRuntime._sz_lendelim(r.state_root.length);
     e += 1 + ProtoBufRuntime._sz_uint64(r.timestamp);
-    for(i = 0; i < r.validator_set.length; i++) {
-      e += 1 + ProtoBufRuntime._sz_lendelim(r.validator_set[i].length);
-    }
+    e += 1 + ProtoBufRuntime._sz_lendelim(r.validators_hash.length);
     return e;
   }
   // empty checker
@@ -1577,7 +1696,7 @@ library IbcLightclientsParliaV1ConsensusState {
     return false;
   }
 
-  if (r.validator_set.length != 0) {
+  if (r.validators_hash.length != 0) {
     return false;
   }
 
@@ -1594,28 +1713,10 @@ library IbcLightclientsParliaV1ConsensusState {
   function store(Data memory input, Data storage output) internal {
     output.state_root = input.state_root;
     output.timestamp = input.timestamp;
-    output.validator_set = input.validator_set;
+    output.validators_hash = input.validators_hash;
 
   }
 
-
-  //array helpers for ValidatorSet
-  /**
-   * @dev Add value to an array
-   * @param self The in-memory struct
-   * @param value The value to add
-   */
-  function addValidatorSet(Data memory self, bytes memory value) internal pure {
-    /**
-     * First resize the array. Then add the new element to the end.
-     */
-    bytes[] memory tmp = new bytes[](self.validator_set.length + 1);
-    for (uint256 i = 0; i < self.validator_set.length; i++) {
-      tmp[i] = self.validator_set[i];
-    }
-    tmp[self.validator_set.length] = value;
-    self.validator_set = tmp;
-  }
 
 
   //utility functions
