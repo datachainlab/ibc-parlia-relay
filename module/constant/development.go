@@ -13,10 +13,10 @@ var blocksPerEpoch string = "200"
 var BlocksPerEpoch uint64 = 200
 
 func init() {
-	v, err := strconv.Atoi(blocksPerEpoch)
+	iBlocksPerEpoch, err := strconv.Atoi(blocksPerEpoch)
 	if err != nil {
 		panic(err)
 	}
-	BlocksPerEpoch = uint64(v)
-	log.Printf("blocks per epoch = %d\n", BlocksPerEpoch)
+	BlocksPerEpoch = uint64(iBlocksPerEpoch)
+	log.Printf("blocks per epoch = %d", BlocksPerEpoch)
 }

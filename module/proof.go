@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/cosmos/ibc-go/v4/modules/core/exported"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
@@ -46,6 +47,18 @@ func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) (
 			pr.chain.IBCAddress(), height.GetRevisionHeight(), marshaledSlot, err)
 	}
 	return stateProof.StorageProofRLP[0], nil
+}
+
+func (pr *Prover) getStateRootOrEmpty(header *types.Header) common.Hash {
+	rlpAccountProof, _, err := pr.getAccountProof(header.Number.Int64())
+	if err != nil {
+		return common.Hash{}
+	}
+	stateAccount, err := verifyAccount(header, rlpAccountProof, pr.chain.IBCAddress())
+	if err != nil {
+		return common.Hash{}
+	}
+	return stateAccount.Root
 }
 
 type proofList struct {
@@ -110,4 +123,40 @@ func messageToCommitment(msg proto.Message) ([]byte, error) {
 		return nil, err
 	}
 	return crypto.Keccak256(marshaled), nil
+}
+
+func decodeAccountProof(encodedAccountProof []byte) ([][]byte, error) {
+	var decodedProof [][][]byte
+	if err := rlp.DecodeBytes(encodedAccountProof, &decodedProof); err != nil {
+		return nil, err
+	}
+	var accountProof [][]byte
+	for i := range decodedProof {
+		b, err := rlp.EncodeToBytes(decodedProof[i])
+		if err != nil {
+			return nil, err
+		}
+		accountProof = append(accountProof, b)
+	}
+	return accountProof, nil
+}
+
+func verifyAccount(target *types.Header, accountProof []byte, path common.Address) (*types.StateAccount, error) {
+	decodedAccountProof, err := decodeAccountProof(accountProof)
+	if err != nil {
+		return nil, err
+	}
+	rlpAccount, err := verifyProof(
+		target.Root,
+		crypto.Keccak256Hash(path.Bytes()).Bytes(),
+		decodedAccountProof,
+	)
+	if err != nil {
+		return nil, err
+	}
+	var account types.StateAccount
+	if err = rlp.DecodeBytes(rlpAccount, &account); err != nil {
+		return nil, err
+	}
+	return &account, nil
 }
