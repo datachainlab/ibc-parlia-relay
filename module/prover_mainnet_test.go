@@ -2,6 +2,7 @@ package module
 
 import (
 	"github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
+	"github.com/datachainlab/ibc-parlia-relay/module/env"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/hyperledger-labs/yui-ibc-solidity/pkg/relay/ethereum"
 	"github.com/stretchr/testify/suite"
@@ -37,6 +38,14 @@ func (ts *ProverMainnetTestSuite) SetupTest() {
 }
 
 func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader() {
+
+	//TODO remove after mainnet luban fork fix.
+	defaultFork := env.LubanFork
+	env.LubanFork = 999999999
+	defer func() {
+		env.LubanFork = defaultFork
+	}()
+
 	latestHeight, err := ts.prover.chain.LatestHeight()
 	ts.Require().NoError(err)
 	latest := latestHeight.GetRevisionHeight()
