@@ -76,5 +76,8 @@ func getHeader(chainID int64, port int64, latestBlockNumber uint64) (*module.Hea
 
 	// Setup finalized header
 	updating, err := prover.SetupHeadersForUpdateByLatestHeight(types.NewHeight(header.GetHeight().GetRevisionNumber(), target.Number.Uint64()-1), header)
+	if err != nil {
+		return nil, err
+	}
 	return updating[0].(*module.Header), nil
 }
