@@ -139,6 +139,7 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 		return nil, err
 	}
 
+	var commitmentsSlot [32]byte
 	// create initial client state
 	latestHeight := clienttypes.NewHeight(dstHeader.GetHeight().GetRevisionNumber(), previousEpoch)
 	clientState := ClientState{
@@ -146,11 +147,12 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 			Numerator:   pr.config.TrustLevelNumerator,
 			Denominator: pr.config.TrustLevelDenominator,
 		},
-		TrustingPeriod:  pr.config.TrustingPeriod,
-		ChainId:         chainID,
-		LatestHeight:    &latestHeight,
-		Frozen:          false,
-		IbcStoreAddress: pr.chain.IBCAddress().Bytes(),
+		TrustingPeriod:     pr.config.TrustingPeriod,
+		ChainId:            chainID,
+		LatestHeight:       &latestHeight,
+		Frozen:             false,
+		IbcStoreAddress:    pr.chain.IBCAddress().Bytes(),
+		IbcCommitmentsSlot: commitmentsSlot[:],
 	}
 	anyClientState, err := codectypes.NewAnyWithValue(&clientState)
 	if err != nil {
