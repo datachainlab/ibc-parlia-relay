@@ -20,6 +20,9 @@ function init_validator() {
 	node_id=$1
 	geth --datadir ${workspace}/storage/${node_id} account new --password /dev/null >${workspace}/storage/${node_id}Info
 	validatorAddr=$(cat ${workspace}/storage/${node_id}Info | grep 'Public address of the key' | awk '{print $6}')
+	#mkdir -p ${workspace}/storage/${node_id}/keystore
+	#cp ${workspace}/validators/keystore/${node_id} ${workspace}/storage/${node_id}/keystore/${node_id}
+	#validatorAddr="0xa7876ea32e7a748c697d01345145485561305b24"
 	echo "${validatorAddr},${validatorAddr},${validatorAddr},0x0000000010000000" >>${workspace}/genesis/validators.conf
 	echo ${validatorAddr} >${workspace}/storage/${node_id}/address
 }
