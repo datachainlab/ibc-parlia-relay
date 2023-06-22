@@ -6,7 +6,7 @@ import (
 	"log"
 )
 
-var LubanFork = uint64(29295050)
+var LubanFork = uint64(29020050)
 
 func init() {
 	viper.SetEnvPrefix("bsc")
