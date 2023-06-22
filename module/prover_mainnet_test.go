@@ -50,7 +50,7 @@ func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader() {
 	ts.Require().NoError(err)
 	latest := latestHeight.GetRevisionHeight()
 	println(latest)
-	iHeader, err := ts.prover.getLatestFinalizedHeader(latest)
+	iHeader, err := ts.prover.GetLatestFinalizedHeaderByLatestHeight(latest)
 	ts.Require().NoError(err)
 	ts.Require().NoError(iHeader.ValidateBasic())
 
@@ -86,7 +86,7 @@ func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader() {
 	log.Println(account.Root)
 
 	// setup
-	updating, err := ts.prover.setupHeadersForUpdate(types.NewHeight(header.GetHeight().GetRevisionNumber(), target.Number.Uint64()-1), header)
+	updating, err := ts.prover.SetupHeadersForUpdateByLatestHeight(types.NewHeight(header.GetHeight().GetRevisionNumber(), target.Number.Uint64()-1), header)
 	ts.Require().NoError(err)
 	ts.Require().Len(updating, 1)
 	ts.Require().Equal(updating[0].(*Header).GetHeight(), header.GetHeight())
