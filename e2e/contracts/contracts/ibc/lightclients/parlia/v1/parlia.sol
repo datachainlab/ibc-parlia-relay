@@ -269,6 +269,7 @@ library IbcLightclientsParliaV1ClientState {
   struct Data {
     uint64 chain_id;
     bytes ibc_store_address;
+    bytes ibc_commitments_slot;
     IbcCoreClientV1Height.Data latest_height;
     IbcLightclientsParliaV1Fraction.Data trust_level;
     uint64 trusting_period;
@@ -327,15 +328,18 @@ library IbcLightclientsParliaV1ClientState {
         pointer += _read_ibc_store_address(pointer, bs, r);
       } else
       if (fieldId == 3) {
-        pointer += _read_latest_height(pointer, bs, r);
+        pointer += _read_ibc_commitments_slot(pointer, bs, r);
       } else
       if (fieldId == 4) {
-        pointer += _read_trust_level(pointer, bs, r);
+        pointer += _read_latest_height(pointer, bs, r);
       } else
       if (fieldId == 5) {
-        pointer += _read_trusting_period(pointer, bs, r);
+        pointer += _read_trust_level(pointer, bs, r);
       } else
       if (fieldId == 6) {
+        pointer += _read_trusting_period(pointer, bs, r);
+      } else
+      if (fieldId == 7) {
         pointer += _read_frozen(pointer, bs, r);
       } else
       {
@@ -379,6 +383,23 @@ library IbcLightclientsParliaV1ClientState {
   ) internal pure returns (uint) {
     (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
     r.ibc_store_address = x;
+    return sz;
+  }
+
+  /**
+   * @dev The decoder for reading a field
+   * @param p The offset of bytes array to start decode
+   * @param bs The bytes array to be decoded
+   * @param r The in-memory struct
+   * @return The number of bytes decoded
+   */
+  function _read_ibc_commitments_slot(
+    uint256 p,
+    bytes memory bs,
+    Data memory r
+  ) internal pure returns (uint) {
+    (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
+    r.ibc_commitments_slot = x;
     return sz;
   }
 
@@ -540,9 +561,18 @@ library IbcLightclientsParliaV1ClientState {
     );
     pointer += ProtoBufRuntime._encode_bytes(r.ibc_store_address, pointer, bs);
     }
-    
+    if (r.ibc_commitments_slot.length != 0) {
     pointer += ProtoBufRuntime._encode_key(
       3,
+      ProtoBufRuntime.WireType.LengthDelim,
+      pointer,
+      bs
+    );
+    pointer += ProtoBufRuntime._encode_bytes(r.ibc_commitments_slot, pointer, bs);
+    }
+    
+    pointer += ProtoBufRuntime._encode_key(
+      4,
       ProtoBufRuntime.WireType.LengthDelim,
       pointer,
       bs
@@ -551,7 +581,7 @@ library IbcLightclientsParliaV1ClientState {
     
     
     pointer += ProtoBufRuntime._encode_key(
-      4,
+      5,
       ProtoBufRuntime.WireType.LengthDelim,
       pointer,
       bs
@@ -560,7 +590,7 @@ library IbcLightclientsParliaV1ClientState {
     
     if (r.trusting_period != 0) {
     pointer += ProtoBufRuntime._encode_key(
-      5,
+      6,
       ProtoBufRuntime.WireType.Varint,
       pointer,
       bs
@@ -569,7 +599,7 @@ library IbcLightclientsParliaV1ClientState {
     }
     if (r.frozen != false) {
     pointer += ProtoBufRuntime._encode_key(
-      6,
+      7,
       ProtoBufRuntime.WireType.Varint,
       pointer,
       bs
@@ -621,6 +651,7 @@ library IbcLightclientsParliaV1ClientState {
     uint256 e;
     e += 1 + ProtoBufRuntime._sz_uint64(r.chain_id);
     e += 1 + ProtoBufRuntime._sz_lendelim(r.ibc_store_address.length);
+    e += 1 + ProtoBufRuntime._sz_lendelim(r.ibc_commitments_slot.length);
     e += 1 + ProtoBufRuntime._sz_lendelim(IbcCoreClientV1Height._estimate(r.latest_height));
     e += 1 + ProtoBufRuntime._sz_lendelim(IbcLightclientsParliaV1Fraction._estimate(r.trust_level));
     e += 1 + ProtoBufRuntime._sz_uint64(r.trusting_period);
@@ -638,6 +669,10 @@ library IbcLightclientsParliaV1ClientState {
   }
 
   if (r.ibc_store_address.length != 0) {
+    return false;
+  }
+
+  if (r.ibc_commitments_slot.length != 0) {
     return false;
   }
 
@@ -662,6 +697,7 @@ library IbcLightclientsParliaV1ClientState {
   function store(Data memory input, Data storage output) internal {
     output.chain_id = input.chain_id;
     output.ibc_store_address = input.ibc_store_address;
+    output.ibc_commitments_slot = input.ibc_commitments_slot;
     IbcCoreClientV1Height.store(input.latest_height, output.latest_height);
     IbcLightclientsParliaV1Fraction.store(input.trust_level, output.trust_level);
     output.trusting_period = input.trusting_period;
