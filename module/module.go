@@ -24,7 +24,7 @@ func (Module) RegisterInterfaces(registry codectypes.InterfaceRegistry) {
 		&ProverConfig{},
 	)
 	registry.RegisterImplementations(
-		(*exported.Header)(nil),
+		(*exported.ClientMessage)(nil),
 		&Header{},
 	)
 	registry.RegisterImplementations(

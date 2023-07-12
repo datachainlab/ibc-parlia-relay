@@ -37,7 +37,7 @@ func (h *Header) ValidateBasic() error {
 	if _, err := h.Target(); err != nil {
 		return err
 	}
-	if _, err := decodeAccountProof(h.GetAccountProof()); err != nil {
+	if _, err := decodeAccountProof(h.AccountProof); err != nil {
 		return err
 	}
 	return nil
