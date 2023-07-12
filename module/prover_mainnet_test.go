@@ -1,12 +1,13 @@
 package module
 
 import (
-	"github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/hyperledger-labs/yui-ibc-solidity/pkg/relay/ethereum"
-	"github.com/stretchr/testify/suite"
 	"log"
 	"testing"
+
+	"github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
+	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/suite"
 )
 
 type ProverMainnetTestSuite struct {

@@ -3,6 +3,8 @@ package ibc.lightclients.parlia.v1;
 option go_package = "github.com/datachainlab/ibc-parlia-relay/module";
 
 import "ibc/core/client/v1/client.proto";
+import "gogoproto/gogo.proto";
+option (gogoproto.goproto_getters_all) = false;
 
 message Fraction {
   uint64 numerator = 1;
