@@ -2,7 +2,6 @@ const IBCClient = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCClien
 const IBCConnection = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCConnection");
 const IBCChannelHandshake = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCChannelHandshake");
 const IBCPacket = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCPacket");
-const IBCCommitmentTestHelper = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCCommitmentTestHelper");
 const IBCHandler = artifacts.require("@hyperledger-labs/yui-ibc-solidity/OwnableIBCHandler");
 const ERC20Token = artifacts.require("@hyperledger-labs/yui-ibc-solidity/ERC20Token");
 const ICS20TransferBank = artifacts.require("@hyperledger-labs/yui-ibc-solidity/ICS20TransferBank");
@@ -20,6 +19,4 @@ module.exports = async function (deployer) {
   await deployer.deploy(ERC20Token, "simple", "simple", 1000000);
   await deployer.deploy(ICS20Bank);
   await deployer.deploy(ICS20TransferBank, IBCHandler.address, ICS20Bank.address);
-
-  await deployer.deploy(IBCCommitmentTestHelper);
 };
