@@ -84,7 +84,7 @@ func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader() {
 	ts.Require().Equal(updating[0].(*Header).GetHeight(), header.GetHeight())
 
 	// updating msg
-	pack, err := types.PackHeader(updating[0])
+	pack, err := types.PackClientMessage(updating[0])
 	ts.Require().NoError(err)
 	marshal, err := pack.Marshal()
 	ts.Require().NoError(err)

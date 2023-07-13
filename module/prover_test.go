@@ -382,14 +382,21 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 }
 
 func (ts *ProverTestSuite) TestQueryClientStateWithProof() {
-	res, err := ts.prover.QueryClientStateWithProof(core.NewQueryContext(context.TODO(), clienttypes.NewHeight(0, 21400)))
+	ctx := core.NewQueryContext(context.TODO(), clienttypes.NewHeight(0, 21400))
+	cs, err := ts.prover.chain.QueryClientState(ctx)
 	ts.Require().NoError(err)
 
-	ts.Require().Equal(res.ProofHeight.GetRevisionNumber(), uint64(0))
-	ts.Require().Equal(res.ProofHeight.GetRevisionHeight(), uint64(21400))
+	bzCs, err := ts.prover.chain.Codec().Marshal(cs)
+	ts.Require().NoError(err)
+
+	proof, proofHeight, err := ts.prover.ProveState(ctx, host.FullClientStatePath(ts.prover.chain.Path().ClientID), bzCs)
+	ts.Require().NoError(err)
+
+	ts.Require().Equal(proofHeight.GetRevisionNumber(), uint64(0))
+	ts.Require().Equal(proofHeight.GetRevisionHeight(), uint64(21400))
 
 	// storage_key is 0x0c0dd47e5867d48cad725de0d09f9549bd564c1d143f6c1f451b26ccd981eeae
-	ts.Require().Equal(common.Bytes2Hex(res.Proof), "f853f8518080a0143145e818eeff83817419a6632ea193fd1acaa4f791eb17282f623f38117f568080808080808080a016cbf6e0ba10512eb618d99a1e34025adb7e6f31d335bda7fb20c8bb95fb5b978080808080")
+	ts.Require().Equal(common.Bytes2Hex(proof), "f853f8518080a0143145e818eeff83817419a6632ea193fd1acaa4f791eb17282f623f38117f568080808080808080a016cbf6e0ba10512eb618d99a1e34025adb7e6f31d335bda7fb20c8bb95fb5b978080808080")
 }
 
 func (ts *ProverTestSuite) TestRequireCountToFinalize() {
