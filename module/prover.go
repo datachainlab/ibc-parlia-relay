@@ -18,9 +18,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
-	conntypes "github.com/cosmos/ibc-go/v7/modules/core/03-connection/types"
-	chantypes "github.com/cosmos/ibc-go/v7/modules/core/04-channel/types"
-	host "github.com/cosmos/ibc-go/v7/modules/core/24-host"
 	"github.com/cosmos/ibc-go/v7/modules/core/exported"
 	"github.com/hyperledger-labs/yui-relayer/core"
 )
@@ -246,116 +243,10 @@ func (pr *Prover) setupHeadersForUpdate(clientStateLatestHeight exported.Height,
 	return targetHeaders, nil
 }
 
-// QueryClientConsensusStateWithProof returns the ClientConsensusState and its proof
-func (pr *Prover) QueryClientConsensusStateWithProof(ctx core.QueryContext, dstClientConsHeight exported.Height) (*clienttypes.QueryConsensusStateResponse, error) {
-	res, err := pr.chain.QueryClientConsensusState(ctx, dstClientConsHeight)
-	if err != nil {
-		return nil, err
-	}
-	res.ProofHeight = toHeight(ctx.Height())
-	res.Proof, err = pr.getStateCommitmentProof(host.FullConsensusStateKey(
-		pr.chain.Path().ClientID,
-		dstClientConsHeight,
-	), ctx.Height())
-	if err != nil {
-		return nil, err
-	}
-	return res, nil
-}
-
-// QueryClientStateWithProof returns the ClientState and its proof
-func (pr *Prover) QueryClientStateWithProof(ctx core.QueryContext) (*clienttypes.QueryClientStateResponse, error) {
-	res, err := pr.chain.QueryClientState(ctx)
-	if err != nil {
-		return nil, err
-	}
-	res.ProofHeight = toHeight(ctx.Height())
-	res.Proof, err = pr.getStateCommitmentProof(host.FullClientStateKey(
-		pr.chain.Path().ClientID,
-	), ctx.Height())
-	if err != nil {
-		return nil, err
-	}
-	return res, nil
-}
-
-// QueryConnectionWithProof returns the Connection and its proof
-func (pr *Prover) QueryConnectionWithProof(ctx core.QueryContext) (*conntypes.QueryConnectionResponse, error) {
-	res, err := pr.chain.QueryConnection(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if res.Connection.State == conntypes.UNINITIALIZED {
-		// connection not found
-		return res, nil
-	}
-	key := host.ConnectionKey(
-		pr.chain.Path().ConnectionID,
-	)
-	res.ProofHeight = toHeight(ctx.Height())
-	res.Proof, err = pr.getStateCommitmentProof(key, ctx.Height())
-	if err != nil {
-		return nil, err
-	}
-	return res, nil
-}
-
-// QueryChannelWithProof returns the Channel and its proof
-func (pr *Prover) QueryChannelWithProof(ctx core.QueryContext) (chanRes *chantypes.QueryChannelResponse, err error) {
-	res, err := pr.chain.QueryChannel(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if res.Channel.State == chantypes.UNINITIALIZED {
-		// channel not found
-		return res, nil
-	}
-	res.ProofHeight = toHeight(ctx.Height())
-	key := host.ChannelKey(
-		pr.chain.Path().PortID,
-		pr.chain.Path().ChannelID,
-	)
-	res.Proof, err = pr.getStateCommitmentProof(key, ctx.Height())
-	if err != nil {
-		return nil, err
-	}
-	return res, nil
-}
-
-// QueryPacketCommitmentWithProof returns the packet commitment and its proof
-func (pr *Prover) QueryPacketCommitmentWithProof(ctx core.QueryContext, seq uint64) (comRes *chantypes.QueryPacketCommitmentResponse, err error) {
-	res, err := pr.chain.QueryPacketCommitment(ctx, seq)
-	if err != nil {
-		return nil, err
-	}
-	res.ProofHeight = toHeight(ctx.Height())
-	res.Proof, err = pr.getStateCommitmentProof(host.PacketCommitmentKey(
-		pr.chain.Path().PortID,
-		pr.chain.Path().ChannelID,
-		seq,
-	), ctx.Height())
-	if err != nil {
-		return nil, err
-	}
-	return res, nil
-}
-
-// QueryPacketAcknowledgementCommitmentWithProof returns the packet acknowledgement commitment and its proof
-func (pr *Prover) QueryPacketAcknowledgementCommitmentWithProof(ctx core.QueryContext, seq uint64) (ackRes *chantypes.QueryPacketAcknowledgementResponse, err error) {
-	res, err := pr.chain.QueryPacketAcknowledgementCommitment(ctx, seq)
-	if err != nil {
-		return nil, err
-	}
-	res.ProofHeight = toHeight(ctx.Height())
-	res.Proof, err = pr.getStateCommitmentProof(host.PacketAcknowledgementKey(
-		pr.chain.Path().PortID,
-		pr.chain.Path().ChannelID,
-		seq,
-	), ctx.Height())
-	if err != nil {
-		return nil, err
-	}
-	return res, nil
+func (pr *Prover) ProveState(ctx core.QueryContext, path string, value []byte) ([]byte, clienttypes.Height, error) {
+	proofHeight := toHeight(ctx.Height())
+	proof, err := pr.getStateCommitmentProof([]byte(path), proofHeight)
+	return proof, proofHeight, err
 }
 
 // queryVerifyingHeader returns headers to finalize
