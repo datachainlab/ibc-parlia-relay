@@ -3,14 +3,15 @@ package module
 import (
 	"bytes"
 	"fmt"
-	"github.com/cosmos/ibc-go/v4/modules/core/exported"
+	"math/big"
+
+	"github.com/cosmos/gogoproto/proto"
+	"github.com/cosmos/ibc-go/v7/modules/core/exported"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
-	"github.com/gogo/protobuf/proto"
-	"math/big"
 )
 
 func (pr *Prover) getAccountProof(height int64) ([]byte, common.Hash, error) {

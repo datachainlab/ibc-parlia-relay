@@ -5,11 +5,12 @@ package module
 
 import (
 	fmt "fmt"
-	types "github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
-	proto "github.com/gogo/protobuf/proto"
 	io "io"
 	math "math"
 	math_bits "math/bits"
+
+	proto "github.com/cosmos/gogoproto/proto"
+	types "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -324,13 +325,6 @@ func (m *ConsensusState) GetStateRoot() []byte {
 		return m.StateRoot
 	}
 	return nil
-}
-
-func (m *ConsensusState) GetTimestamp() uint64 {
-	if m != nil {
-		return m.Timestamp
-	}
-	return 0
 }
 
 func (m *ConsensusState) GetValidatorsHash() []byte {
