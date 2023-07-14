@@ -1,0 +1,10 @@
+syntax = "proto2";
+package gogoproto;
+
+// THIS IS MOCK FILE
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.FileOptions {
+	optional bool goproto_getters_all = 63001;
+}
