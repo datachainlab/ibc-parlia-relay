@@ -302,11 +302,11 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.Require().Len(setupDone, 2)
 	e := setupDone[0].(*Header)
 	ts.Require().Equal(uint64(21600), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(21400), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21400), e.TrustedHeight.GetRevisionHeight())
 	e = setupDone[1].(*Header)
 	ts.Require().NoError(err)
 	ts.Require().Equal(uint64(21800), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(21600), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21600), e.TrustedHeight.GetRevisionHeight())
 
 	header, err = ts.prover.queryVerifyingHeader(21401, 11)
 	ts.Require().NoError(err)
@@ -315,7 +315,7 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.Require().Len(setupDone, 1)
 	e = setupDone[0].(*Header)
 	ts.Require().Equal(uint64(21401), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(21400), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21400), e.TrustedHeight.GetRevisionHeight())
 
 	header, err = ts.prover.queryVerifyingHeader(21400, 11)
 	ts.Require().NoError(err)
@@ -330,19 +330,19 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.Require().Len(setupDone, 4)
 	e = setupDone[0].(*Header)
 	ts.Require().Equal(uint64(21600), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(21400), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21400), e.TrustedHeight.GetRevisionHeight())
 	e = setupDone[1].(*Header)
 	ts.Require().NoError(err)
 	ts.Require().Equal(uint64(21800), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(21600), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21600), e.TrustedHeight.GetRevisionHeight())
 	e = setupDone[2].(*Header)
 	ts.Require().NoError(err)
 	ts.Require().Equal(uint64(22000), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(21800), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21800), e.TrustedHeight.GetRevisionHeight())
 	e = setupDone[3].(*Header)
 	ts.Require().NoError(err)
 	ts.Require().Equal(uint64(22005), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(22000), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(22000), e.TrustedHeight.GetRevisionHeight())
 
 	currentLatest := ts.chain.latestHeight
 	defer func() {
@@ -358,7 +358,7 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.Require().Len(setupDone, 1)
 	e = setupDone[0].(*Header)
 	ts.Require().Equal(uint64(22006), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(22005), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(22005), e.TrustedHeight.GetRevisionHeight())
 
 	// relayer had been stopped
 	ts.chain.latestHeight = e.GetHeight().GetRevisionHeight()
@@ -370,14 +370,14 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	e = setupDone[0].(*Header)
 	ts.Require().Nil(e.CurrentValidators)
 	ts.Require().Equal(uint64(22200), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(22006), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(22006), e.TrustedHeight.GetRevisionHeight())
 	e = setupDone[1].(*Header)
 	ts.Require().Nil(e.CurrentValidators)
 	ts.Require().Equal(uint64(22400), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(22200), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(22200), e.TrustedHeight.GetRevisionHeight())
 	e = setupDone[2].(*Header)
 	ts.Require().Equal(uint64(22510), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(22400), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(22400), e.TrustedHeight.GetRevisionHeight())
 
 }
 
