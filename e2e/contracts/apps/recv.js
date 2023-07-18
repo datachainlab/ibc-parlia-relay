@@ -1,7 +1,5 @@
 const ICS20Bank = artifacts.require("ICS20Bank");
 
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
-
 module.exports = async (callback) => {
   const accounts = await web3.eth.getAccounts();
   const bob = accounts[1]
@@ -14,8 +12,6 @@ module.exports = async (callback) => {
     if (parseInt(bobAmount.toString(), 10) !== 20) {
       return callback("bob amount error");
     }
-    // Wait for chain A receive the acknowledgement
-    await sleep(30000)
     callback()
 
   }catch (e) {

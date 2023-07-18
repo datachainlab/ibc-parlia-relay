@@ -1,7 +1,6 @@
 const ICS20Bank = artifacts.require("ICS20Bank");
 const ICS20TransferBank = artifacts.require("ICS20TransferBank");
 
-
 module.exports = async (callback) => {
   try {
     const escrow = await ICS20TransferBank.deployed()

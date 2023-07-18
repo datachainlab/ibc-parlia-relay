@@ -1,8 +1,6 @@
 const ICS20TransferBank = artifacts.require("ICS20TransferBank");
 const ICS20Bank = artifacts.require("ICS20Bank");
 
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
-
 module.exports = async (callback) => {
   const accounts = await web3.eth.getAccounts();
   const alice = accounts[0];
@@ -43,7 +41,6 @@ module.exports = async (callback) => {
       return callback("escrow amount error");
     }
     // Wait for chain B receive the packet
-    await sleep(30000)
     callback()
 
   }catch (e) {
