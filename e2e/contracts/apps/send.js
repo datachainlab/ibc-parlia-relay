@@ -32,6 +32,7 @@ module.exports = async (callback) => {
 
     // Wait for chain B receive the packet
     await sleep(10000)
+    callback()
 
   }catch (e) {
     callback(e);

@@ -14,11 +14,11 @@ module.exports = async (callback) => {
     if (parseInt(bobAmount.toString(), 10) !== 20) {
       callback("amount error");
     } else {
+      // Wait for chain A receive the acknowledgement
+      await sleep(10000)
       callback()
     }
 
-    // Wait for chain A receive the acknowledgement
-    await sleep(10000)
 
   }catch (e) {
     callback(e);
