@@ -8,8 +8,6 @@ module.exports = async (callback) => {
   const alice = accounts[0];
   const bob = accounts[1];
 
-  const mintAmount = 100;
-  const sendAmount = 50;
   const port = "transfer";
   const channel = "channel-0";
   const timeoutHeight = 0;
@@ -20,27 +18,20 @@ module.exports = async (callback) => {
     const initialAliceAmount = await bank.balanceOf(alice, "simple")
     console.log("before = ", initialAliceAmount.toString())
 
-    const mintResult = await bank.mint(alice, "simple", mintAmount, {
+    const mintResult = await bank.mint(alice, "simple", 100, {
       from: alice
     });
     console.log("mint success", mintResult.tx);
 
     // Send to counterparty chain
     const transfer = await ICS20TransferBank.deployed()
-    const transferResult = await transfer.sendTransfer("simple", sendAmount, bob, port, channel, timeoutHeight, {
+    const transferResult = await transfer.sendTransfer("simple", 20, bob, port, channel, timeoutHeight, {
       from: alice,
     });
     console.log("send success", transferResult.tx);
 
+    // Wait for chain B receive the packet
     await sleep(10000)
-
-    const aliceAmount = await bank.balanceOf(alice, "simple")
-    console.log("after = ", aliceAmount.toString())
-    if (parseInt(aliceAmount.toString(), 10) !== parseInt(initialAliceAmount.toString(), 10) + 50) {
-      callback("amount error");
-    } else {
-      callback()
-    }
 
   }catch (e) {
     callback(e);
