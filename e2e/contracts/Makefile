@@ -7,7 +7,7 @@ deploy:
 .PHONY:test
 test:
 	npx truffle exec apps/send.js --network bsc_local2
-	sleep 30
+	sleep 60
 	npx truffle exec apps/recv.js --network bsc_local
-	sleep 30
-	npx truffle exec apps/ack.js --network bsc_local2
+	sleep 60
+	../testrly query unrelayed-acknowledgements ibc01 --home .testrly | grep '{"src":null,"dst":null}'
