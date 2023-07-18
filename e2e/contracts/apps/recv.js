@@ -15,7 +15,7 @@ module.exports = async (callback) => {
       callback("amount error");
     } else {
       // Wait for chain A receive the acknowledgement
-      await sleep(10000)
+      await sleep(50000)
       callback()
     }
 

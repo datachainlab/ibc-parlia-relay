@@ -31,7 +31,7 @@ module.exports = async (callback) => {
     console.log("send success", transferResult.tx);
 
     // Wait for chain B receive the packet
-    await sleep(10000)
+    await sleep(50000)
     callback()
 
   }catch (e) {
