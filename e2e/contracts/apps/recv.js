@@ -12,13 +12,11 @@ module.exports = async (callback) => {
     const bobAmount = await bank.balanceOf(bob, `transfer/channel-0/simple`)
     console.log("received = ", bobAmount.toString())
     if (parseInt(bobAmount.toString(), 10) !== 20) {
-      callback("amount error");
-    } else {
-      // Wait for chain A receive the acknowledgement
-      await sleep(50000)
-      callback()
+      return callback("bob amount error");
     }
-
+    // Wait for chain A receive the acknowledgement
+    await sleep(30000)
+    callback()
 
   }catch (e) {
     callback(e);

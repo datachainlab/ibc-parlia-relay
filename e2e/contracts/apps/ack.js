@@ -1,19 +1,17 @@
 const ICS20Bank = artifacts.require("ICS20Bank");
+const ICS20TransferBank = artifacts.require("ICS20TransferBank");
+
 
 module.exports = async (callback) => {
-  const accounts = await web3.eth.getAccounts();
-  const alice = accounts[0];
-
   try {
-
+    const escrow = await ICS20TransferBank.deployed()
     const bank = await ICS20Bank.deployed()
-    const aliceAmount = await bank.balanceOf(alice, "simple")
-    console.log("after = ", aliceAmount.toString())
-    if (parseInt(aliceAmount.toString(), 10) !== 80) {
-      callback("amount error");
-    } else {
-      callback()
+    const escrowAmount = await bank.balanceOf(escrow.address, "simple")
+    console.log("escrow = ", escrowAmount.toString())
+    if (parseInt(escrowAmount.toString(), 10) !== 0) {
+      return callback("escrow amount error");
     }
+    callback()
 
   }catch (e) {
     callback(e);
