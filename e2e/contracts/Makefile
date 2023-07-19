@@ -7,6 +7,7 @@ deploy:
 .PHONY:test
 test:
 	npx truffle exec apps/send.js --network bsc_local2
+	sleep 60
 	../testrly tx relay ibc01 --home ../.testrly
 	npx truffle exec apps/recv.js --network bsc_local
 	../testrly query unrelayed-packets ibc01 --home ../.testrly | grep '{"src":null,"dst":null}'
