@@ -154,7 +154,7 @@ func (ts *ProverTestSuite) SetupTest() {
 
 	config := ProverConfig{
 		TrustLevelNumerator:   1,
-		TrustLevelDenominator: 3,
+		TrustLevelDenominator: 2,
 		TrustingPeriod:        100,
 		Debug:                 true,
 	}
@@ -187,11 +187,11 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 
 	firstEpochBlock, _ := ts.chain.Header(context.TODO(), 0)
 	firstValidators, _ := extractValidatorSet(firstEpochBlock)
-	firstEpochFinalizing := requiredHeaderCountToFinalize(len(firstValidators))
+	firstEpochFinalizing := ts.prover.requiredHeaderCountToFinalize(len(firstValidators))
 
 	secondEpochBlock, _ := ts.chain.Header(context.TODO(), 200)
 	secondValidators, _ := extractValidatorSet(secondEpochBlock)
-	secondEpochFinalizing := requiredHeaderCountToFinalize(len(secondValidators))
+	secondEpochFinalizing := ts.prover.requiredHeaderCountToFinalize(len(secondValidators))
 
 	// finalized by previous epoch validators
 	println("finalized by previous epoch validators")
@@ -405,22 +405,22 @@ func (ts *ProverTestSuite) TestRequireCountToFinalize() {
 	}
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*1)
 	validators, _ := extractValidatorSet(header)
-	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(1))
+	ts.Require().Equal(ts.prover.requiredHeaderCountToFinalize(len(validators)), uint64(1))
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*2)
 	validators, _ = extractValidatorSet(header)
-	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(2))
+	ts.Require().Equal(ts.prover.requiredHeaderCountToFinalize(len(validators)), uint64(2))
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*3)
 	validators, _ = extractValidatorSet(header)
-	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(2))
+	ts.Require().Equal(ts.prover.requiredHeaderCountToFinalize(len(validators)), uint64(2))
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*4)
 	validators, _ = extractValidatorSet(header)
-	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(3))
+	ts.Require().Equal(ts.prover.requiredHeaderCountToFinalize(len(validators)), uint64(3))
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*5)
 	validators, _ = extractValidatorSet(header)
-	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(3))
+	ts.Require().Equal(ts.prover.requiredHeaderCountToFinalize(len(validators)), uint64(3))
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*21)
 	validators, _ = extractValidatorSet(header)
-	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(11))
+	ts.Require().Equal(ts.prover.requiredHeaderCountToFinalize(len(validators)), uint64(11))
 }
 
 func (ts *ProverTestSuite) TestConnection() {
@@ -485,105 +485,98 @@ func (ts *ProverTestSuite) TestConnectionStateProofAsLCPCommitment() {
 	ts.Require().Equal(commitmentStateId.String(), "0xee0b5f32ae2bff0d82149ea22b02e350fbbe467a514ba80bbadd89007df1d167")
 }
 
-func (ts *ProverTestSuite) TestRequiredHeaderCountToFinalizeAcrossCheckpoints_Unique() {
+func (ts *ProverTestSuite) TestQueryVerifyingHeaderReverse_Unique() {
 	blockMap := map[uint64]*types2.Header{}
-	for i := 211; i <= 231; i++ {
-		blockMap[uint64(i)] = &types2.Header{Coinbase: common.BytesToAddress([]byte{byte(i)})}
-	}
-	requiredCount := requiredHeaderCountToFinalize(21)
-	ts.chain.blockMap = blockMap
-	defer func() {
-		ts.chain.blockMap = nil
-	}()
-	for j := uint64(201); j <= 210; j++ {
-		for i := 0; i < 21; i++ {
-			result, err := ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(j, requiredCount, 99999)
-			ts.Require().NoError(err)
-			ts.Require().Equal(int(result), int(requiredCount), fmt.Sprintf("j=%d,i=%d", j, i))
+	validatorCount := 21
+	requiredCount := ts.prover.requiredHeaderCountToFinalize(validatorCount)
+	checkpoint := 200 + checkpointHeight(validatorCount)
+	for i := uint64(200); i <= checkpoint+uint64(validatorCount); i++ {
+		blockMap[i] = &types2.Header{
+			Number:   big.NewInt(int64(i)),
+			Extra:    make([]byte, extraVanity+extraSeal),
+			Coinbase: common.BytesToAddress([]byte{byte(i)}),
 		}
 	}
-}
-
-func (ts *ProverTestSuite) TestRequiredHeaderCountToFinalizeAcrossCheckpoints_AllSame() {
-	previousValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20}, {21}}
-	blockMap := map[uint64]*types2.Header{}
-	for i := 201; i <= 210; i++ {
-		blockMap[uint64(i)] = &types2.Header{Coinbase: common.BytesToAddress(previousValidator[i-201])}
-	}
-	for i := 211; i <= 231; i++ {
-		blockMap[uint64(i)] = &types2.Header{Coinbase: common.BytesToAddress(previousValidator[i-211])}
-	}
-	requiredCount := requiredHeaderCountToFinalize(len(previousValidator))
 	ts.chain.blockMap = blockMap
 	defer func() {
 		ts.chain.blockMap = nil
 	}()
-	for j := uint64(201); j <= 210; j++ {
-		// 201 -> prev={1-10}, cur={1-10} used, {11} unused -> 10 + 10 + 1 = 21
-		// 202 -> prev={2-10}, cur={1} unused, {2-10} used, {11} unused -> 9 + 1 + 9 + 1 = 20
-		// 203 -> prev={3-10}, cur={1-2} unused, {3-10} used, {11} unused -> 8 + 2 + 8 + 1 = 19
-		// 210 -> prev={10}, cur={1-9} unused, {10} used, {11} unused -> 1 + 9 + 1 + 1 = 12
-		result, err := ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(j, requiredCount, 99999)
+	for latest := checkpoint + requiredCount - 1; latest > checkpoint; latest-- {
+		result, err := ts.prover.queryVerifyingHeaderReverse(requiredCount, latest)
 		ts.Require().NoError(err)
-		ts.Require().Equal(int(requiredCount)+10-(int(j)-201), int(result), fmt.Sprintf("j=%d", j))
+		ts.Require().Equal(len(result.(*Header).Headers), int(requiredCount), fmt.Sprintf("latest=%d", latest))
 	}
 }
 
-func (ts *ProverTestSuite) TestRequiredHeaderCountToFinalizeAcrossCheckpoints_HalfUnique() {
-	previousValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20}, {21}}
+func (ts *ProverTestSuite) TestQueryVerifyingHeaderReverse_AllSame() {
+	previousValidator := [][]byte{{11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20}, {21}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}}
+	currentValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20}, {21}}
+	validatorCount := len(previousValidator)
+	requiredCount := ts.prover.requiredHeaderCountToFinalize(validatorCount)
+	checkpoint := 200 + checkpointHeight(validatorCount)
+	blockMap := map[uint64]*types2.Header{}
+	for i := checkpoint - uint64(len(previousValidator)); i < checkpoint; i++ {
+		blockMap[i] = &types2.Header{
+			Number:   big.NewInt(int64(i)),
+			Extra:    make([]byte, extraVanity+extraSeal),
+			Coinbase: common.BytesToAddress(previousValidator[i-(checkpoint-uint64(len(previousValidator)))]),
+		}
+	}
+	for i := checkpoint; i < checkpoint+uint64(len(currentValidator)); i++ {
+		blockMap[i] = &types2.Header{
+			Number:   big.NewInt(int64(i)),
+			Extra:    make([]byte, extraVanity+extraSeal),
+			Coinbase: common.BytesToAddress(currentValidator[i-checkpoint]),
+		}
+	}
+	ts.chain.blockMap = blockMap
+	defer func() {
+		ts.chain.blockMap = nil
+	}()
+	// cur={10-1}: prev={10-1} used, {21} unused = 10 + 10 + 1 = 11
+	result, err := ts.prover.queryVerifyingHeaderReverse(requiredCount, 220)
+	ts.Require().NoError(err)
+	ts.Require().Equal(int(requiredCount+10), len(result.(*Header).Headers))
+
+	// cur={2-1}: prev={21}} unused = 10 + 1 = 11
+	result, err = ts.prover.queryVerifyingHeaderReverse(requiredCount, 212)
+	ts.Require().Equal(int(requiredCount+2), len(result.(*Header).Headers))
+	ts.Require().NoError(err)
+}
+
+func (ts *ProverTestSuite) TestQueryVerifyingHeaderReverse_HalfUnique() {
+	previousValidator := [][]byte{{11}, {12}, {13}, {14}, {15}, {16}, {17}, {18}, {19}, {20}, {21}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}}
 	currentValidator := [][]byte{{1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {111}, {112}, {113}, {114}, {115}, {116}, {117}, {118}, {119}, {120}, {121}}
+	validatorCount := len(previousValidator)
+	requiredCount := ts.prover.requiredHeaderCountToFinalize(validatorCount)
+	checkpoint := 200 + checkpointHeight(validatorCount)
 	blockMap := map[uint64]*types2.Header{}
-	for i := 201; i <= 210; i++ {
-		blockMap[uint64(i)] = &types2.Header{Coinbase: common.BytesToAddress(previousValidator[i-201])}
+	for i := checkpoint - uint64(len(previousValidator)); i < checkpoint; i++ {
+		blockMap[i] = &types2.Header{
+			Number:   big.NewInt(int64(i)),
+			Extra:    make([]byte, extraVanity+extraSeal),
+			Coinbase: common.BytesToAddress(previousValidator[i-(checkpoint-uint64(len(previousValidator)))]),
+		}
 	}
-	for i := 211; i <= 231; i++ {
-		blockMap[uint64(i)] = &types2.Header{Coinbase: common.BytesToAddress(currentValidator[i-211])}
+	for i := checkpoint; i < checkpoint+uint64(len(currentValidator)); i++ {
+		blockMap[i] = &types2.Header{
+			Number:   big.NewInt(int64(i)),
+			Extra:    make([]byte, extraVanity+extraSeal),
+			Coinbase: common.BytesToAddress(currentValidator[i-checkpoint]),
+		}
 	}
-	requiredCount := requiredHeaderCountToFinalize(len(previousValidator))
 	ts.chain.blockMap = blockMap
 	defer func() {
 		ts.chain.blockMap = nil
 	}()
 
-	// prev={1-10}, cur={1-10} used, {111} unused = 10 + 10 + 1 = 21
-	result, err := ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(201, requiredCount, 231)
+	// cur={10-1}: prev={10-1} used, {21} unused = 10 + 10 + 1 = 21
+	result, err := ts.prover.queryVerifyingHeaderReverse(requiredCount, 220)
 	ts.Require().NoError(err)
-	ts.Require().Equal(int(requiredCount+10), int(result))
+	ts.Require().Equal(int(requiredCount+10), len(result.(*Header).Headers))
 
-	// prev={1-10}, cur={1-10} used, {111} unused = 10 + 10 + 1 = 21
-	_, err = ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(201, requiredCount, 212)
+	// cur={2-1}: prev={10-3} unused, {2-1} used, {21, 20} unused = 2 + 7 + 2 + 2 = 13
+	result, err = ts.prover.queryVerifyingHeaderReverse(requiredCount, 212)
+	ts.Require().Equal(int(requiredCount+2), len(result.(*Header).Headers))
 	ts.Require().NoError(err)
-
-	// prev={5-10}, cur={1-4} unused, {5-10} used, {111} unused = 6 + 4 + 6 + 1 = 17
-	result, err = ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(205, requiredCount, 231)
-	ts.Require().NoError(err)
-	ts.Require().Equal(int(requiredCount+6), int(result))
-
-	// prev={10}, cur={1-9} unused, {10} used, {111} unused = 1 + 9 + 1 + 1 = 12
-	result, err = ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(210, requiredCount, 231)
-	ts.Require().NoError(err)
-	ts.Require().Equal(int(requiredCount+1), int(result))
-}
-
-func (ts *ProverTestSuite) TestRequiredHeaderCountToFinalizeAcrossCheckpoints_AllSameOneValidator() {
-	result, err := ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(200, 1, 99999)
-	ts.Require().NoError(err)
-	ts.Require().Equal(1, int(result))
-}
-
-func (ts *ProverTestSuite) TestRequiredHeaderCountToFinalizeAcrossCheckpoints_AllSameTwoValidators() {
-	previousValidator := [][]byte{{1}, {2}}
-	blockMap := map[uint64]*types2.Header{}
-	blockMap[201] = &types2.Header{Coinbase: common.BytesToAddress(previousValidator[1])}
-	blockMap[202] = &types2.Header{Coinbase: common.BytesToAddress(previousValidator[1])}
-	blockMap[203] = &types2.Header{Coinbase: common.BytesToAddress(previousValidator[0])}
-	requiredCount := requiredHeaderCountToFinalize(len(previousValidator))
-	ts.chain.blockMap = blockMap
-	defer func() {
-		ts.chain.blockMap = nil
-	}()
-	result, err := ts.prover.requiredHeaderCountToFinalizeAcrossCheckpoints(201, requiredCount, 99999)
-	ts.Require().NoError(err)
-	// prev={2}, cur={2} used -> {1} unused : 1 + 1 + 1 = 3
-	ts.Require().Equal(int(requiredCount)+1, int(result))
 }
