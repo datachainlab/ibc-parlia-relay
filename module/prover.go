@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"slices"
 	"time"
 
 	"github.com/cometbft/cometbft/libs/math"
@@ -321,9 +320,7 @@ func (pr *Prover) queryVerifyingHeaderReverse(mustUniqueCount uint64, start uint
 			return nil, fmt.Errorf("failed to encode rlp height=%d, %+v", block.Number.Uint64(), err)
 		}
 		ethHeaders = append(ethHeaders, header)
-		if _, ok := coinbase[block.Coinbase]; ok {
-			log.Printf("duplicated coinbase was found startHeight=%d, currentHeitht=%d, addr=%s", start, height, block.Coinbase.String())
-		} else {
+		if _, ok := coinbase[block.Coinbase]; !ok {
 			coinbase[block.Coinbase] = struct{}{}
 			count++
 		}
@@ -332,8 +329,11 @@ func (pr *Prover) queryVerifyingHeaderReverse(mustUniqueCount uint64, start uint
 		}
 		height--
 	}
-	slices.Reverse(ethHeaders)
-	return pr.newVerifyingHeader(height, ethHeaders)
+	reversed := make([]*ETHHeader, len(ethHeaders))
+	for i := 0; i < len(ethHeaders); i++ {
+		reversed[i] = ethHeaders[len(ethHeaders)-1-i]
+	}
+	return pr.newVerifyingHeader(height, reversed)
 }
 
 // newVerifyingHeader returns headers to finalize
