@@ -95,7 +95,6 @@ func (pr *Prover) getLatestFinalizedHeader(latestBlockNumber uint64) (out core.H
 	if err != nil {
 		return nil, err
 	}
-	countToFinalizePrevious := pr.requiredHeaderCountToFinalize(len(previousEpochValidators))
 	// ex) checkpoint is 211 (if validator count is 21)
 	checkpoint := currentEpoch + checkpointHeight(len(previousEpochValidators))
 	target := latestBlockNumber - (countToFinalizeCurrent - 1)
@@ -104,9 +103,13 @@ func (pr *Prover) getLatestFinalizedHeader(latestBlockNumber uint64) (out core.H
 		return pr.queryVerifyingHeader(target, countToFinalizeCurrent)
 	}
 
+	countToFinalizePrevious := pr.requiredHeaderCountToFinalize(len(previousEpochValidators))
+	// ex) previous = 3, current = 11
 	if countToFinalizePrevious < countToFinalizeCurrent {
-		// ex) previous = 5, current = 11 -> target is 210
-		target = checkpoint - 1
+		// ex) latest = 212, checkpoint = 203, previous = 3 -> target is min(212 - 2 = 210 , 203 - 1 = 202)
+		// ex) latest = 204, checkpoint = 203, previous = 3 -> target is min(204 - 2 = 202 , 203 - 1 = 202)
+		// ex) latest = 200, checkpoint = 203, previous = 3 -> target is min(200 - 2 = 198 , 203 - 1 = 202)
+		target = uint64(math.MinInt64(int64(checkpoint-1), int64(latestBlockNumber-(countToFinalizePrevious-1))))
 		return pr.queryVerifyingHeader(target, countToFinalizePrevious)
 	}
 	return pr.queryVerifyingHeaderReverse(countToFinalizePrevious, latestBlockNumber)

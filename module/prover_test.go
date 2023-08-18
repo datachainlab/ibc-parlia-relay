@@ -68,8 +68,14 @@ func (r *mockChain) Header(_ context.Context, height uint64) (*types2.Header, er
 	if header.Number.Uint64()%constant.BlocksPerEpoch == 0 {
 		if header.Number.Int64() == 0 {
 			header.Extra = append(header.Extra, make([]byte, extraVanity)...)
-			for i := 1; i <= 4; i++ {
+			for i := 1; i <= 5; i++ {
 				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("100000000000000000000000000000000000000%d", i))...)
+			}
+			header.Extra = append(header.Extra, make([]byte, extraSeal)...)
+		} else if header.Number.Int64() == 400 {
+			header.Extra = append(header.Extra, make([]byte, extraVanity)...)
+			for i := 1; i <= 5; i++ {
+				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("300000000000000000000000000000000000000%d", i))...)
 			}
 			header.Extra = append(header.Extra, make([]byte, extraSeal)...)
 		} else {
@@ -84,10 +90,17 @@ func (r *mockChain) Header(_ context.Context, height uint64) (*types2.Header, er
 		}
 	} else {
 		header.Extra = make([]byte, extraVanity+extraSeal)
-		if header.Number.Uint64()/constant.BlocksPerEpoch < 203 {
-			header.Coinbase = common.BytesToAddress(common.Hex2Bytes(fmt.Sprintf("100000000000000000000000000000000000000%d", 1+header.Number.Uint64()%4)))
+		if header.Number.Uint64() < 203 {
+			header.Coinbase = common.BytesToAddress(common.Hex2Bytes(fmt.Sprintf("100000000000000000000000000000000000000%d", 1+header.Number.Uint64()%5)))
+		} else if header.Number.Uint64() >= 411 && header.Number.Uint64() < 603 {
+			header.Coinbase = common.BytesToAddress(common.Hex2Bytes(fmt.Sprintf("300000000000000000000000000000000000000%d", 1+header.Number.Uint64()%5)))
 		} else {
-			header.Coinbase = common.BytesToAddress(common.Hex2Bytes(fmt.Sprintf("200000000000000000000000000000000000000%d", 1+header.Number.Uint64()%21)))
+			mod := 1 + header.Number.Uint64()%21
+			if mod >= 10 {
+				header.Coinbase = common.BytesToAddress(common.Hex2Bytes(fmt.Sprintf("20000000000000000000000000000000000000%d", mod)))
+			} else {
+				header.Coinbase = common.BytesToAddress(common.Hex2Bytes(fmt.Sprintf("200000000000000000000000000000000000000%d", mod)))
+			}
 		}
 	}
 	return header, nil
@@ -193,21 +206,25 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 	secondValidators, _ := extractValidatorSet(secondEpochBlock)
 	secondEpochFinalizing := ts.prover.requiredHeaderCountToFinalize(len(secondValidators))
 
+	thirdEpochBlock, _ := ts.chain.Header(context.TODO(), 400)
+	thirdValidators, _ := extractValidatorSet(thirdEpochBlock)
+	thirdEpochFinalizing := ts.prover.requiredHeaderCountToFinalize(len(thirdValidators))
+
 	// finalized by previous epoch validators
 	println("finalized by previous epoch validators")
-	checkpoint := 200 + int(firstEpochFinalizing)
+	checkpoint := 200 + int(checkpointHeight(len(firstValidators)))
 	for i := 2; i < checkpoint; i++ {
 		ts.chain.latestHeight = uint64(i)
 		header, terr := ts.prover.GetLatestFinalizedHeader()
 		ts.Require().NoError(terr)
 		height := header.GetHeight().GetRevisionHeight()
-		ts.Require().Equal(height, ts.chain.latestHeight-(firstEpochFinalizing-1), "latest = ", i, "target =", int(height))
+		ts.Require().Equal(height, ts.chain.latestHeight-(firstEpochFinalizing-1), fmt.Sprintf("latest = %d, target =%d, expected=%d", i, int(height), ts.chain.latestHeight-(firstEpochFinalizing-1)))
 		downcast := header.(*Header)
-		ts.Require().Len(downcast.PreviousValidators, 4, "latest =", i, "target =", int(height))
+		ts.Require().Len(downcast.PreviousValidators, 5, "latest =", i, "target =", int(height))
 		if height%constant.BlocksPerEpoch == 0 {
 			ts.Require().Nil(downcast.CurrentValidators, "latest =", i, "target =", int(height))
 		} else {
-			ts.Require().Len(downcast.CurrentValidators, 4, "latest =", i, "target =", int(height))
+			ts.Require().Len(downcast.CurrentValidators, 5, "latest =", i, "target =", int(height))
 		}
 	}
 	println("across checkpoint")
@@ -218,7 +235,7 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 		height := header.GetHeight().GetRevisionHeight()
 		downcast := header.(*Header)
 		// Upper limit is checkpoint - 1 because there are insufficient blocks to finalize by current epoch validators.
-		ts.Require().Len(downcast.PreviousValidators, 4, "latest =", i, "target =", int(height))
+		ts.Require().Len(downcast.PreviousValidators, 5, "latest =", i, "target =", int(height))
 		ts.Require().Len(downcast.CurrentValidators, 21, "latest =", i, "target =", int(height))
 		if i == checkpoint {
 			ts.Require().Equal(int(height), i-int(firstEpochFinalizing-1), "latest =", i, "target =", int(height))
@@ -228,7 +245,6 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 	}
 
 	// target is greater than current checkpoint
-	println("finalized by current epoch validators")
 	for i := checkpoint + int(secondEpochFinalizing) - 1; i < 400; i++ {
 		ts.chain.latestHeight = uint64(i)
 		header, terr := ts.prover.GetLatestFinalizedHeader()
@@ -236,8 +252,22 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 		height := header.GetHeight().GetRevisionHeight()
 		ts.Require().Equal(height, ts.chain.latestHeight-(secondEpochFinalizing-1), i)
 		downcast := header.(*Header)
-		ts.Require().Len(downcast.PreviousValidators, 4, "latest =", i, "target =", int(height))
+		ts.Require().Len(downcast.PreviousValidators, 5, "latest =", i, "target =", int(height))
 		ts.Require().Len(downcast.CurrentValidators, 21, "latest =", i, "target =", int(height))
+	}
+
+	nextCheckpoint := 400 + int(checkpointHeight(len(secondValidators)))
+	for i := 400; i < nextCheckpoint; i++ {
+		ts.chain.latestHeight = uint64(i)
+		header, terr := ts.prover.GetLatestFinalizedHeader()
+		ts.Require().NoError(terr)
+		height := header.GetHeight().GetRevisionHeight()
+		ts.Require().Equal(height, ts.chain.latestHeight-(thirdEpochFinalizing-1), i)
+		if i == nextCheckpoint {
+			ts.Require().Equal(int(height), i-int(thirdEpochFinalizing-1), "latest =", i, "target =", int(height))
+		} else {
+			ts.Require().Equal(int(height), checkpoint-1, "latest =", i, "target =", int(height))
+		}
 	}
 
 }
@@ -260,7 +290,7 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 		ts.Require().Equal(cs.ChainId, uint64(9999))
 		ts.Require().Equal(cs.TrustingPeriod, uint64(100))
 		ts.Require().Equal(cs.TrustLevel.Numerator, uint64(1))
-		ts.Require().Equal(cs.TrustLevel.Denominator, uint64(3))
+		ts.Require().Equal(cs.TrustLevel.Denominator, uint64(2))
 		ts.Require().False(cs.Frozen)
 		ts.Require().Equal(common.Bytes2Hex(cs.IbcStoreAddress), ibcHandlerAddress)
 		var commitment [32]byte
@@ -408,13 +438,13 @@ func (ts *ProverTestSuite) TestRequireCountToFinalize() {
 	ts.Require().Equal(ts.prover.requiredHeaderCountToFinalize(len(validators)), uint64(1))
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*2)
 	validators, _ = extractValidatorSet(header)
-	ts.Require().Equal(ts.prover.requiredHeaderCountToFinalize(len(validators)), uint64(2))
+	ts.Require().Equal(ts.prover.requiredHeaderCountToFinalize(len(validators)), uint64(1))
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*3)
 	validators, _ = extractValidatorSet(header)
 	ts.Require().Equal(ts.prover.requiredHeaderCountToFinalize(len(validators)), uint64(2))
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*4)
 	validators, _ = extractValidatorSet(header)
-	ts.Require().Equal(ts.prover.requiredHeaderCountToFinalize(len(validators)), uint64(3))
+	ts.Require().Equal(ts.prover.requiredHeaderCountToFinalize(len(validators)), uint64(2))
 	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*5)
 	validators, _ = extractValidatorSet(header)
 	ts.Require().Equal(ts.prover.requiredHeaderCountToFinalize(len(validators)), uint64(3))
