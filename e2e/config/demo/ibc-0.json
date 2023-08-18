@@ -10,6 +10,8 @@
   },
   "prover": {
     "@type": "/relayer.provers.parlia.config.ProverConfig",
-    "debug": true
+    "debug": true,
+    "trust_level_numerator": 1,
+    "trust_level_denominator": 2
   }
 }

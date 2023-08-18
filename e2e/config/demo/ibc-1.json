@@ -9,6 +9,8 @@
     "ibc_address": "0x702E40245797c5a2108A566b3CE2Bf14Bc6aF841"
   },
   "prover": {
-    "@type": "/relayer.provers.parlia.config.ProverConfig"
+    "@type": "/relayer.provers.parlia.config.ProverConfig",
+    "trust_level_numerator": 1,
+    "trust_level_denominator": 2
   }
 }
