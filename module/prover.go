@@ -395,15 +395,6 @@ func ceilDiv(x uint64, y uint64) uint64 {
 	return (x + y - 1) / y
 }
 
-func contains(target common.Address, list []common.Address) bool {
-	for _, e := range list {
-		if e == target {
-			return true
-		}
-	}
-	return false
-}
-
 func getPreviousEpoch(v uint64) uint64 {
 	epochCount := v / constant.BlocksPerEpoch
 	return uint64(math.MaxInt64(0, int64(epochCount)-1)) * constant.BlocksPerEpoch
