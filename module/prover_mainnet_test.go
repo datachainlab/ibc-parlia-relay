@@ -32,7 +32,9 @@ func (ts *ProverMainnetTestSuite) SetupTest() {
 	ts.Require().NoError(err)
 
 	config := ProverConfig{
-		Debug: true,
+		Debug:                 true,
+		TrustLevelNumerator:   1,
+		TrustLevelDenominator: 2,
 	}
 	ts.prover = NewProver(NewChain(chain), &config).(*Prover)
 }
