@@ -199,7 +199,7 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 	ts.Require().Error(err, "no finalized header found : latest = 0")
 
 	lastFinalized := uint64(0)
-	for latest := uint64(2); latest < 1200; latest++ {
+	for latest := uint64(3); latest < 1200; latest++ {
 		ts.chain.latestHeight = latest
 		header, err := ts.prover.GetLatestFinalizedHeader()
 		ts.Require().NoError(err)
@@ -498,7 +498,7 @@ func (ts *ProverTestSuite) TestQueryVerifyingHeaderReverse_Unique() {
 		ts.chain.blockMap = nil
 	}()
 	for latest := checkpoint + requiredCount - 1; latest > checkpoint; latest-- {
-		result, err := ts.prover.queryVerifyingHeaderReverse(requiredCount, latest)
+		result, err := ts.prover.queryVerifyingHeaderReverse(latest, requiredCount)
 		ts.Require().NoError(err)
 		ts.Require().Equal(len(result.(*Header).Headers), int(requiredCount), fmt.Sprintf("latest=%d", latest))
 	}
@@ -530,12 +530,12 @@ func (ts *ProverTestSuite) TestQueryVerifyingHeaderReverse_AllSame() {
 		ts.chain.blockMap = nil
 	}()
 	// cur={10-1}: prev={10-1} used, {21} unused = 10 + 10 + 1 = 11
-	result, err := ts.prover.queryVerifyingHeaderReverse(requiredCount, 220)
+	result, err := ts.prover.queryVerifyingHeaderReverse(220, requiredCount)
 	ts.Require().NoError(err)
 	ts.Require().Equal(int(requiredCount+10), len(result.(*Header).Headers))
 
 	// cur={2-1}: prev={21}} unused = 10 + 1 = 11
-	result, err = ts.prover.queryVerifyingHeaderReverse(requiredCount, 212)
+	result, err = ts.prover.queryVerifyingHeaderReverse(212, requiredCount)
 	ts.Require().Equal(int(requiredCount+2), len(result.(*Header).Headers))
 	ts.Require().NoError(err)
 }
@@ -567,12 +567,30 @@ func (ts *ProverTestSuite) TestQueryVerifyingHeaderReverse_HalfUnique() {
 	}()
 
 	// cur={10-1}: prev={10-1} used, {21} unused = 10 + 10 + 1 = 21
-	result, err := ts.prover.queryVerifyingHeaderReverse(requiredCount, 220)
+	result, err := ts.prover.queryVerifyingHeaderReverse(220, requiredCount)
 	ts.Require().NoError(err)
 	ts.Require().Equal(int(requiredCount+10), len(result.(*Header).Headers))
 
 	// cur={2-1}: prev={10-3} unused, {2-1} used, {21, 20} unused = 2 + 7 + 2 + 2 = 13
-	result, err = ts.prover.queryVerifyingHeaderReverse(requiredCount, 212)
+	result, err = ts.prover.queryVerifyingHeaderReverse(212, requiredCount)
 	ts.Require().Equal(int(requiredCount+2), len(result.(*Header).Headers))
 	ts.Require().NoError(err)
+}
+
+// queryETHHeaders returns the ETHHeaders
+func (pr *Prover) queryETHHeaders(start uint64, count uint64) ([]*ETHHeader, error) {
+	var ethHeaders []*ETHHeader
+	for i := 0; i < int(count); i++ {
+		height := uint64(i) + start
+		block, err := pr.chain.Header(context.TODO(), height)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get ETHHeaders : count = %d, height = %d, %+v", count, height, err)
+		}
+		header, err := newETHHeader(block)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode rlp height=%d, %+v", block.Number.Uint64(), err)
+		}
+		ethHeaders = append(ethHeaders, header)
+	}
+	return ethHeaders, nil
 }

@@ -112,7 +112,7 @@ func (pr *Prover) getLatestFinalizedHeader(latestBlockNumber uint64) (out core.H
 		target = uint64(math.MinInt64(int64(checkpoint-1), int64(latestBlockNumber-(countToFinalizePrevious-1))))
 		return pr.queryVerifyingHeader(target, countToFinalizePrevious)
 	}
-	return pr.queryVerifyingHeaderReverse(countToFinalizePrevious, latestBlockNumber)
+	return pr.queryVerifyingHeaderReverse(latestBlockNumber, countToFinalizePrevious)
 }
 
 // CreateMsgCreateClient creates a CreateClientMsg to this chain
@@ -247,19 +247,12 @@ func (pr *Prover) ProveState(ctx core.QueryContext, path string, value []byte) (
 }
 
 // queryVerifyingHeader returns headers to finalize
-func (pr *Prover) queryVerifyingHeader(height uint64, count uint64) (core.Header, error) {
-	ethHeaders, err := pr.queryETHHeaders(height, count)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get query : height = %d, %+v", height, err)
-	}
-	return pr.newVerifyingHeader(height, ethHeaders)
-}
-
-// queryETHHeaders returns the ETHHeaders
-func (pr *Prover) queryETHHeaders(start uint64, count uint64) ([]*ETHHeader, error) {
+func (pr *Prover) queryVerifyingHeader(start uint64, mustUniqueCount uint64) (core.Header, error) {
 	var ethHeaders []*ETHHeader
-	for i := 0; i < int(count); i++ {
-		height := uint64(i) + start
+	coinbase := map[common.Address]struct{}{}
+	count := uint64(0)
+	height := start
+	for {
 		block, err := pr.chain.Header(context.TODO(), height)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get ETHHeaders : count = %d, height = %d, %+v", count, height, err)
@@ -269,8 +262,16 @@ func (pr *Prover) queryETHHeaders(start uint64, count uint64) ([]*ETHHeader, err
 			return nil, fmt.Errorf("failed to encode rlp height=%d, %+v", block.Number.Uint64(), err)
 		}
 		ethHeaders = append(ethHeaders, header)
+		if _, ok := coinbase[block.Coinbase]; !ok {
+			coinbase[block.Coinbase] = struct{}{}
+			count++
+		}
+		if count >= mustUniqueCount {
+			break
+		}
+		height++
 	}
-	return ethHeaders, nil
+	return pr.newVerifyingHeader(start, ethHeaders)
 }
 
 // queryValidatorSet returns the validator set
@@ -283,7 +284,7 @@ func (pr *Prover) queryValidatorSet(epochBlockNumber uint64) ([][]byte, error) {
 }
 
 // queryVerifyingHeaderReverse returns the block count to finalize across checkpoints
-func (pr *Prover) queryVerifyingHeaderReverse(mustUniqueCount uint64, start uint64) (core.Header, error) {
+func (pr *Prover) queryVerifyingHeaderReverse(start uint64, mustUniqueCount uint64) (core.Header, error) {
 	var ethHeaders []*ETHHeader
 	coinbase := map[common.Address]struct{}{}
 	count := uint64(0)
