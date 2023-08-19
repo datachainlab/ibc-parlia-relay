@@ -209,7 +209,11 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 	thirdEpochBlock, _ := ts.chain.Header(context.TODO(), 400)
 	thirdValidators, _ := extractValidatorSet(thirdEpochBlock)
 	thirdEpochFinalizing := ts.prover.requiredHeaderCountToFinalize(len(thirdValidators))
-	println(thirdEpochFinalizing)
+
+	fourthEpochBlock, _ := ts.chain.Header(context.TODO(), 600)
+	fourthValidators, _ := extractValidatorSet(fourthEpochBlock)
+	fourthEpochFinalizing := ts.prover.requiredHeaderCountToFinalize(len(fourthValidators))
+	println(fourthEpochFinalizing)
 
 	// finalized by previous epoch validators
 	checkpoint := 200 + int(checkpointHeight(len(firstValidators)))
@@ -256,15 +260,17 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 		ts.Require().Len(downcast.CurrentValidators, 21, "latest =", i, "target =", int(height))
 	}
 
-	for i := nextCheckpoint - 1; i < 600; i++ {
+	nextNextCheckpoint := 600 + int(checkpointHeight(len(thirdValidators)))
+	println(nextNextCheckpoint)
+	for i := nextCheckpoint - 1; i < nextNextCheckpoint-1; i++ {
 		ts.chain.latestHeight = uint64(i)
 		header, terr := ts.prover.GetLatestFinalizedHeader()
 		ts.Require().NoError(terr)
 		height := header.GetHeight().GetRevisionHeight()
-		if i == nextCheckpoint {
-			ts.Require().Equal(int(height), i-int(secondEpochFinalizing-1), "latest =", i, "target =", int(height))
+		if i >= nextCheckpoint+int(thirdEpochFinalizing-1) {
+			ts.Require().Equal(int(height), i-int(thirdEpochFinalizing-1), "latest =", i, "target =", int(height))
 		} else {
-			ts.Require().Equal(int(height), nextCheckpoint-1, "latest =", i, "target =", int(height))
+			ts.Require().Equal(int(height), i-int(secondEpochFinalizing-1), "latest =", i, "target =", int(height))
 		}
 		downcast := header.(*Header)
 		ts.Require().Len(downcast.PreviousValidators, 21, "latest =", i, "target =", int(height))
@@ -272,6 +278,28 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 			ts.Require().Nil(downcast.CurrentValidators, "latest =", i, "target =", int(height))
 		} else {
 			ts.Require().Len(downcast.CurrentValidators, 5, "latest =", i, "target =", int(height))
+		}
+	}
+
+	for i := nextNextCheckpoint - 1; i < 800; i++ {
+		ts.chain.latestHeight = uint64(i)
+		header, terr := ts.prover.GetLatestFinalizedHeader()
+		ts.Require().NoError(terr)
+		height := header.GetHeight().GetRevisionHeight()
+		if i >= nextNextCheckpoint+int(fourthEpochFinalizing-1) {
+			//target is gteq checkpoint
+			ts.Require().Equal(int(height), i-int(fourthEpochFinalizing-1), "latest =", i, "target =", int(height))
+		} else if i <= nextNextCheckpoint+int(fourthEpochFinalizing-1) && i > nextNextCheckpoint {
+			ts.Require().Equal(int(height), nextNextCheckpoint-1, "latest =", i, "target =", int(height))
+		} else {
+			ts.Require().Equal(int(height), i-int(thirdEpochFinalizing-1), "latest =", i, "target =", int(height))
+		}
+		downcast := header.(*Header)
+		ts.Require().Len(downcast.PreviousValidators, 5, "latest =", i, "target =", int(height))
+		if height%constant.BlocksPerEpoch == 0 {
+			ts.Require().Nil(downcast.CurrentValidators, "latest =", i, "target =", int(height))
+		} else {
+			ts.Require().Len(downcast.CurrentValidators, 21, "latest =", i, "target =", int(height))
 		}
 	}
 
