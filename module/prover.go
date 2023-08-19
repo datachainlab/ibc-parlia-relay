@@ -252,32 +252,7 @@ func (pr *Prover) queryVerifyingHeader(height uint64, count uint64) (core.Header
 	if err != nil {
 		return nil, fmt.Errorf("failed to get query : height = %d, %+v", height, err)
 	}
-	// get RLP-encoded account proof
-	rlpAccountProof, _, err := pr.getAccountProof(int64(height))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get account proof : height = %d, %+v", height, err)
-	}
-
-	header := &Header{
-		AccountProof: rlpAccountProof,
-		Headers:      ethHeaders,
-	}
-
-	// Get validator set for verify headers
-	previousEpoch := getPreviousEpoch(height)
-	header.PreviousValidators, err = pr.queryValidatorSet(previousEpoch)
-	if err != nil {
-		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
-	}
-	// Epoch doesn't need to get validator set because it contains validator set.
-	if !isEpoch(height) {
-		currentEpoch := getCurrentEpoch(height)
-		header.CurrentValidators, err = pr.queryValidatorSet(currentEpoch)
-		if err != nil {
-			return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
-		}
-	}
-	return header, nil
+	return pr.newVerifyingHeader(height, ethHeaders)
 }
 
 // queryETHHeaders returns the ETHHeaders
