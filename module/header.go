@@ -6,7 +6,6 @@ import (
 
 	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 	"github.com/cosmos/ibc-go/v7/modules/core/exported"
-	"github.com/datachainlab/ibc-parlia-relay/module/env"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -25,7 +24,7 @@ func (*Header) ClientType() string {
 }
 
 func (h *Header) GetHeight() exported.Height {
-	target, err := h.Target()
+	target, err := h.DecodedTarget()
 	if err != nil {
 		log.Panicf("invalid header: %v", h)
 	}
@@ -34,7 +33,10 @@ func (h *Header) GetHeight() exported.Height {
 }
 
 func (h *Header) ValidateBasic() error {
-	if _, err := h.Target(); err != nil {
+	if _, err := h.DecodedTarget(); err != nil {
+		return err
+	}
+	if _, err := h.DecodedParent(); err != nil {
 		return err
 	}
 	if _, err := decodeAccountProof(h.AccountProof); err != nil {
@@ -43,31 +45,24 @@ func (h *Header) ValidateBasic() error {
 	return nil
 }
 
-func (h *Header) decodeEthHeaders() ([]*types.Header, error) {
-	ethHeaders := make([]*types.Header, len(h.Headers))
-	for i, e := range h.Headers {
-		var ethHeader types.Header
-		if err := rlp.DecodeBytes(e.Header, &ethHeader); err != nil {
-			return nil, err
-		}
-		ethHeaders[i] = &ethHeader
-	}
-	return ethHeaders, nil
-}
-
-func (h *Header) Target() (*types.Header, error) {
-	decodedHeaders, err := h.decodeEthHeaders()
-	if err != nil {
+func (h *Header) DecodedTarget() (*types.Header, error) {
+	var ethHeader types.Header
+	if err := rlp.DecodeBytes(h.Target.Header, &ethHeader); err != nil {
 		return nil, err
 	}
-	if len(decodedHeaders) == 0 {
-		return nil, fmt.Errorf("invalid header length")
+	return &ethHeader, nil
+}
+
+func (h *Header) DecodedParent() (*types.Header, error) {
+	var ethHeader types.Header
+	if err := rlp.DecodeBytes(h.Parent.Header, &ethHeader); err != nil {
+		return nil, err
 	}
-	return decodedHeaders[0], nil
+	return &ethHeader, nil
 }
 
 func (h *Header) Account(path common.Address) (*types.StateAccount, error) {
-	target, err := h.Target()
+	target, err := h.DecodedTarget()
 	if err != nil {
 		return nil, err
 	}
@@ -81,20 +76,14 @@ func extractValidatorSet(h *types.Header) ([][]byte, error) {
 	}
 	var validatorSet [][]byte
 	validators := extra[extraVanity : len(extra)-extraSeal]
-	if h.Number.Uint64() >= env.LubanFork {
-		validatorCount := int(validators[0])
-		validatorsWithBLS := validators[1 : validatorCount*validatorBytesLength]
-		for i := 0; i < validatorCount; i++ {
-			start := validatorBytesLength * i
-			validatorWithBLS := validatorsWithBLS[start : start+validatorBytesLength]
-			validatorSet = append(validatorSet, validatorWithBLS[:validatorBytesLengthBeforeLuban])
-		}
-	} else {
-		validatorCount := len(validators) / validatorBytesLengthBeforeLuban
-		for i := 0; i < validatorCount; i++ {
-			start := validatorBytesLengthBeforeLuban * i
-			validatorSet = append(validatorSet, validators[start:start+validatorBytesLengthBeforeLuban])
-		}
+
+	validatorCount := int(validators[0])
+	validatorsWithBLS := validators[1 : validatorCount*validatorBytesLength]
+	for i := 0; i < validatorCount; i++ {
+		start := validatorBytesLength * i
+		validatorWithBLS := validatorsWithBLS[start : start+validatorBytesLength]
+		validatorSet = append(validatorSet, validatorWithBLS[:validatorBytesLengthBeforeLuban])
 	}
+
 	return validatorSet, nil
 }

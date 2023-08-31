@@ -33,14 +33,6 @@ func main() {
 go build -tags dev -ldflags="-X github.com/datachainlab/ibc-parlia-relay/module/constant.blocksPerEpoch=20" -o testrly .
 ```
 
-## Change luban fork
-
-* You can change block for luban fork
-```
-go build -o testrly .
-BSC_LUBAN_FORK=1000000 ./testrly
-```
-
 ## Development
 
 Generate proto buf with protobuf definition of [lcp-parlia](https://github.com/datachainlab/lcp-parlia).

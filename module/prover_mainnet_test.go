@@ -38,37 +38,28 @@ func (ts *ProverMainnetTestSuite) SetupTest() {
 }
 
 func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader() {
-	latestHeight, err := ts.prover.chain.LatestHeight()
-	ts.Require().NoError(err)
-	latest := latestHeight.GetRevisionHeight()
+	//	latestHeight, err := ts.prover.chain.LatestHeight()
+	//	ts.Require().NoError(err)
+	latest := uint64(31325151) //latestHeight.GetRevisionHeight()
 	println(latest)
 	iHeader, err := ts.prover.getLatestFinalizedHeader(latest)
 	ts.Require().NoError(err)
 	ts.Require().NoError(iHeader.ValidateBasic())
 
-	requiredBlocksToFinalizeInCurrentMainnet := 11
 	header := iHeader.(*Header)
-	ts.Require().Len(header.Headers, requiredBlocksToFinalizeInCurrentMainnet)
 
 	// target header
-	target, err := header.Target()
+	target, err := header.DecodedTarget()
 	ts.Require().NoError(err)
-	ts.Require().Equal(target.Number.Uint64(), latest-uint64(requiredBlocksToFinalizeInCurrentMainnet-1))
+	parent, err := header.DecodedParent()
+	ts.Require().NoError(err)
+	ts.Require().Equal(target.Number.Int64()-1, parent.Number.Int64())
 
 	// headers to verify
-	ethHeaders, err := header.decodeEthHeaders()
-	ts.Require().NoError(err)
-	ts.Require().Equal(target.Number, ethHeaders[0].Number)
-
-	for i, eth := range ethHeaders {
-		if i > 0 {
-			ts.Require().Equal(eth.Number.Uint64()-1, ethHeaders[i-1].Number.Uint64())
-		}
-		if eth.Number.Uint64()%200 == 0 {
-			validators, err := extractValidatorSet(eth)
-			ts.Require().NoError(err)
-			ts.Require().Len(validators, 21)
-		}
+	if target.Number.Uint64()%200 == 0 {
+		validators, err := extractValidatorSet(target)
+		ts.Require().NoError(err)
+		ts.Require().Len(validators, 21)
 	}
 
 	// account proof
@@ -90,4 +81,11 @@ func (ts *ProverMainnetTestSuite) TestQueryLatestFinalizedHeader() {
 	ts.Require().NoError(err)
 	log.Println(common.Bytes2Hex(marshal))
 
+	for _, v := range header.TargetValidators {
+		log.Println(common.Bytes2Hex(v))
+	}
+	log.Println("parent")
+	for _, v := range header.ParentValidators {
+		log.Println(common.Bytes2Hex(v))
+	}
 }
