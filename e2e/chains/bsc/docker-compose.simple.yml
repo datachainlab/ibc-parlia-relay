@@ -34,6 +34,7 @@ services:
       - ./scripts:/root/scripts
       - ./config:/root/config
       - ./init-holders:/root/init-holders
+     # - ./validators/keystore:/root/validators/keystore
     command: /root/scripts/bootstrap.sh
 
   bootstrap-simple2:
@@ -55,6 +56,7 @@ services:
       - ./scripts:/root/scripts
       - ./config:/root/config
       - ./init-holders:/root/init-holders
+    #  - ./validators/keystore:/root/validators/keystore
     command: /root/scripts/bootstrap.sh
 
   bsc-rpc: # This is the bootstrap node

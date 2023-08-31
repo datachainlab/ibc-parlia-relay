@@ -82,7 +82,7 @@ func extractValidatorSet(h *types.Header) ([][]byte, error) {
 	for i := 0; i < validatorCount; i++ {
 		start := validatorBytesLength * i
 		validatorWithBLS := validatorsWithBLS[start : start+validatorBytesLength]
-		validatorSet = append(validatorSet, validatorWithBLS[:validatorBytesLengthBeforeLuban])
+		validatorSet = append(validatorSet, validatorWithBLS)
 	}
 
 	return validatorSet, nil

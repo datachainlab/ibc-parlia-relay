@@ -60,7 +60,7 @@ func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
 	if err != nil {
 		return nil, err
 	}
-	header, err := pr.getLatestFinalizedHeader(latestHeight.GetRevisionHeight())
+	header, err := pr.GetLatestFinalizedHeaderByLatestHeight(latestHeight.GetRevisionHeight())
 	if err != nil {
 		return nil, err
 	}
@@ -70,8 +70,8 @@ func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
 	return header, err
 }
 
-// getLatestFinalizedHeader returns the latest finalized header from the chain
-func (pr *Prover) getLatestFinalizedHeader(latestBlockNumber uint64) (out core.Header, err error) {
+// GetLatestFinalizedHeaderByLatestHeight returns the latest finalized header from the chain
+func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint64) (out core.Header, err error) {
 	target := latestBlockNumber
 	for target > 0 {
 		header, err := pr.chain.Header(context.Background(), target)
@@ -159,10 +159,10 @@ func (pr *Prover) SetupHeadersForUpdate(dstChain core.ChainInfoICS02Querier, lat
 	if err = pr.chain.Codec().UnpackAny(csRes.ClientState, &cs); err != nil {
 		return nil, err
 	}
-	return pr.setupHeadersForUpdate(cs.GetLatestHeight(), header)
+	return pr.SetupHeadersForUpdateByLatestHeight(cs.GetLatestHeight(), header)
 }
 
-func (pr *Prover) setupHeadersForUpdate(clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
+func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
 	targetHeaders := make([]core.Header, 0)
 
 	// Needless to update already saved state
@@ -177,7 +177,7 @@ func (pr *Prover) setupHeadersForUpdate(clientStateLatestHeight exported.Height,
 		for epochHeight := firstUnsavedEpoch; epochHeight < latestFinalizedHeight; epochHeight += constant.BlocksPerEpoch {
 			epoch, err := pr.queryVerifyingHeader(epochHeight)
 			if err != nil {
-				return nil, fmt.Errorf("SetupHeadersForUpdate failed to get past epochs : height=%d : %+v", epochHeight, err)
+				return nil, fmt.Errorf("SetupHeadersForUpdateByLatestHeight failed to get past epochs : height=%d : %+v", epochHeight, err)
 			}
 			targetHeaders = append(targetHeaders, epoch)
 		}
