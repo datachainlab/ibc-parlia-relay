@@ -13,7 +13,6 @@ import (
 
 const extraVanity = 32
 const extraSeal = 65
-const validatorBytesLengthBeforeLuban = 20
 const validatorBytesLength = 68
 
 // Parlia TODO client_type
@@ -69,7 +68,7 @@ func (h *Header) Account(path common.Address) (*types.StateAccount, error) {
 	return verifyAccount(target, h.AccountProof, path)
 }
 
-func extractValidatorSet(h *types.Header) ([][]byte, error) {
+func ExtractValidatorSet(h *types.Header) ([][]byte, error) {
 	extra := h.Extra
 	if len(extra) < extraVanity+extraSeal {
 		return nil, fmt.Errorf("invalid extra length : %d", h.Number.Uint64())

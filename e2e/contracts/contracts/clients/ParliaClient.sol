@@ -248,7 +248,7 @@ contract ParliaClient is ILightClient {
         Any.Data memory any = Any.decode(bz);
         require(keccak256(abi.encodePacked(any.type_url)) == HEADER_TYPE_URL_HASH, "invalid header type");
         Header.Data memory header = Header.decode(any.value);
-        bytes memory rlpEthHeader  = header.headers[0].header;
+        bytes memory rlpEthHeader  = header.target.header;
 
         RLPReader.RLPItem[] memory items = rlpEthHeader.toRlpItem().toList();
         Height.Data memory height = Height.Data({revision_number: 0, revision_height: uint64(items[8].toUint())});

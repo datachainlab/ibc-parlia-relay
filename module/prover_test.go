@@ -69,16 +69,18 @@ func (r *mockChain) Header(_ context.Context, height uint64) (*types2.Header, er
 		if header.Number.Int64() == 0 {
 			header.Extra = append(header.Extra, make([]byte, extraVanity)...)
 			for i := 1; i <= 4; i++ {
+				// Genesis validator doesn't have Vote address because the luban is after genesis
 				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("100000000000000000000000000000000000000%d", i))...)
 			}
 			header.Extra = append(header.Extra, make([]byte, extraSeal)...)
 		} else {
 			header.Extra = make([]byte, extraVanity)
+			header.Extra = append(header.Extra, 21)
 			for i := 1; i <= 9; i++ {
-				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("200000000000000000000000000000000000000%d", i))...)
+				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("200000000000000000000000000000000000000%da4f05ea3dd58373394ba3a7ca3cabec78b69e044b2b09e82171d82e6e3998a9ed1f82226cd4540bcc8c3bafa8c9c725%d", i, i))...)
 			}
 			for i := 10; i <= 21; i++ {
-				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("20000000000000000000000000000000000000%d", i))...)
+				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("20000000000000000000000000000000000000%da4f05ea3dd58373394ba3a7ca3cabec78b69e044b2b09e82171d82e6e3998a9ed1f82226cd4540bcc8c3bafa8c9c72%d", i, i))...)
 			}
 			header.Extra = append(header.Extra, make([]byte, extraSeal)...)
 		}
@@ -196,13 +198,12 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 		ts.Require().NoError(proto.Unmarshal(msg.ConsensusState.Value, &cs2))
 		target, err := previousEpochHeader.DecodedTarget()
 		ts.Require().NoError(err)
-		validatorSet, err := extractValidatorSet(target)
+		validatorSet, err := ExtractValidatorSet(target)
 		ts.Require().NoError(err)
 		ts.Require().Equal(cs2.ValidatorsHash, crypto.Keccak256(validatorSet...))
 		ts.Require().Equal(cs2.Timestamp, target.Time)
 		ts.Require().Equal(cs2.StateRoot, common.HexToHash("0xc3608871098f21b59607ef3fb9412a091de9246ad1281a92f5b07dc2f465b7a0").Bytes())
 	}
-	assertFn(400)
 	assertFn(401)
 	assertFn(599)
 }

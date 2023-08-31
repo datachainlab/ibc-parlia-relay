@@ -16,4 +16,4 @@ geth --config ${DATA_DIR}/config.toml --datadir ${DATA_DIR} --netrestrict ${CLUS
 	--mine -unlock ${VALIDATOR_ADDR} --password /dev/null \
 	--light.serve 50 --pprof.addr 0.0.0.0 --metrics \
 	--rpc.allow-unprotected-txs --txlookuplimit 15768000 \
-	--pprof --ipcpath /gethipc
+	--pprof --ipcpath /gethipc --vote

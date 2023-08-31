@@ -36,6 +36,7 @@ message ConsensusState {
   bytes state_root = 1;
   uint64 timestamp = 2;
   bytes validators_hash = 3;
+  uint64 validator_size = 4;
 }
 
 message Misbehaviour {

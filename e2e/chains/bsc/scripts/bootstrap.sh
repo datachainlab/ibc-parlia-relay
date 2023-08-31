@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -eu
 
 workspace=$(
 	cd $(dirname $0)
@@ -18,13 +17,20 @@ function prepare() {
 
 function init_validator() {
 	node_id=$1
-	geth --datadir ${workspace}/storage/${node_id} account new --password /dev/null >${workspace}/storage/${node_id}Info
-	validatorAddr=$(cat ${workspace}/storage/${node_id}Info | grep 'Public address of the key' | awk '{print $6}')
-	#mkdir -p ${workspace}/storage/${node_id}/keystore
-	#cp ${workspace}/validators/keystore/${node_id} ${workspace}/storage/${node_id}/keystore/${node_id}
-	#validatorAddr="0xa7876ea32e7a748c697d01345145485561305b24"
-	echo "${validatorAddr},${validatorAddr},${validatorAddr},0x0000000010000000" >>${workspace}/genesis/validators.conf
+
+  # set validator address
+	mkdir -p ${workspace}/storage/${node_id}/keystore
+	cp ${workspace}/validators/keystore/${node_id} ${workspace}/storage/${node_id}/keystore/${node_id}
+  validatorAddr=0x$(cat ${workspace}/storage/${node_id}/keystore/${node_id} | jq .address | sed 's/"//g')
 	echo ${validatorAddr} >${workspace}/storage/${node_id}/address
+
+  # import BLS vote address
+	echo password01 > ${workspace}/storage/${node_id}/blspassword.txt
+	geth --datadir ${workspace}/storage/${node_id} bls account import ${workspace}/validators/bls/${node_id} --blspassword ${workspace}/storage/${node_id}/blspassword.txt --blsaccountpassword ${workspace}/storage/${node_id}/blspassword.txt
+	geth --datadir ${workspace}/storage/${node_id} bls account list --blspassword ${workspace}/storage/${node_id}/blspassword.txt
+  voteAddr=0x$(cat ${workspace}/validators/bls/${node_id} | jq .pubkey | sed 's/"//g')
+
+	echo "${validatorAddr},${validatorAddr},${validatorAddr},0x0000000010000000,${voteAddr}" >>${workspace}/genesis/validators.conf
 }
 
 function generate_genesis() {
@@ -36,7 +42,6 @@ function generate_genesis() {
 	node generate-validator.js
 	chainIDHex=$(printf '%04x\n' ${BSC_CHAIN_ID})
 	node generate-genesis.js --chainid ${BSC_CHAIN_ID} --bscChainId ${chainIDHex}
-	#cat ${workspace}/genesis/genesis.json
 }
 
 function init_genesis_data() {
@@ -57,6 +62,7 @@ prepare
 # First, generate config for each validator
 for ((i = 1; i <= ${NUMS_OF_VALIDATOR}; i++)); do
 	init_validator "bsc-validator${i}"
+  generate_validator_conf "bsc-validator${i}"
 done
 
 # Then, use validator configs to generate genesis file

@@ -3,6 +3,7 @@ package module
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"log"
 	"time"
 
@@ -79,16 +80,17 @@ func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint6
 			return nil, err
 		}
 		vote, err := getVoteAttestationFromHeader(header)
-		if vote != nil {
-			break
+		if err == nil && vote != nil {
+			return pr.queryVerifyingHeader(vote.Data.SourceNumber)
 		}
 		if pr.config.Debug {
-			if target%100 == 0 {
-				log.Printf("gettin finalized header : %d\n", target)
+			if target%constant.BlocksPerEpoch == 0 {
+				log.Printf("getting finalized header : %d\n", target)
 			}
 		}
+		target -= 1
 	}
-	return pr.queryVerifyingHeader(target)
+	return nil, fmt.Errorf("No finalized header found ")
 }
 
 // CreateMsgCreateClient creates a CreateClientMsg to this chain
@@ -99,7 +101,7 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 	if err != nil {
 		return nil, err
 	}
-	previousValidators, err := extractValidatorSet(previousEpochHeader)
+	previousValidators, err := ExtractValidatorSet(previousEpochHeader)
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +130,7 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 	consensusState := ConsensusState{
 		Timestamp:      previousEpochHeader.Time,
 		ValidatorsHash: crypto.Keccak256(previousValidators...),
+		ValidatorSize:  uint64(len(previousValidators)),
 		// Since ibc handler may not be deployed at the target epoch when create_client is used, state_root is not obtained.
 		StateRoot: pr.getStateRootOrEmpty(previousEpochHeader).Bytes(),
 	}
@@ -194,7 +197,16 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight ex
 		h.(*Header).TrustedHeight = &trustedHeight
 
 		if pr.config.Debug {
-			log.Printf("SetupHeadersForUpdate: targetHeight=%v, trustedHeight=%v \n", h.GetHeight(), trustedHeight)
+			targetValidatorsHash := common.Bytes2Hex(crypto.Keccak256(h.(*Header).TargetValidators...))
+			parentValidatorsHash := common.Bytes2Hex(crypto.Keccak256(h.(*Header).ParentValidators...))
+			target, _ := h.(*Header).DecodedTarget()
+			if target.Number.Uint64()%constant.BlocksPerEpoch == 0 {
+				newValidators, _ := ExtractValidatorSet(target)
+				newValidatorsHash := common.Bytes2Hex(crypto.Keccak256(newValidators...))
+				log.Printf("SetupHeadersForUpdate: targetHeight=%v, trustedHeight=%v targetValidatorsHash=%s, parentValidatorsHash=%s, newValidatorsHash=%s\n", h.GetHeight(), trustedHeight, targetValidatorsHash, parentValidatorsHash, newValidatorsHash)
+			} else {
+				log.Printf("SetupHeadersForUpdate: targetHeight=%v, trustedHeight=%v targetValidatorsHash=%s, parentValidatorsHash=%s\n", h.GetHeight(), trustedHeight, targetValidatorsHash, parentValidatorsHash)
+			}
 		}
 	}
 	return targetHeaders, nil
@@ -261,9 +273,8 @@ func (pr *Prover) queryValidators(target uint64) ([][]byte, error) {
 			return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
 		}
 		return currentValidators, nil
-	} else {
-		return previousValidators, nil
 	}
+	return previousValidators, nil
 }
 
 // queryETHHeaders returns the ETHHeaders
@@ -290,7 +301,7 @@ func (pr *Prover) queryValidatorSet(epochBlockNumber uint64) ([][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return extractValidatorSet(header)
+	return ExtractValidatorSet(header)
 }
 
 // newETHHeader returns the new ETHHeader
