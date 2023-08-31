@@ -61,7 +61,7 @@ func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
 	if err != nil {
 		return nil, err
 	}
-	header, err := pr.getLatestFinalizedHeader(latestHeight.GetRevisionHeight())
+	header, err := pr.GetLatestFinalizedHeaderByLatestHeight(latestHeight.GetRevisionHeight())
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +71,8 @@ func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
 	return header, err
 }
 
-// getLatestFinalizedHeader returns the latest finalized header from the chain
-func (pr *Prover) getLatestFinalizedHeader(latestBlockNumber uint64) (out core.Header, err error) {
+// GetLatestFinalizedHeaderByLatestHeight returns the latest finalized header from the chain
+func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint64) (out core.Header, err error) {
 	currentEpoch := getCurrentEpoch(latestBlockNumber)
 	currentEpochValidators, err := pr.queryValidatorSet(currentEpoch)
 	if err != nil {
@@ -190,10 +190,10 @@ func (pr *Prover) SetupHeadersForUpdate(dstChain core.ChainInfoICS02Querier, lat
 	if err = pr.chain.Codec().UnpackAny(csRes.ClientState, &cs); err != nil {
 		return nil, err
 	}
-	return pr.setupHeadersForUpdate(cs.GetLatestHeight(), header)
+	return pr.SetupHeadersForUpdateByLatestHeight(cs.GetLatestHeight(), header)
 }
 
-func (pr *Prover) setupHeadersForUpdate(clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
+func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
 	targetHeaders := make([]core.Header, 0)
 
 	// Needless to update already saved state
@@ -212,15 +212,15 @@ func (pr *Prover) setupHeadersForUpdate(clientStateLatestHeight exported.Height,
 		for epochHeight := firstUnsavedEpoch; epochHeight < latestFinalizedHeight; epochHeight += constant.BlocksPerEpoch {
 			epoch, err := pr.queryVerifyingHeader(epochHeight, requiredHeaderCountToFinalize(len(previousValidatorSet)))
 			if err != nil {
-				return nil, fmt.Errorf("SetupHeadersForUpdate failed to get past epochs : height=%d : %+v", epochHeight, err)
+				return nil, fmt.Errorf("SetupHeadersForUpdateByLatestHeight failed to get past epochs : height=%d : %+v", epochHeight, err)
 			}
 			unwrap, err := epoch.(*Header).Target()
 			if err != nil {
-				return nil, fmt.Errorf("SetupHeadersForUpdate failed to unwrap header : height=%d : %+v", epoch.GetHeight(), err)
+				return nil, fmt.Errorf("SetupHeadersForUpdateByLatestHeight failed to unwrap header : height=%d : %+v", epoch.GetHeight(), err)
 			}
 			previousValidatorSet, err = extractValidatorSet(unwrap)
 			if err != nil {
-				return nil, fmt.Errorf("SetupHeadersForUpdate failed to extract validator : height=%d : %+v", epoch.GetHeight(), err)
+				return nil, fmt.Errorf("SetupHeadersForUpdateByLatestHeight failed to extract validator : height=%d : %+v", epoch.GetHeight(), err)
 			}
 			targetHeaders = append(targetHeaders, epoch)
 		}
@@ -237,7 +237,7 @@ func (pr *Prover) setupHeadersForUpdate(clientStateLatestHeight exported.Height,
 		h.(*Header).TrustedHeight = &trustedHeight
 
 		if pr.config.Debug {
-			log.Printf("SetupHeadersForUpdate: targetHeight=%v, trustedHeight=%v, headerLength=%d, \n", h.GetHeight(), trustedHeight, len(h.(*Header).Headers))
+			log.Printf("SetupHeadersForUpdateByLatestHeight: targetHeight=%v, trustedHeight=%v, headerLength=%d, \n", h.GetHeight(), trustedHeight, len(h.(*Header).Headers))
 		}
 	}
 	return targetHeaders, nil
