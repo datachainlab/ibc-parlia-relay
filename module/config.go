@@ -2,7 +2,8 @@ package module
 
 import (
 	"fmt"
-	"github.com/hyperledger-labs/yui-ibc-solidity/pkg/relay/ethereum"
+
+	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
 	"github.com/hyperledger-labs/yui-relayer/core"
 )
 

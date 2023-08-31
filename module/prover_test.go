@@ -3,25 +3,26 @@ package module
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"testing"
+
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/types"
-	clienttypes "github.com/cosmos/ibc-go/v4/modules/core/02-client/types"
-	conntypes "github.com/cosmos/ibc-go/v4/modules/core/03-connection/types"
-	types3 "github.com/cosmos/ibc-go/v4/modules/core/23-commitment/types"
-	host "github.com/cosmos/ibc-go/v4/modules/core/24-host"
-	"github.com/cosmos/ibc-go/v4/modules/core/exported"
+	"github.com/cosmos/gogoproto/proto"
+	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
+	conntypes "github.com/cosmos/ibc-go/v7/modules/core/03-connection/types"
+	types3 "github.com/cosmos/ibc-go/v7/modules/core/23-commitment/types"
+	host "github.com/cosmos/ibc-go/v7/modules/core/24-host"
+	"github.com/cosmos/ibc-go/v7/modules/core/exported"
+	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/client"
+	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
 	types2 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/gogo/protobuf/proto"
-	"github.com/hyperledger-labs/yui-ibc-solidity/pkg/client"
-	"github.com/hyperledger-labs/yui-ibc-solidity/pkg/relay/ethereum"
 	"github.com/hyperledger-labs/yui-relayer/core"
 	"github.com/stretchr/testify/suite"
-	"math/big"
-	"testing"
 )
 
 const (
@@ -301,11 +302,11 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.Require().Len(setupDone, 2)
 	e := setupDone[0].(*Header)
 	ts.Require().Equal(uint64(21600), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(21400), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21400), e.TrustedHeight.GetRevisionHeight())
 	e = setupDone[1].(*Header)
 	ts.Require().NoError(err)
 	ts.Require().Equal(uint64(21800), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(21600), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21600), e.TrustedHeight.GetRevisionHeight())
 
 	header, err = ts.prover.queryVerifyingHeader(21401, 11)
 	ts.Require().NoError(err)
@@ -314,7 +315,7 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.Require().Len(setupDone, 1)
 	e = setupDone[0].(*Header)
 	ts.Require().Equal(uint64(21401), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(21400), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21400), e.TrustedHeight.GetRevisionHeight())
 
 	header, err = ts.prover.queryVerifyingHeader(21400, 11)
 	ts.Require().NoError(err)
@@ -329,19 +330,19 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.Require().Len(setupDone, 4)
 	e = setupDone[0].(*Header)
 	ts.Require().Equal(uint64(21600), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(21400), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21400), e.TrustedHeight.GetRevisionHeight())
 	e = setupDone[1].(*Header)
 	ts.Require().NoError(err)
 	ts.Require().Equal(uint64(21800), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(21600), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21600), e.TrustedHeight.GetRevisionHeight())
 	e = setupDone[2].(*Header)
 	ts.Require().NoError(err)
 	ts.Require().Equal(uint64(22000), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(21800), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(21800), e.TrustedHeight.GetRevisionHeight())
 	e = setupDone[3].(*Header)
 	ts.Require().NoError(err)
 	ts.Require().Equal(uint64(22005), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(22000), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(22000), e.TrustedHeight.GetRevisionHeight())
 
 	currentLatest := ts.chain.latestHeight
 	defer func() {
@@ -357,7 +358,7 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	ts.Require().Len(setupDone, 1)
 	e = setupDone[0].(*Header)
 	ts.Require().Equal(uint64(22006), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(22005), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(22005), e.TrustedHeight.GetRevisionHeight())
 
 	// relayer had been stopped
 	ts.chain.latestHeight = e.GetHeight().GetRevisionHeight()
@@ -369,26 +370,33 @@ func (ts *ProverTestSuite) TestSetupHeader() {
 	e = setupDone[0].(*Header)
 	ts.Require().Nil(e.CurrentValidators)
 	ts.Require().Equal(uint64(22200), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(22006), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(22006), e.TrustedHeight.GetRevisionHeight())
 	e = setupDone[1].(*Header)
 	ts.Require().Nil(e.CurrentValidators)
 	ts.Require().Equal(uint64(22400), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(22200), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(22200), e.TrustedHeight.GetRevisionHeight())
 	e = setupDone[2].(*Header)
 	ts.Require().Equal(uint64(22510), e.GetHeight().GetRevisionHeight())
-	ts.Require().Equal(uint64(22400), e.GetTrustedHeight().GetRevisionHeight())
+	ts.Require().Equal(uint64(22400), e.TrustedHeight.GetRevisionHeight())
 
 }
 
 func (ts *ProverTestSuite) TestQueryClientStateWithProof() {
-	res, err := ts.prover.QueryClientStateWithProof(core.NewQueryContext(context.TODO(), clienttypes.NewHeight(0, 21400)))
+	ctx := core.NewQueryContext(context.TODO(), clienttypes.NewHeight(0, 21400))
+	cs, err := ts.prover.chain.QueryClientState(ctx)
 	ts.Require().NoError(err)
 
-	ts.Require().Equal(res.ProofHeight.GetRevisionNumber(), uint64(0))
-	ts.Require().Equal(res.ProofHeight.GetRevisionHeight(), uint64(21400))
+	bzCs, err := ts.prover.chain.Codec().Marshal(cs)
+	ts.Require().NoError(err)
+
+	proof, proofHeight, err := ts.prover.ProveState(ctx, host.FullClientStatePath(ts.prover.chain.Path().ClientID), bzCs)
+	ts.Require().NoError(err)
+
+	ts.Require().Equal(proofHeight.GetRevisionNumber(), uint64(0))
+	ts.Require().Equal(proofHeight.GetRevisionHeight(), uint64(21400))
 
 	// storage_key is 0x0c0dd47e5867d48cad725de0d09f9549bd564c1d143f6c1f451b26ccd981eeae
-	ts.Require().Equal(common.Bytes2Hex(res.Proof), "f853f8518080a0143145e818eeff83817419a6632ea193fd1acaa4f791eb17282f623f38117f568080808080808080a016cbf6e0ba10512eb618d99a1e34025adb7e6f31d335bda7fb20c8bb95fb5b978080808080")
+	ts.Require().Equal(common.Bytes2Hex(proof), "f853f8518080a0143145e818eeff83817419a6632ea193fd1acaa4f791eb17282f623f38117f568080808080808080a016cbf6e0ba10512eb618d99a1e34025adb7e6f31d335bda7fb20c8bb95fb5b978080808080")
 }
 
 func (ts *ProverTestSuite) TestRequireCountToFinalize() {

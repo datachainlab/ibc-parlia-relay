@@ -2,12 +2,13 @@ package module
 
 import (
 	"context"
+	"math/big"
+
+	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/client"
+	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/hyperledger-labs/yui-ibc-solidity/pkg/client"
-	"github.com/hyperledger-labs/yui-ibc-solidity/pkg/relay/ethereum"
 	"github.com/hyperledger-labs/yui-relayer/core"
-	"math/big"
 )
 
 type Chain interface {

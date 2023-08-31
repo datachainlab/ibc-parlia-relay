@@ -20,7 +20,6 @@ relayer:
 	./testrly tx update-clients ibc01 --home .testrly
 	./testrly tx connection ibc01 --home .testrly
 	./testrly tx channel ibc01 --home .testrly
-	nohup ./testrly service start ibc01 --home .testrly > testrly.log  &
 
 .PHONY:test
 test:
