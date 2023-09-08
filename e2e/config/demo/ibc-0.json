@@ -10,6 +10,8 @@
   },
   "prover": {
     "@type": "/relayer.provers.parlia.config.ProverConfig",
-    "debug": true
+    "debug": true,
+    "trustingPeriod": "86400s",
+    "maxClockDrift" : "0.001s"
   }
 }

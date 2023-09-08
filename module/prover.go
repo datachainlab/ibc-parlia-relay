@@ -117,6 +117,7 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 	latestHeight := clienttypes.NewHeight(dstHeader.GetHeight().GetRevisionNumber(), previousEpoch)
 	clientState := ClientState{
 		TrustingPeriod:     pr.config.TrustingPeriod,
+		MaxClockDrift:      pr.config.MaxClockDrift,
 		ChainId:            chainID,
 		LatestHeight:       &latestHeight,
 		Frozen:             false,

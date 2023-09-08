@@ -155,10 +155,8 @@ func (ts *ProverTestSuite) SetupTest() {
 	ts.Require().NoError(err)
 
 	config := ProverConfig{
-		TrustLevelNumerator:   1,
-		TrustLevelDenominator: 3,
-		TrustingPeriod:        100,
-		Debug:                 true,
+		TrustingPeriod: 100,
+		Debug:          true,
 	}
 	ts.chain = &mockChain{
 		Chain:        NewChain(chain),
