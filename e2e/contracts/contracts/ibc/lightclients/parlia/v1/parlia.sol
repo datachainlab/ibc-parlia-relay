@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 import "@hyperledger-labs/yui-ibc-solidity/contracts/proto/ProtoBufRuntime.sol";
 import "@hyperledger-labs/yui-ibc-solidity/contracts/proto/GoogleProtobufAny.sol";
 import "../../../core/client/v1/client.sol";
+import "./duration.sol"; // Required to add manually to use GoogleProtobufDuration
 
 library IbcLightclientsParliaV1ClientState {
 
