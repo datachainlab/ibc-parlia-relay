@@ -102,7 +102,7 @@ func updateClientErrorCmd() *cobra.Command {
 			epochCount := header.GetHeight().GetRevisionHeight() / constant.BlocksPerEpoch
 			log.Println("currentEpochHeight", epochCount*constant.BlocksPerEpoch)
 			log.Println("targetValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.(*module.Header).TargetValidators...)))
-			log.Println("targetValidatorSize", len(header.(*module.Header).TargetValidators))
+			log.Println("previousTargetValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.(*module.Header).PreviousTargetValidators...)))
 			return nil
 		},
 	}
@@ -150,8 +150,8 @@ func printMainnetHeader(prover *module.Prover, height uint64) error {
 	log.Println("currentEpochHeight", epochCount*constant.BlocksPerEpoch)
 
 	// validators hash
-	log.Println("targetValidatorSize", len(header.TargetValidators))
 	log.Println("targetValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.TargetValidators...)))
+	log.Println("previousTargetValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.PreviousTargetValidators...)))
 	if target.Number.Uint64()%constant.BlocksPerEpoch == 0 {
 		newValidators, err := module.ExtractValidatorSet(target)
 		if err != nil {
@@ -161,7 +161,6 @@ func printMainnetHeader(prover *module.Prover, height uint64) error {
 			return fmt.Errorf("invalid validator size for test")
 		}
 		log.Println("newValidatorHash", common.Bytes2Hex(crypto.Keccak256(newValidators...)))
-		log.Println("newValidatorSize", len(newValidators))
 	}
 	return nil
 }

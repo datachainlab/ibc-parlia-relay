@@ -21,7 +21,7 @@ services:
       dockerfile: Dockerfile.bootstrap
     env_file: .env
     environment:
-      BLOCKS_PER_EPOCH: 20
+      BLOCKS_PER_EPOCH: 200
       INIT_HOLDER_BALANCE: "500000000000000000000"
       NUMS_OF_VALIDATOR: 3
     volumes:

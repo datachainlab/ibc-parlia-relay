@@ -12,11 +12,11 @@ go run main.go misbehavior error
 ### Header
 ```sh
 # src/client.rs test_success_update_client_epoch
-go run main.go header success epoch
+go run main.go update success epoch
 
 # src/client.rs test_success_update_client_non_epoch
-go run main.go header success latest
+go run main.go update success latest
 
 # src/client.rs test_error_update_client
-go run main.go header error 
+go run main.go update error 
 ```

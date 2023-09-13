@@ -12,6 +12,7 @@ func main() {
 
 	var rootCmd = &cobra.Command{}
 	rootCmd.AddCommand(internal.CreateMisbehavior())
+	rootCmd.AddCommand(internal.CreateCreateClient())
 	rootCmd.AddCommand(internal.CreateUpdateClient())
 
 	if err := rootCmd.ExecuteContext(context.Background()); err != nil {
