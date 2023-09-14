@@ -131,7 +131,6 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 	consensusState := ConsensusState{
 		Timestamp:      previousEpochHeader.Time,
 		ValidatorsHash: crypto.Keccak256(previousValidators...),
-		ValidatorSize:  uint64(len(previousValidators)),
 		// Since ibc handler may not be deployed at the target epoch when create_client is used, state_root is not obtained.
 		StateRoot: pr.getStateRootOrEmpty(previousEpochHeader).Bytes(),
 	}
@@ -242,7 +241,7 @@ func (pr *Prover) queryVerifyingHeader(height uint64) (core.Header, error) {
 	if err != nil {
 		return nil, err
 	}
-	targetValidators, err := pr.queryValidators(target.Number.Uint64())
+	targetValidators, previousTargetValidators, err := pr.queryValidators(target.Number.Uint64())
 	if err != nil {
 		return nil, err
 	}
@@ -251,31 +250,32 @@ func (pr *Prover) queryVerifyingHeader(height uint64) (core.Header, error) {
 	if err != nil {
 		return nil, err
 	}
-	parentValidators, err := pr.queryValidators(parent.Number.Uint64())
+	parentValidators, _, err := pr.queryValidators(parent.Number.Uint64())
 	if err != nil {
 		return nil, err
 	}
 	header.TargetValidators = targetValidators
 	header.ParentValidators = parentValidators
+	header.PreviousTargetValidators = previousTargetValidators
 	return header, nil
 }
 
-func (pr *Prover) queryValidators(target uint64) ([][]byte, error) {
+func (pr *Prover) queryValidators(target uint64) ([][]byte, [][]byte, error) {
 	previousEpoch := getPreviousEpoch(target)
 	previousValidators, err := pr.queryValidatorSet(previousEpoch)
 	if err != nil {
-		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
+		return nil, nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
 	}
 	checkpointFromEpoch := checkpoint(len(previousValidators))
 	if target%constant.BlocksPerEpoch >= checkpointFromEpoch {
 		currentEpoch := getCurrentEpoch(target)
 		currentValidators, err := pr.queryValidatorSet(currentEpoch)
 		if err != nil {
-			return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
+			return nil, nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
 		}
-		return currentValidators, nil
+		return currentValidators, previousValidators, nil
 	}
-	return previousValidators, nil
+	return previousValidators, previousValidators, nil
 }
 
 // queryETHHeaders returns the ETHHeaders

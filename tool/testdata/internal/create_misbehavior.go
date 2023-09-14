@@ -59,6 +59,7 @@ func misbehaviorSuccessCmd() *cobra.Command {
 			log.Println("misbehavior", common.Bytes2Hex(marshal))
 			log.Println("trustedHeight", header1.TrustedHeight)
 			log.Println("targetValidatorHash", common.Bytes2Hex(crypto.Keccak256(header1.TargetValidators...)))
+			log.Println("previousTargetValidatorHash", common.Bytes2Hex(crypto.Keccak256(header1.PreviousTargetValidators...)))
 
 			epochCount := header1.GetHeight().GetRevisionHeight() / constant.BlocksPerEpoch
 			if header1.GetHeight().GetRevisionHeight()%constant.BlocksPerEpoch >= (LocalNetValidatorSize/2 + 1) {
@@ -133,6 +134,7 @@ func misbehaviorErrorCmd() *cobra.Command {
 			log.Println("Invalid block: misbehavior", common.Bytes2Hex(marshal))
 			log.Println("Invalid block: height", header.GetHeight())
 			log.Println("Invalid block: target_validator_hash", common.Bytes2Hex(crypto.Keccak256(header.(*module.Header).TargetValidators...)))
+			log.Println("Invalid block: prevous_target_validator_hash", common.Bytes2Hex(crypto.Keccak256(header.(*module.Header).PreviousTargetValidators...)))
 			log.Println("Invalid block: trusted_height", updating[0].(*module.Header).TrustedHeight)
 			epochCount := header.GetHeight().GetRevisionHeight() / constant.BlocksPerEpoch
 			if header.GetHeight().GetRevisionHeight()%constant.BlocksPerEpoch >= (MainNetValidatorSize/2 + 1) {
