@@ -73,14 +73,19 @@ func ExtractValidatorSet(h *types.Header) ([][]byte, error) {
 	if len(extra) < extraVanity+extraSeal {
 		return nil, fmt.Errorf("invalid extra length : %d", h.Number.Uint64())
 	}
-	var validatorSet [][]byte
-	validators := extra[extraVanity : len(extra)-extraSeal]
+	num := int(extra[extraVanity])
+	if num == 0 || len(extra) <= extraVanity+extraSeal+num*validatorBytesLength {
+		return nil, fmt.Errorf("invalid validator bytes length: %d", h.Number.Uint64())
+	}
+	start := extraVanity + validatorNumberSize
+	end := start + num*validatorBytesLength
+	validators := extra[start:end]
 
-	validatorCount := int(validators[0])
-	validatorsWithBLS := validators[1 : validatorCount*validatorBytesLength]
-	for i := 0; i < validatorCount; i++ {
-		start := validatorBytesLength * i
-		validatorWithBLS := validatorsWithBLS[start : start+validatorBytesLength]
+	var validatorSet [][]byte
+	for i := 0; i < num; i++ {
+		s := validatorBytesLength * i
+		e := s + validatorBytesLength
+		validatorWithBLS := validators[s:e]
 		validatorSet = append(validatorSet, validatorWithBLS)
 	}
 
