@@ -80,12 +80,9 @@ library IbcLightclientsParliaV1ClientState {
         pointer += _read_trusting_period(pointer, bs, r);
       } else
       if (fieldId == 6) {
-<<<<<<< HEAD
         pointer += _read_max_clock_drift(pointer, bs, r);
       } else
       if (fieldId == 7) {
-=======
->>>>>>> bep126
         pointer += _read_frozen(pointer, bs, r);
       } else
       {
@@ -328,11 +325,7 @@ library IbcLightclientsParliaV1ClientState {
     
     pointer += ProtoBufRuntime._encode_key(
       5,
-<<<<<<< HEAD
       ProtoBufRuntime.WireType.LengthDelim,
-=======
-      ProtoBufRuntime.WireType.Varint,
->>>>>>> bep126
       pointer,
       bs
     );
@@ -349,7 +342,7 @@ library IbcLightclientsParliaV1ClientState {
     
     if (r.frozen != false) {
     pointer += ProtoBufRuntime._encode_key(
-      6,
+      7,
       ProtoBufRuntime.WireType.Varint,
       pointer,
       bs
@@ -1299,7 +1292,6 @@ library IbcLightclientsParliaV1ConsensusState {
     bytes state_root;
     uint64 timestamp;
     bytes validators_hash;
-    uint64 validator_size;
   }
 
   // Decoder section
@@ -1355,9 +1347,6 @@ library IbcLightclientsParliaV1ConsensusState {
       } else
       if (fieldId == 3) {
         pointer += _read_validators_hash(pointer, bs, r);
-      } else
-      if (fieldId == 4) {
-        pointer += _read_validator_size(pointer, bs, r);
       } else
       {
         pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
@@ -1417,23 +1406,6 @@ library IbcLightclientsParliaV1ConsensusState {
   ) internal pure returns (uint) {
     (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
     r.validators_hash = x;
-    return sz;
-  }
-
-  /**
-   * @dev The decoder for reading a field
-   * @param p The offset of bytes array to start decode
-   * @param bs The bytes array to be decoded
-   * @param r The in-memory struct
-   * @return The number of bytes decoded
-   */
-  function _read_validator_size(
-    uint256 p,
-    bytes memory bs,
-    Data memory r
-  ) internal pure returns (uint) {
-    (uint64 x, uint256 sz) = ProtoBufRuntime._decode_uint64(p, bs);
-    r.validator_size = x;
     return sz;
   }
 
@@ -1497,15 +1469,6 @@ library IbcLightclientsParliaV1ConsensusState {
     );
     pointer += ProtoBufRuntime._encode_bytes(r.validators_hash, pointer, bs);
     }
-    if (r.validator_size != 0) {
-    pointer += ProtoBufRuntime._encode_key(
-      4,
-      ProtoBufRuntime.WireType.Varint,
-      pointer,
-      bs
-    );
-    pointer += ProtoBufRuntime._encode_uint64(r.validator_size, pointer, bs);
-    }
     return pointer - offset;
   }
   // nested encoder
@@ -1552,7 +1515,6 @@ library IbcLightclientsParliaV1ConsensusState {
     e += 1 + ProtoBufRuntime._sz_lendelim(r.state_root.length);
     e += 1 + ProtoBufRuntime._sz_uint64(r.timestamp);
     e += 1 + ProtoBufRuntime._sz_lendelim(r.validators_hash.length);
-    e += 1 + ProtoBufRuntime._sz_uint64(r.validator_size);
     return e;
   }
   // empty checker
@@ -1573,10 +1535,6 @@ library IbcLightclientsParliaV1ConsensusState {
     return false;
   }
 
-  if (r.validator_size != 0) {
-    return false;
-  }
-
     return true;
   }
 
@@ -1591,7 +1549,6 @@ library IbcLightclientsParliaV1ConsensusState {
     output.state_root = input.state_root;
     output.timestamp = input.timestamp;
     output.validators_hash = input.validators_hash;
-    output.validator_size = input.validator_size;
 
   }
 
