@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 	"log"
+	"time"
 )
 
 func CreateCreateClient() *cobra.Command {
@@ -35,7 +36,8 @@ func CreateClientSuccessCmd() *cobra.Command {
 			// create initial client state
 			latestHeight := types.NewHeight(latest.GetRevisionNumber(), latest.GetRevisionHeight())
 			clientState := module.ClientState{
-				TrustingPeriod:     100,
+				TrustingPeriod:     100 * time.Second,
+				MaxClockDrift:      1 * time.Millisecond,
 				ChainId:            56,
 				LatestHeight:       &latestHeight,
 				Frozen:             false,
