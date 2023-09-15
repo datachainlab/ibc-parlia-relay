@@ -77,9 +77,13 @@ func misbehaviorErrorCmd() *cobra.Command {
 		Use:   "error",
 		Short: "create misbehavior testdata for error",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			rpcAddr, err := createRPCAddr()
+			if err != nil {
+				return err
+			}
 			chain, err := ethereum.NewChain(ethereum.ChainConfig{
 				EthChainId:  56,
-				RpcAddr:     "https://bsc-mainnet-rpc.allthatnode.com",
+				RpcAddr:     rpcAddr,
 				HdwMnemonic: hdwMnemonic,
 				HdwPath:     hdwPath,
 				IbcAddress:  MainNetIbcAddress,

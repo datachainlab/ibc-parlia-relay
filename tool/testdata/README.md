@@ -1,5 +1,11 @@
 ## Testdata making tool for lcp-parlia
 
+Set bsc rpc addr.
+
+```sh
+export BSC_MAINNET_RPC_ADDR="rpc node"
+```
+
 ### Misbehavior
 ```sh
 # src/client.rs test_success_submit_misbehavior

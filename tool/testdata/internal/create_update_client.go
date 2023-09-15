@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/hyperledger-labs/yui-relayer/core"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"log"
 )
 
@@ -165,10 +166,22 @@ func printMainnetHeader(prover *module.Prover, height uint64) error {
 	return nil
 }
 
+func createRPCAddr() (string, error) {
+	rpcAddr, ok := viper.Get("BSC_MAINNET_RPC_ADDR").(string)
+	if !ok {
+		return "", fmt.Errorf("BSC_MAINNET_RPC_ADDR is required")
+	}
+	return rpcAddr, nil
+}
+
 func createMainnetProver() (*module.Prover, core.Chain, error) {
+	rpcAddr, err := createRPCAddr()
+	if err != nil {
+		return nil, nil, err
+	}
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
 		EthChainId:  56,
-		RpcAddr:     "https://bsc-mainnet-rpc.allthatnode.com",
+		RpcAddr:     rpcAddr,
 		HdwMnemonic: hdwMnemonic,
 		HdwPath:     hdwPath,
 		IbcAddress:  MainNetIbcAddress,
