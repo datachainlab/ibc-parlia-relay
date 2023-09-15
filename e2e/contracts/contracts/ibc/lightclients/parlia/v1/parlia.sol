@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 import "@hyperledger-labs/yui-ibc-solidity/contracts/proto/ProtoBufRuntime.sol";
 import "@hyperledger-labs/yui-ibc-solidity/contracts/proto/GoogleProtobufAny.sol";
 import "../../../core/client/v1/client.sol";
+import "./duration.sol";
 
 library IbcLightclientsParliaV1ClientState {
 
@@ -13,7 +14,8 @@ library IbcLightclientsParliaV1ClientState {
     bytes ibc_store_address;
     bytes ibc_commitments_slot;
     IbcCoreClientV1Height.Data latest_height;
-    uint64 trusting_period;
+    GoogleProtobufDuration.Data trusting_period;
+    GoogleProtobufDuration.Data max_clock_drift;
     bool frozen;
   }
 
@@ -78,6 +80,9 @@ library IbcLightclientsParliaV1ClientState {
         pointer += _read_trusting_period(pointer, bs, r);
       } else
       if (fieldId == 6) {
+        pointer += _read_max_clock_drift(pointer, bs, r);
+      } else
+      if (fieldId == 7) {
         pointer += _read_frozen(pointer, bs, r);
       } else
       {
@@ -170,8 +175,25 @@ library IbcLightclientsParliaV1ClientState {
     bytes memory bs,
     Data memory r
   ) internal pure returns (uint) {
-    (uint64 x, uint256 sz) = ProtoBufRuntime._decode_uint64(p, bs);
+    (GoogleProtobufDuration.Data memory x, uint256 sz) = _decode_GoogleProtobufDuration(p, bs);
     r.trusting_period = x;
+    return sz;
+  }
+
+  /**
+   * @dev The decoder for reading a field
+   * @param p The offset of bytes array to start decode
+   * @param bs The bytes array to be decoded
+   * @param r The in-memory struct
+   * @return The number of bytes decoded
+   */
+  function _read_max_clock_drift(
+    uint256 p,
+    bytes memory bs,
+    Data memory r
+  ) internal pure returns (uint) {
+    (GoogleProtobufDuration.Data memory x, uint256 sz) = _decode_GoogleProtobufDuration(p, bs);
+    r.max_clock_drift = x;
     return sz;
   }
 
@@ -209,6 +231,25 @@ library IbcLightclientsParliaV1ClientState {
     (uint256 sz, uint256 bytesRead) = ProtoBufRuntime._decode_varint(pointer, bs);
     pointer += bytesRead;
     (IbcCoreClientV1Height.Data memory r, ) = IbcCoreClientV1Height._decode(pointer, bs, sz);
+    return (r, sz + bytesRead);
+  }
+
+  /**
+   * @dev The decoder for reading a inner struct field
+   * @param p The offset of bytes array to start decode
+   * @param bs The bytes array to be decoded
+   * @return The decoded inner-struct
+   * @return The number of bytes used to decode
+   */
+  function _decode_GoogleProtobufDuration(uint256 p, bytes memory bs)
+    internal
+    pure
+    returns (GoogleProtobufDuration.Data memory, uint)
+  {
+    uint256 pointer = p;
+    (uint256 sz, uint256 bytesRead) = ProtoBufRuntime._decode_varint(pointer, bs);
+    pointer += bytesRead;
+    (GoogleProtobufDuration.Data memory r, ) = GoogleProtobufDuration._decode(pointer, bs, sz);
     return (r, sz + bytesRead);
   }
 
@@ -281,18 +322,27 @@ library IbcLightclientsParliaV1ClientState {
     );
     pointer += IbcCoreClientV1Height._encode_nested(r.latest_height, pointer, bs);
     
-    if (r.trusting_period != 0) {
+    
     pointer += ProtoBufRuntime._encode_key(
       5,
-      ProtoBufRuntime.WireType.Varint,
+      ProtoBufRuntime.WireType.LengthDelim,
       pointer,
       bs
     );
-    pointer += ProtoBufRuntime._encode_uint64(r.trusting_period, pointer, bs);
-    }
-    if (r.frozen != false) {
+    pointer += GoogleProtobufDuration._encode_nested(r.trusting_period, pointer, bs);
+    
+    
     pointer += ProtoBufRuntime._encode_key(
       6,
+      ProtoBufRuntime.WireType.LengthDelim,
+      pointer,
+      bs
+    );
+    pointer += GoogleProtobufDuration._encode_nested(r.max_clock_drift, pointer, bs);
+    
+    if (r.frozen != false) {
+    pointer += ProtoBufRuntime._encode_key(
+      7,
       ProtoBufRuntime.WireType.Varint,
       pointer,
       bs
@@ -346,7 +396,8 @@ library IbcLightclientsParliaV1ClientState {
     e += 1 + ProtoBufRuntime._sz_lendelim(r.ibc_store_address.length);
     e += 1 + ProtoBufRuntime._sz_lendelim(r.ibc_commitments_slot.length);
     e += 1 + ProtoBufRuntime._sz_lendelim(IbcCoreClientV1Height._estimate(r.latest_height));
-    e += 1 + ProtoBufRuntime._sz_uint64(r.trusting_period);
+    e += 1 + ProtoBufRuntime._sz_lendelim(GoogleProtobufDuration._estimate(r.trusting_period));
+    e += 1 + ProtoBufRuntime._sz_lendelim(GoogleProtobufDuration._estimate(r.max_clock_drift));
     e += 1 + 1;
     return e;
   }
@@ -365,10 +416,6 @@ library IbcLightclientsParliaV1ClientState {
   }
 
   if (r.ibc_commitments_slot.length != 0) {
-    return false;
-  }
-
-  if (r.trusting_period != 0) {
     return false;
   }
 
@@ -391,7 +438,8 @@ library IbcLightclientsParliaV1ClientState {
     output.ibc_store_address = input.ibc_store_address;
     output.ibc_commitments_slot = input.ibc_commitments_slot;
     IbcCoreClientV1Height.store(input.latest_height, output.latest_height);
-    output.trusting_period = input.trusting_period;
+    GoogleProtobufDuration.store(input.trusting_period, output.trusting_period);
+    GoogleProtobufDuration.store(input.max_clock_drift, output.max_clock_drift);
     output.frozen = input.frozen;
 
   }

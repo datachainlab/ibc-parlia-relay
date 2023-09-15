@@ -2,10 +2,11 @@ syntax = "proto3";
 package relayer.provers.parlia.config;
 
 option go_package = "github.com/datachainlab/ibc-parlia-relay/module";
+import "google/protobuf/duration.proto";
+import "gogoproto/gogo.proto";
 
 message ProverConfig {
-  uint64 trust_level_numerator = 1;
-  uint64 trust_level_denominator = 2;
-  uint64 trusting_period = 3;
-  bool   debug = 4;
+  google.protobuf.Duration trusting_period = 1 [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
+  google.protobuf.Duration max_clock_drift = 2 [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
+  bool   debug = 3;
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
+	"time"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/types"
@@ -155,10 +156,9 @@ func (ts *ProverTestSuite) SetupTest() {
 	ts.Require().NoError(err)
 
 	config := ProverConfig{
-		TrustLevelNumerator:   1,
-		TrustLevelDenominator: 3,
-		TrustingPeriod:        100,
-		Debug:                 true,
+		TrustingPeriod: 100,
+		MaxClockDrift:  1,
+		Debug:          true,
 	}
 	ts.chain = &mockChain{
 		Chain:        NewChain(chain),
@@ -184,7 +184,8 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 		var cs ClientState
 		ts.Require().NoError(proto.Unmarshal(msg.ClientState.Value, &cs))
 		ts.Require().Equal(cs.ChainId, uint64(9999))
-		ts.Require().Equal(cs.TrustingPeriod, uint64(100))
+		ts.Require().Equal(cs.TrustingPeriod, time.Duration(100))
+		ts.Require().Equal(cs.MaxClockDrift, time.Duration(1))
 		ts.Require().False(cs.Frozen)
 		ts.Require().Equal(common.Bytes2Hex(cs.IbcStoreAddress), ibcHandlerAddress)
 		var commitment [32]byte

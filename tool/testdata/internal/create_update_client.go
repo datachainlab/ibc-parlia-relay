@@ -57,7 +57,7 @@ func updateClientSuccessCmd() *cobra.Command {
 				return err
 			}
 			epochCount := latest.GetRevisionHeight() / constant.BlocksPerEpoch
-			return printMainnetHeader(prover, epochCount*constant.BlocksPerEpoch+2)
+			return printMainnetHeader(prover, epochCount*constant.BlocksPerEpoch+3)
 		},
 	})
 	return cmd
