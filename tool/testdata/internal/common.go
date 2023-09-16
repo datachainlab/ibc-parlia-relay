@@ -10,23 +10,23 @@ import (
 )
 
 const (
-	hdwMnemonic           = "math razor capable expose worth grape metal sunset metal sudden usage scheme"
-	hdwPath               = "m/44'/60'/0'/0/0"
-	ibcAddress            = "0x702E40245797c5a2108A566b3CE2Bf14Bc6aF841"
-	localNetValidatorSize = 3
-	mainNetValidatorSize  = 21
-	mainNetIbcAddress     = "0x151f3951FA218cac426edFe078fA9e5C6dceA500"
+	hdwMnemonic              = "math razor capable expose worth grape metal sunset metal sudden usage scheme"
+	hdwPath                  = "m/44'/60'/0'/0/0"
+	ibcAddress               = "0x702E40245797c5a2108A566b3CE2Bf14Bc6aF841"
+	localNetValidatorSize    = 3
+	mainNetValidatorSize     = 21
+	mainAndTestNetIbcAddress = "0x151f3951FA218cac426edFe078fA9e5C6dceA500"
 )
 
 func createRPCAddr() (string, error) {
-	rpcAddr, ok := viper.Get("BSC_MAINNET_RPC_ADDR").(string)
+	rpcAddr, ok := viper.Get("BSC_RPC_ADDR").(string)
 	if !ok {
-		return "", fmt.Errorf("BSC_MAINNET_RPC_ADDR is required")
+		return "", fmt.Errorf("BSC_RPC_ADDR is required")
 	}
 	return rpcAddr, nil
 }
 
-func createMainnetProver() (*module.Prover, core.Chain, error) {
+func createProver() (*module.Prover, core.Chain, error) {
 	rpcAddr, err := createRPCAddr()
 	if err != nil {
 		return nil, nil, err
@@ -36,7 +36,7 @@ func createMainnetProver() (*module.Prover, core.Chain, error) {
 		RpcAddr:     rpcAddr,
 		HdwMnemonic: hdwMnemonic,
 		HdwPath:     hdwPath,
-		IbcAddress:  mainNetIbcAddress,
+		IbcAddress:  mainAndTestNetIbcAddress,
 	})
 	if err != nil {
 		return nil, chain, err

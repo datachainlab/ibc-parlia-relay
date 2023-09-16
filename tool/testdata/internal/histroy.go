@@ -23,7 +23,7 @@ func (m *historyModule) mainnet() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			log.Printf("num = %d\n", num)
-			prover, chain, err := createMainnetProver()
+			prover, chain, err := createProver()
 			if err != nil {
 				return err
 			}
@@ -32,19 +32,48 @@ func (m *historyModule) mainnet() *cobra.Command {
 				return err
 			}
 
-			createdEpoch, err := m.outputMsgClient(prover, latest.GetRevisionHeight()-num)
+			createdEpoch, err := m.outputMsgClient(prover, latest.GetRevisionHeight()-num, "create_mainnet.json")
 			if err != nil {
 				return err
 			}
 
-			return m.outputMsgUpdate(prover, createdEpoch, latest.GetRevisionHeight(), num)
+			return m.outputMsgUpdate(prover, createdEpoch, latest.GetRevisionHeight(), num, "update_mainnet.json")
 		},
 	}
 	cmd.Flags().Uint64Var(&num, "num", 240, "--num")
 	return cmd
 }
 
-func (m *historyModule) outputMsgUpdate(prover *module.Prover, createdEpoch, latest uint64, num uint64) error {
+func (m *historyModule) testnet() *cobra.Command {
+	var num uint64
+	cmd := &cobra.Command{
+		Use:   "testnet",
+		Short: "create many data testdata",
+		RunE: func(cmd *cobra.Command, args []string) error {
+
+			log.Printf("num = %d\n", num)
+			prover, chain, err := createProver()
+			if err != nil {
+				return err
+			}
+			latest, err := chain.LatestHeight()
+			if err != nil {
+				return err
+			}
+
+			createdEpoch, err := m.outputMsgClient(prover, latest.GetRevisionHeight()-num, "create_testnet.json")
+			if err != nil {
+				return err
+			}
+
+			return m.outputMsgUpdate(prover, createdEpoch, latest.GetRevisionHeight(), num, "create_testnet.json")
+		},
+	}
+	cmd.Flags().Uint64Var(&num, "num", 240, "--num")
+	return cmd
+}
+
+func (m *historyModule) outputMsgUpdate(prover *module.Prover, createdEpoch, latest uint64, num uint64, path string) error {
 	type updatingData struct {
 		Header string `json:"header"`
 	}
@@ -89,10 +118,10 @@ func (m *historyModule) outputMsgUpdate(prover *module.Prover, createdEpoch, lat
 	if err != nil {
 		return err
 	}
-	return os.WriteFile("update_mainnet.json", serialized, 777)
+	return os.WriteFile(path, serialized, 777)
 }
 
-func (m *historyModule) outputMsgClient(prover *module.Prover, firstNumber uint64) (uint64, error) {
+func (m *historyModule) outputMsgClient(prover *module.Prover, firstNumber uint64, path string) (uint64, error) {
 	firstHeader, err := prover.GetLatestFinalizedHeaderByLatestHeight(firstNumber)
 	if err != nil {
 		return 0, err
@@ -122,7 +151,7 @@ func (m *historyModule) outputMsgClient(prover *module.Prover, firstNumber uint6
 		return 0, err
 	}
 	epochs := firstHeader.GetHeight().GetRevisionHeight() / constant.BlocksPerEpoch
-	return (epochs - 1) * constant.BlocksPerEpoch, os.WriteFile("create_mainnet.json", serialized, 777)
+	return (epochs - 1) * constant.BlocksPerEpoch, os.WriteFile(path, serialized, 777)
 }
 
 func CreateHistoryClient() *cobra.Command {

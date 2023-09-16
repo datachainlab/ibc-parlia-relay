@@ -24,7 +24,7 @@ func (m *updateClientModule) success() *cobra.Command {
 		Use:   "latest",
 		Short: "for latest block",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			prover, chain, err := createMainnetProver()
+			prover, chain, err := createProver()
 			if err != nil {
 				return err
 			}
@@ -32,14 +32,14 @@ func (m *updateClientModule) success() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return m.printMainnetHeader(prover, latest.GetRevisionHeight())
+			return m.printHeader(prover, latest.GetRevisionHeight())
 		},
 	})
 	cmd.AddCommand(&cobra.Command{
 		Use:   "epoch",
 		Short: "for epoch block",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			prover, chain, err := createMainnetProver()
+			prover, chain, err := createProver()
 			if err != nil {
 				return err
 			}
@@ -48,7 +48,7 @@ func (m *updateClientModule) success() *cobra.Command {
 				return err
 			}
 			epochCount := latest.GetRevisionHeight() / constant.BlocksPerEpoch
-			return m.printMainnetHeader(prover, epochCount*constant.BlocksPerEpoch+3)
+			return m.printHeader(prover, epochCount*constant.BlocksPerEpoch+3)
 		},
 	})
 	return cmd
@@ -59,7 +59,7 @@ func (m *updateClientModule) error() *cobra.Command {
 		Use:   "error",
 		Short: "create updateClient testdata for error",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			prover, chain, err := createMainnetProver()
+			prover, chain, err := createProver()
 			if err != nil {
 				return err
 			}
@@ -99,8 +99,8 @@ func (m *updateClientModule) error() *cobra.Command {
 	}
 }
 
-func (m *updateClientModule) printMainnetHeader(prover *module.Prover, height uint64) error {
-	log.Println("printMainnetHeader latest=", height)
+func (m *updateClientModule) printHeader(prover *module.Prover, height uint64) error {
+	log.Println("printHeader latest=", height)
 	iHeader, err := prover.GetLatestFinalizedHeaderByLatestHeight(height)
 	if err != nil {
 		return err
@@ -114,7 +114,7 @@ func (m *updateClientModule) printMainnetHeader(prover *module.Prover, height ui
 		return err
 	}
 
-	account, err := header.Account(common.HexToAddress(mainNetIbcAddress))
+	account, err := header.Account(common.HexToAddress(mainAndTestNetIbcAddress))
 	if err != nil {
 		return err
 	}
