@@ -18,7 +18,7 @@ func (m *createClientModule) createClientSuccessCmd() *cobra.Command {
 		Use:   "success",
 		Short: "create CreateClient testdata for success",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_, chain, err := createMainnetProver()
+			_, chain, err := createProver()
 			if err != nil {
 				return err
 			}
@@ -35,7 +35,7 @@ func (m *createClientModule) createClientSuccessCmd() *cobra.Command {
 				ChainId:            56,
 				LatestHeight:       &latestHeight,
 				Frozen:             false,
-				IbcStoreAddress:    common.HexToAddress(mainNetIbcAddress).Bytes(),
+				IbcStoreAddress:    common.HexToAddress(mainAndTestNetIbcAddress).Bytes(),
 				IbcCommitmentsSlot: commitmentsSlot[:],
 			}
 			anyClientState, err := codectypes.NewAnyWithValue(&clientState)

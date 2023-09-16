@@ -61,7 +61,7 @@ func (m *misbehaviorModule) error() *cobra.Command {
 		Use:   "error",
 		Short: "create misbehavior testdata for error",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			prover, chain, err := createMainnetProver()
+			prover, chain, err := createProver()
 			if err != nil {
 				return err
 			}
