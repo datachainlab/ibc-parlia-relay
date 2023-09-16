@@ -16,6 +16,7 @@ func main() {
 	rootCmd.AddCommand(internal.CreateMisbehavior())
 	rootCmd.AddCommand(internal.CreateCreateClient())
 	rootCmd.AddCommand(internal.CreateUpdateClient())
+	rootCmd.AddCommand(internal.CreateHistoryClient())
 
 	if err := rootCmd.ExecuteContext(context.Background()); err != nil {
 		log.Panicf("Failed to run command : %+v", err)

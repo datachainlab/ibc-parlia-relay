@@ -26,3 +26,9 @@ go run main.go update success latest
 # src/client.rs test_error_update_client
 go run main.go update error 
 ```
+
+### LCP integration data
+```sh
+go run main.go history mainnet --num 240
+go run main.go history testnet --num 240
+```

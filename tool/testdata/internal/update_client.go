@@ -3,29 +3,19 @@ package internal
 import (
 	"fmt"
 	"github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
-	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/hyperledger-labs/yui-relayer/core"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"log"
 )
 
-func CreateUpdateClient() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "update",
-		Short: "Create testdata for update client. ",
-	}
-	cmd.AddCommand(updateClientSuccessCmd())
-	cmd.AddCommand(updateClientErrorCmd())
-	return cmd
+type updateClientModule struct {
 }
 
-func updateClientSuccessCmd() *cobra.Command {
+func (m *updateClientModule) success() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "success",
 		Short: "create updateClient testdata for success",
@@ -42,7 +32,7 @@ func updateClientSuccessCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return printMainnetHeader(prover, latest.GetRevisionHeight())
+			return m.printMainnetHeader(prover, latest.GetRevisionHeight())
 		},
 	})
 	cmd.AddCommand(&cobra.Command{
@@ -58,13 +48,13 @@ func updateClientSuccessCmd() *cobra.Command {
 				return err
 			}
 			epochCount := latest.GetRevisionHeight() / constant.BlocksPerEpoch
-			return printMainnetHeader(prover, epochCount*constant.BlocksPerEpoch+3)
+			return m.printMainnetHeader(prover, epochCount*constant.BlocksPerEpoch+3)
 		},
 	})
 	return cmd
 }
 
-func updateClientErrorCmd() *cobra.Command {
+func (m *updateClientModule) error() *cobra.Command {
 	return &cobra.Command{
 		Use:   "error",
 		Short: "create updateClient testdata for error",
@@ -108,7 +98,8 @@ func updateClientErrorCmd() *cobra.Command {
 		},
 	}
 }
-func printMainnetHeader(prover *module.Prover, height uint64) error {
+
+func (m *updateClientModule) printMainnetHeader(prover *module.Prover, height uint64) error {
 	log.Println("printMainnetHeader latest=", height)
 	iHeader, err := prover.GetLatestFinalizedHeaderByLatestHeight(height)
 	if err != nil {
@@ -123,7 +114,7 @@ func printMainnetHeader(prover *module.Prover, height uint64) error {
 		return err
 	}
 
-	account, err := header.Account(common.HexToAddress(MainNetIbcAddress))
+	account, err := header.Account(common.HexToAddress(mainNetIbcAddress))
 	if err != nil {
 		return err
 	}
@@ -158,7 +149,7 @@ func printMainnetHeader(prover *module.Prover, height uint64) error {
 		if err != nil {
 			return err
 		}
-		if len(newValidators) != MainNetValidatorSize {
+		if len(newValidators) != mainNetValidatorSize {
 			return fmt.Errorf("invalid validator size for test")
 		}
 		log.Println("newValidatorHash", common.Bytes2Hex(crypto.Keccak256(newValidators...)))
@@ -166,33 +157,13 @@ func printMainnetHeader(prover *module.Prover, height uint64) error {
 	return nil
 }
 
-func createRPCAddr() (string, error) {
-	rpcAddr, ok := viper.Get("BSC_MAINNET_RPC_ADDR").(string)
-	if !ok {
-		return "", fmt.Errorf("BSC_MAINNET_RPC_ADDR is required")
+func CreateUpdateClient() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "update",
+		Short: "Create testdata for update client. ",
 	}
-	return rpcAddr, nil
-}
-
-func createMainnetProver() (*module.Prover, core.Chain, error) {
-	rpcAddr, err := createRPCAddr()
-	if err != nil {
-		return nil, nil, err
-	}
-	chain, err := ethereum.NewChain(ethereum.ChainConfig{
-		EthChainId:  56,
-		RpcAddr:     rpcAddr,
-		HdwMnemonic: hdwMnemonic,
-		HdwPath:     hdwPath,
-		IbcAddress:  MainNetIbcAddress,
-	})
-	if err != nil {
-		return nil, chain, err
-	}
-
-	config := module.ProverConfig{
-		Debug: true,
-	}
-	ec := module.NewChain(chain)
-	return module.NewProver(ec, &config).(*module.Prover), chain, nil
+	m := updateClientModule{}
+	cmd.AddCommand(m.success())
+	cmd.AddCommand(m.error())
+	return cmd
 }

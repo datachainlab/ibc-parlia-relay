@@ -13,36 +13,20 @@ import (
 	"log"
 )
 
-const (
-	hdwMnemonic           = "math razor capable expose worth grape metal sunset metal sudden usage scheme"
-	hdwPath               = "m/44'/60'/0'/0/0"
-	IbcAddress            = "0x702E40245797c5a2108A566b3CE2Bf14Bc6aF841"
-	LocalNetValidatorSize = 3
-	MainNetValidatorSize  = 21
-	MainNetIbcAddress     = "0x151f3951FA218cac426edFe078fA9e5C6dceA500"
-)
-
-func CreateMisbehavior() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "misbehavior",
-		Short: "Create testdata for misbehavior. ",
-	}
-	cmd.AddCommand(misbehaviorSuccessCmd())
-	cmd.AddCommand(misbehaviorErrorCmd())
-	return cmd
+type misbehaviorModule struct {
 }
 
-func misbehaviorSuccessCmd() *cobra.Command {
+func (m *misbehaviorModule) success() *cobra.Command {
 	return &cobra.Command{
 		Use:   "success",
 		Short: "create misbehavior testdata for success",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			chainID := int64(9999)
-			targetHeight, header1, err := getLocalHeader(chainID, 8645, 0)
+			targetHeight, header1, err := m.getLocalHeader(chainID, 8645, 0)
 			if err != nil {
 				log.Panic(err)
 			}
-			_, header2, err := getLocalHeader(chainID, 8545, targetHeight)
+			_, header2, err := m.getLocalHeader(chainID, 8545, targetHeight)
 			if err != nil {
 				log.Panic(err)
 			}
@@ -62,7 +46,7 @@ func misbehaviorSuccessCmd() *cobra.Command {
 			log.Println("previousTargetValidatorHash", common.Bytes2Hex(crypto.Keccak256(header1.PreviousTargetValidators...)))
 
 			epochCount := header1.GetHeight().GetRevisionHeight() / constant.BlocksPerEpoch
-			if header1.GetHeight().GetRevisionHeight()%constant.BlocksPerEpoch >= (LocalNetValidatorSize/2 + 1) {
+			if header1.GetHeight().GetRevisionHeight()%constant.BlocksPerEpoch >= (localNetValidatorSize/2 + 1) {
 				log.Println("targetValidatorEpoch", epochCount*constant.BlocksPerEpoch)
 			} else {
 				log.Println("targetValidatorEpoch", (epochCount-1)*constant.BlocksPerEpoch)
@@ -72,30 +56,15 @@ func misbehaviorSuccessCmd() *cobra.Command {
 	}
 }
 
-func misbehaviorErrorCmd() *cobra.Command {
+func (m *misbehaviorModule) error() *cobra.Command {
 	return &cobra.Command{
 		Use:   "error",
 		Short: "create misbehavior testdata for error",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			rpcAddr, err := createRPCAddr()
+			prover, chain, err := createMainnetProver()
 			if err != nil {
 				return err
 			}
-			chain, err := ethereum.NewChain(ethereum.ChainConfig{
-				EthChainId:  56,
-				RpcAddr:     rpcAddr,
-				HdwMnemonic: hdwMnemonic,
-				HdwPath:     hdwPath,
-				IbcAddress:  MainNetIbcAddress,
-			})
-			if err != nil {
-				return err
-			}
-
-			config := module.ProverConfig{
-				Debug: true,
-			}
-			prover := module.NewProver(module.NewChain(chain), &config).(*module.Prover)
 
 			latestHeight, err := chain.LatestHeight()
 			if err != nil {
@@ -141,7 +110,7 @@ func misbehaviorErrorCmd() *cobra.Command {
 			log.Println("Invalid block: prevous_target_validator_hash", common.Bytes2Hex(crypto.Keccak256(header.(*module.Header).PreviousTargetValidators...)))
 			log.Println("Invalid block: trusted_height", updating[0].(*module.Header).TrustedHeight)
 			epochCount := header.GetHeight().GetRevisionHeight() / constant.BlocksPerEpoch
-			if header.GetHeight().GetRevisionHeight()%constant.BlocksPerEpoch >= (MainNetValidatorSize/2 + 1) {
+			if header.GetHeight().GetRevisionHeight()%constant.BlocksPerEpoch >= (mainNetValidatorSize/2 + 1) {
 				log.Println("Invalid block: targetValidatorEpoch", epochCount*constant.BlocksPerEpoch)
 			} else {
 				log.Println("Invalid block: targetValidatorEpoch", (epochCount-1)*constant.BlocksPerEpoch)
@@ -152,13 +121,13 @@ func misbehaviorErrorCmd() *cobra.Command {
 	}
 }
 
-func getLocalHeader(chainID int64, port int64, targetHeight uint64) (uint64, *module.Header, error) {
+func (m *misbehaviorModule) getLocalHeader(chainID int64, port int64, targetHeight uint64) (uint64, *module.Header, error) {
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
 		EthChainId:  chainID,
 		RpcAddr:     fmt.Sprintf("http://localhost:%d", port),
 		HdwMnemonic: hdwMnemonic,
 		HdwPath:     hdwPath,
-		IbcAddress:  IbcAddress,
+		IbcAddress:  ibcAddress,
 	})
 	if err != nil {
 		return targetHeight, nil, err
@@ -190,4 +159,15 @@ func getLocalHeader(chainID int64, port int64, targetHeight uint64) (uint64, *mo
 	trustedHeight := types.NewHeight(0, target.Number.Uint64()-5)
 	header.TrustedHeight = &trustedHeight
 	return latest, header, nil
+}
+
+func CreateMisbehavior() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "misbehavior",
+		Short: "Create testdata for misbehavior. ",
+	}
+	m := misbehaviorModule{}
+	cmd.AddCommand(m.success())
+	cmd.AddCommand(m.error())
+	return cmd
 }

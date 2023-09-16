@@ -10,16 +10,10 @@ import (
 	"time"
 )
 
-func CreateCreateClient() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "Create testdata for Create client. ",
-	}
-	cmd.AddCommand(CreateClientSuccessCmd())
-	return cmd
+type createClientModule struct {
 }
 
-func CreateClientSuccessCmd() *cobra.Command {
+func (m *createClientModule) createClientSuccessCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "success",
 		Short: "create CreateClient testdata for success",
@@ -41,7 +35,7 @@ func CreateClientSuccessCmd() *cobra.Command {
 				ChainId:            56,
 				LatestHeight:       &latestHeight,
 				Frozen:             false,
-				IbcStoreAddress:    common.HexToAddress(MainNetIbcAddress).Bytes(),
+				IbcStoreAddress:    common.HexToAddress(mainNetIbcAddress).Bytes(),
 				IbcCommitmentsSlot: commitmentsSlot[:],
 			}
 			anyClientState, err := codectypes.NewAnyWithValue(&clientState)
@@ -57,5 +51,15 @@ func CreateClientSuccessCmd() *cobra.Command {
 			return nil
 		},
 	}
+	return cmd
+}
+
+func CreateCreateClient() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "Create testdata for Create client. ",
+	}
+	m := createClientModule{}
+	cmd.AddCommand(m.createClientSuccessCmd())
 	return cmd
 }
