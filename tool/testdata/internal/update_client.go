@@ -48,7 +48,7 @@ func (m *updateClientModule) success() *cobra.Command {
 				return err
 			}
 			epochCount := latest.GetRevisionHeight() / constant.BlocksPerEpoch
-			return m.printHeader(prover, epochCount*constant.BlocksPerEpoch+3)
+			return m.printHeader(prover, epochCount*constant.BlocksPerEpoch+2)
 		},
 	})
 	return cmd
@@ -93,6 +93,8 @@ func (m *updateClientModule) error() *cobra.Command {
 			epochCount := header.GetHeight().GetRevisionHeight() / constant.BlocksPerEpoch
 			log.Println("currentEpochHeight", epochCount*constant.BlocksPerEpoch)
 			log.Println("targetValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.(*module.Header).TargetValidators...)))
+			log.Println("childValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.(*module.Header).ChildValidators...)))
+			log.Println("grandChildValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.(*module.Header).GrandChildValidators...)))
 			log.Println("previousTargetValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.(*module.Header).PreviousTargetValidators...)))
 			return nil
 		},
@@ -143,6 +145,8 @@ func (m *updateClientModule) printHeader(prover *module.Prover, height uint64) e
 
 	// validators hash
 	log.Println("targetValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.TargetValidators...)))
+	log.Println("childValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.ChildValidators...)))
+	log.Println("grandChildValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.GrandChildValidators...)))
 	log.Println("previousTargetValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.PreviousTargetValidators...)))
 	if target.Number.Uint64()%constant.BlocksPerEpoch == 0 {
 		newValidators, err := module.ExtractValidatorSet(target)

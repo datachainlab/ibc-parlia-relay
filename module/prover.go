@@ -198,14 +198,15 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight ex
 
 		if pr.config.Debug {
 			targetValidatorsHash := common.Bytes2Hex(crypto.Keccak256(h.(*Header).TargetValidators...))
-			parentValidatorsHash := common.Bytes2Hex(crypto.Keccak256(h.(*Header).ParentValidators...))
+			childValidatorsHash := common.Bytes2Hex(crypto.Keccak256(h.(*Header).ChildValidators...))
+			grandChildValidatorsHash := common.Bytes2Hex(crypto.Keccak256(h.(*Header).GrandChildValidators...))
 			target, _ := h.(*Header).DecodedTarget()
 			if target.Number.Uint64()%constant.BlocksPerEpoch == 0 {
 				newValidators, _ := ExtractValidatorSet(target)
 				newValidatorsHash := common.Bytes2Hex(crypto.Keccak256(newValidators...))
-				log.Printf("SetupHeadersForUpdate: targetHeight=%v, trustedHeight=%v targetValidatorsHash=%s, parentValidatorsHash=%s, newValidatorsHash=%s\n", h.GetHeight(), trustedHeight, targetValidatorsHash, parentValidatorsHash, newValidatorsHash)
+				log.Printf("SetupHeadersForUpdate: targetHeight=%v, trustedHeight=%v targetValidatorsHash=%s, childtValidatorsHash=%s, granChildValidatorsHash=%s, newValidatorsHash=%s\n", h.GetHeight(), trustedHeight, targetValidatorsHash, childValidatorsHash, grandChildValidatorsHash, newValidatorsHash)
 			} else {
-				log.Printf("SetupHeadersForUpdate: targetHeight=%v, trustedHeight=%v targetValidatorsHash=%s, parentValidatorsHash=%s\n", h.GetHeight(), trustedHeight, targetValidatorsHash, parentValidatorsHash)
+				log.Printf("SetupHeadersForUpdate: targetHeight=%v, trustedHeight=%v targetValidatorsHash=%s, childValidatorsHash=%s, granChildValidatorsHash=%s\n", h.GetHeight(), trustedHeight, targetValidatorsHash, childValidatorsHash, grandChildValidatorsHash)
 			}
 		}
 	}
@@ -220,7 +221,7 @@ func (pr *Prover) ProveState(ctx core.QueryContext, path string, value []byte) (
 
 // queryVerifyingHeader returns headers to finalize
 func (pr *Prover) queryVerifyingHeader(height uint64) (core.Header, error) {
-	ethHeaders, err := pr.queryETHHeaders(height, 2)
+	ethHeaders, err := pr.queryETHHeaders(height, 3)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get query : height = %d, %+v", height, err)
 	}
@@ -233,7 +234,8 @@ func (pr *Prover) queryVerifyingHeader(height uint64) (core.Header, error) {
 	header := &Header{
 		AccountProof: rlpAccountProof,
 		Target:       ethHeaders[0],
-		Parent:       ethHeaders[1],
+		Child:        ethHeaders[1],
+		GrandChild:   ethHeaders[2],
 	}
 
 	// Get target validator set
@@ -245,17 +247,27 @@ func (pr *Prover) queryVerifyingHeader(height uint64) (core.Header, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Get parent validator set
-	parent, err := header.DecodedParent()
+	// Get child validator set
+	child, err := header.DecodedChild()
 	if err != nil {
 		return nil, err
 	}
-	parentValidators, _, err := pr.queryValidators(parent.Number.Uint64())
+	childValidators, _, err := pr.queryValidators(child.Number.Uint64())
+	if err != nil {
+		return nil, err
+	}
+	// Get grand child validator set
+	grandChild, err := header.DecodedChild()
+	if err != nil {
+		return nil, err
+	}
+	grandChildValidators, _, err := pr.queryValidators(grandChild.Number.Uint64())
 	if err != nil {
 		return nil, err
 	}
 	header.TargetValidators = targetValidators
-	header.ParentValidators = parentValidators
+	header.ChildValidators = childValidators
+	header.GrandChildValidators = grandChildValidators
 	header.PreviousTargetValidators = previousTargetValidators
 	return header, nil
 }
@@ -282,7 +294,7 @@ func (pr *Prover) queryValidators(target uint64) ([][]byte, [][]byte, error) {
 func (pr *Prover) queryETHHeaders(start uint64, count uint64) ([]*ETHHeader, error) {
 	var ethHeaders []*ETHHeader
 	for i := 0; i < int(count); i++ {
-		height := start - uint64(i)
+		height := start + uint64(i)
 		block, err := pr.chain.Header(context.TODO(), height)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get ETHHeaders : count = %d, height = %d, %+v", count, height, err)

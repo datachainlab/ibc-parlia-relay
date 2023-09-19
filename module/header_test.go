@@ -40,7 +40,8 @@ func (ts *HeaderTestSuite) TestNewHeaderSuccess() {
 
 	header := Header{
 		Target:       ethHeader,
-		Parent:       ethHeader,
+		Child:        ethHeader,
+		GrandChild:   ethHeader,
 		AccountProof: accountProofRLP,
 	}
 	target, err := header.DecodedTarget()

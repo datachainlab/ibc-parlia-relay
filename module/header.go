@@ -35,7 +35,10 @@ func (h *Header) ValidateBasic() error {
 	if _, err := h.DecodedTarget(); err != nil {
 		return err
 	}
-	if _, err := h.DecodedParent(); err != nil {
+	if _, err := h.DecodedChild(); err != nil {
+		return err
+	}
+	if _, err := h.DecodedGrandChild(); err != nil {
 		return err
 	}
 	if _, err := decodeAccountProof(h.AccountProof); err != nil {
@@ -52,9 +55,17 @@ func (h *Header) DecodedTarget() (*types.Header, error) {
 	return &ethHeader, nil
 }
 
-func (h *Header) DecodedParent() (*types.Header, error) {
+func (h *Header) DecodedChild() (*types.Header, error) {
 	var ethHeader types.Header
-	if err := rlp.DecodeBytes(h.Parent.Header, &ethHeader); err != nil {
+	if err := rlp.DecodeBytes(h.Child.Header, &ethHeader); err != nil {
+		return nil, err
+	}
+	return &ethHeader, nil
+}
+
+func (h *Header) DecodedGrandChild() (*types.Header, error) {
+	var ethHeader types.Header
+	if err := rlp.DecodeBytes(h.GrandChild.Header, &ethHeader); err != nil {
 		return nil, err
 	}
 	return &ethHeader, nil

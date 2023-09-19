@@ -107,6 +107,8 @@ func (m *misbehaviorModule) error() *cobra.Command {
 			log.Println("Invalid block: misbehavior", common.Bytes2Hex(marshal))
 			log.Println("Invalid block: height", header.GetHeight())
 			log.Println("Invalid block: target_validator_hash", common.Bytes2Hex(crypto.Keccak256(header.(*module.Header).TargetValidators...)))
+			log.Println("Invalid block: child_validator_hash", common.Bytes2Hex(crypto.Keccak256(header.(*module.Header).ChildValidators...)))
+			log.Println("Invalid block: grand_child_validator_hash", common.Bytes2Hex(crypto.Keccak256(header.(*module.Header).GrandChildValidators...)))
 			log.Println("Invalid block: prevous_target_validator_hash", common.Bytes2Hex(crypto.Keccak256(header.(*module.Header).PreviousTargetValidators...)))
 			log.Println("Invalid block: trusted_height", updating[0].(*module.Header).TrustedHeight)
 			epochCount := header.GetHeight().GetRevisionHeight() / constant.BlocksPerEpoch
