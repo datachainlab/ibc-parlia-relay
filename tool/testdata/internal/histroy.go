@@ -118,7 +118,7 @@ func (m *historyModule) outputMsgUpdate(prover *module.Prover, createdEpoch, lat
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, serialized, 777)
+	return os.WriteFile(path, serialized, 0666)
 }
 
 func (m *historyModule) outputMsgClient(prover *module.Prover, firstNumber uint64, path string) (uint64, error) {
@@ -151,7 +151,7 @@ func (m *historyModule) outputMsgClient(prover *module.Prover, firstNumber uint6
 		return 0, err
 	}
 	epochs := firstHeader.GetHeight().GetRevisionHeight() / constant.BlocksPerEpoch
-	return (epochs - 1) * constant.BlocksPerEpoch, os.WriteFile(path, serialized, 777)
+	return (epochs - 1) * constant.BlocksPerEpoch, os.WriteFile(path, serialized, 0666)
 }
 
 func CreateHistoryClient() *cobra.Command {
