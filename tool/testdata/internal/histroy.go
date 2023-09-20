@@ -84,6 +84,7 @@ func (m *historyModule) outputMsgUpdate(prover *module.Prover, createdEpoch, lat
 
 	data := updates{}
 	for i := num; i > 0; i-- {
+		log.Println(num - i)
 		targetLatest := latest - i
 		header, err := prover.GetLatestFinalizedHeaderByLatestHeight(targetLatest)
 		if err != nil {
