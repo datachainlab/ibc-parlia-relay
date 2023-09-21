@@ -1,11 +1,13 @@
 FROM ethereum/solc:0.6.4-alpine
 
-RUN apk add --d --no-cache ca-certificates npm nodejs bash alpine-sdk
+RUN apk add --d --no-cache ca-certificates npm nodejs bash alpine-sdk expect jq
 
-RUN git clone https://github.com/binance-chain/bsc-genesis-contract.git /root/genesis
-RUN cd /root/genesis && git checkout 461d9a1f0d0bcc5fc2d4cd39c4b748185eaae34c
-RUN cd /root/genesis && npm install
+RUN git clone https://github.com/binance-chain/bsc-genesis-contract.git -b v1.1.9 /root/genesis \
+    && cd /root/genesis && npm ci
 
+COPY scripts/contracts/SystemReward.template /root/genesis/contracts/SystemReward.template
+COPY scripts/contracts/BSCValidatorSet.template /root/genesis/contracts/BSCValidatorSet.template
+COPY scripts/generate-validator.js /root/genesis/generate-validator.js
 COPY scripts/genesis-template.template /root/genesis/genesis-template.template
 COPY scripts/init_holders.template /root/genesis/init_holders.template
 

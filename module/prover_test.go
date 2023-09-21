@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
+	"time"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/types"
@@ -68,17 +69,19 @@ func (r *mockChain) Header(_ context.Context, height uint64) (*types2.Header, er
 	if header.Number.Uint64()%constant.BlocksPerEpoch == 0 {
 		if header.Number.Int64() == 0 {
 			header.Extra = append(header.Extra, make([]byte, extraVanity)...)
+			header.Extra = append(header.Extra, 4)
 			for i := 1; i <= 4; i++ {
-				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("100000000000000000000000000000000000000%d", i))...)
+				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("100000000000000000000000000000000000000%dda4f05ea3dd58373394ba3a7ca3cabec78b69e044b2b09e82171d82e6e3998a9ed1f82226cd4540bcc8c3bafa8c9c725%d", i, i))...)
 			}
 			header.Extra = append(header.Extra, make([]byte, extraSeal)...)
 		} else {
 			header.Extra = make([]byte, extraVanity)
+			header.Extra = append(header.Extra, 21)
 			for i := 1; i <= 9; i++ {
-				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("200000000000000000000000000000000000000%d", i))...)
+				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("200000000000000000000000000000000000000%da4f05ea3dd58373394ba3a7ca3cabec78b69e044b2b09e82171d82e6e3998a9ed1f82226cd4540bcc8c3bafa8c9c725%d", i, i))...)
 			}
 			for i := 10; i <= 21; i++ {
-				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("20000000000000000000000000000000000000%d", i))...)
+				header.Extra = append(header.Extra, common.Hex2Bytes(fmt.Sprintf("20000000000000000000000000000000000000%da4f05ea3dd58373394ba3a7ca3cabec78b69e044b2b09e82171d82e6e3998a9ed1f82226cd4540bcc8c3bafa8c9c72%d", i, i))...)
 			}
 			header.Extra = append(header.Extra, make([]byte, extraSeal)...)
 		}
@@ -153,10 +156,9 @@ func (ts *ProverTestSuite) SetupTest() {
 	ts.Require().NoError(err)
 
 	config := ProverConfig{
-		TrustLevelNumerator:   1,
-		TrustLevelDenominator: 3,
-		TrustingPeriod:        100,
-		Debug:                 true,
+		TrustingPeriod: 100 * time.Second,
+		MaxClockDrift:  1 * time.Millisecond,
+		Debug:          true,
 	}
 	ts.chain = &mockChain{
 		Chain:        NewChain(chain),
@@ -186,11 +188,11 @@ func (ts *ProverTestSuite) TestQueryLatestFinalizedHeader() {
 	ts.Require().Error(err, "no finalized header found : latest = 0")
 
 	firstEpochBlock, _ := ts.chain.Header(context.TODO(), 0)
-	firstValidators, _ := extractValidatorSet(firstEpochBlock)
+	firstValidators, _ := ExtractValidatorSet(firstEpochBlock)
 	firstEpochFinalizing := requiredHeaderCountToFinalize(len(firstValidators))
 
 	secondEpochBlock, _ := ts.chain.Header(context.TODO(), 200)
-	secondValidators, _ := extractValidatorSet(secondEpochBlock)
+	secondValidators, _ := ExtractValidatorSet(secondEpochBlock)
 	secondEpochFinalizing := requiredHeaderCountToFinalize(len(secondValidators))
 
 	// finalized by previous epoch validators
@@ -258,9 +260,8 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 		var cs ClientState
 		ts.Require().NoError(proto.Unmarshal(msg.ClientState.Value, &cs))
 		ts.Require().Equal(cs.ChainId, uint64(9999))
-		ts.Require().Equal(cs.TrustingPeriod, uint64(100))
-		ts.Require().Equal(cs.TrustLevel.Numerator, uint64(1))
-		ts.Require().Equal(cs.TrustLevel.Denominator, uint64(3))
+		ts.Require().Equal(cs.TrustingPeriod, 100*time.Second)
+		ts.Require().Equal(cs.MaxClockDrift, 1*time.Millisecond)
 		ts.Require().False(cs.Frozen)
 		ts.Require().Equal(common.Bytes2Hex(cs.IbcStoreAddress), ibcHandlerAddress)
 		var commitment [32]byte
@@ -274,7 +275,7 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 		ts.Require().NoError(proto.Unmarshal(msg.ConsensusState.Value, &cs2))
 		target, err := previousEpochHeader.Target()
 		ts.Require().NoError(err)
-		validatorSet, err := extractValidatorSet(target)
+		validatorSet, err := ExtractValidatorSet(target)
 		ts.Require().NoError(err)
 		ts.Require().Equal(cs2.ValidatorsHash, crypto.Keccak256(validatorSet...))
 		ts.Require().Equal(cs2.Timestamp, target.Time)
@@ -397,30 +398,6 @@ func (ts *ProverTestSuite) TestQueryClientStateWithProof() {
 
 	// storage_key is 0x0c0dd47e5867d48cad725de0d09f9549bd564c1d143f6c1f451b26ccd981eeae
 	ts.Require().Equal(common.Bytes2Hex(proof), "f853f8518080a0143145e818eeff83817419a6632ea193fd1acaa4f791eb17282f623f38117f568080808080808080a016cbf6e0ba10512eb618d99a1e34025adb7e6f31d335bda7fb20c8bb95fb5b978080808080")
-}
-
-func (ts *ProverTestSuite) TestRequireCountToFinalize() {
-	header := &types2.Header{
-		Number: big.NewInt(1),
-	}
-	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*1)
-	validators, _ := extractValidatorSet(header)
-	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(1))
-	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*2)
-	validators, _ = extractValidatorSet(header)
-	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(2))
-	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*3)
-	validators, _ = extractValidatorSet(header)
-	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(2))
-	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*4)
-	validators, _ = extractValidatorSet(header)
-	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(3))
-	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*5)
-	validators, _ = extractValidatorSet(header)
-	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(3))
-	header.Extra = make([]byte, extraVanity+extraSeal+validatorBytesLengthBeforeLuban*21)
-	validators, _ = extractValidatorSet(header)
-	ts.Require().Equal(requiredHeaderCountToFinalize(len(validators)), uint64(11))
 }
 
 func (ts *ProverTestSuite) TestConnection() {

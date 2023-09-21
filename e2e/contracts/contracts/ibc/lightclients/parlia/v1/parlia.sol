@@ -3,264 +3,7 @@ pragma solidity ^0.8.9;
 import "@hyperledger-labs/yui-ibc-solidity/contracts/proto/ProtoBufRuntime.sol";
 import "@hyperledger-labs/yui-ibc-solidity/contracts/proto/GoogleProtobufAny.sol";
 import "../../../core/client/v1/client.sol";
-
-library IbcLightclientsParliaV1Fraction {
-
-
-  //struct definition
-  struct Data {
-    uint64 numerator;
-    uint64 denominator;
-  }
-
-  // Decoder section
-
-  /**
-   * @dev The main decoder for memory
-   * @param bs The bytes array to be decoded
-   * @return The decoded struct
-   */
-  function decode(bytes memory bs) internal pure returns (Data memory) {
-    (Data memory x, ) = _decode(32, bs, bs.length);
-    return x;
-  }
-
-  /**
-   * @dev The main decoder for storage
-   * @param self The in-storage struct
-   * @param bs The bytes array to be decoded
-   */
-  function decode(Data storage self, bytes memory bs) internal {
-    (Data memory x, ) = _decode(32, bs, bs.length);
-    store(x, self);
-  }
-  // inner decoder
-
-  /**
-   * @dev The decoder for internal usage
-   * @param p The offset of bytes array to start decode
-   * @param bs The bytes array to be decoded
-   * @param sz The number of bytes expected
-   * @return The decoded struct
-   * @return The number of bytes decoded
-   */
-  function _decode(uint256 p, bytes memory bs, uint256 sz)
-    internal
-    pure
-    returns (Data memory, uint)
-  {
-    Data memory r;
-    uint256 fieldId;
-    ProtoBufRuntime.WireType wireType;
-    uint256 bytesRead;
-    uint256 offset = p;
-    uint256 pointer = p;
-    while (pointer < offset + sz) {
-      (fieldId, wireType, bytesRead) = ProtoBufRuntime._decode_key(pointer, bs);
-      pointer += bytesRead;
-      if (fieldId == 1) {
-        pointer += _read_numerator(pointer, bs, r);
-      } else
-      if (fieldId == 2) {
-        pointer += _read_denominator(pointer, bs, r);
-      } else
-      {
-        pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
-      }
-
-    }
-    return (r, sz);
-  }
-
-  // field readers
-
-  /**
-   * @dev The decoder for reading a field
-   * @param p The offset of bytes array to start decode
-   * @param bs The bytes array to be decoded
-   * @param r The in-memory struct
-   * @return The number of bytes decoded
-   */
-  function _read_numerator(
-    uint256 p,
-    bytes memory bs,
-    Data memory r
-  ) internal pure returns (uint) {
-    (uint64 x, uint256 sz) = ProtoBufRuntime._decode_uint64(p, bs);
-    r.numerator = x;
-    return sz;
-  }
-
-  /**
-   * @dev The decoder for reading a field
-   * @param p The offset of bytes array to start decode
-   * @param bs The bytes array to be decoded
-   * @param r The in-memory struct
-   * @return The number of bytes decoded
-   */
-  function _read_denominator(
-    uint256 p,
-    bytes memory bs,
-    Data memory r
-  ) internal pure returns (uint) {
-    (uint64 x, uint256 sz) = ProtoBufRuntime._decode_uint64(p, bs);
-    r.denominator = x;
-    return sz;
-  }
-
-
-  // Encoder section
-
-  /**
-   * @dev The main encoder for memory
-   * @param r The struct to be encoded
-   * @return The encoded byte array
-   */
-  function encode(Data memory r) internal pure returns (bytes memory) {
-    bytes memory bs = new bytes(_estimate(r));
-    uint256 sz = _encode(r, 32, bs);
-    assembly {
-      mstore(bs, sz)
-    }
-    return bs;
-  }
-  // inner encoder
-
-  /**
-   * @dev The encoder for internal usage
-   * @param r The struct to be encoded
-   * @param p The offset of bytes array to start decode
-   * @param bs The bytes array to be decoded
-   * @return The number of bytes encoded
-   */
-  function _encode(Data memory r, uint256 p, bytes memory bs)
-    internal
-    pure
-    returns (uint)
-  {
-    uint256 offset = p;
-    uint256 pointer = p;
-    
-    if (r.numerator != 0) {
-    pointer += ProtoBufRuntime._encode_key(
-      1,
-      ProtoBufRuntime.WireType.Varint,
-      pointer,
-      bs
-    );
-    pointer += ProtoBufRuntime._encode_uint64(r.numerator, pointer, bs);
-    }
-    if (r.denominator != 0) {
-    pointer += ProtoBufRuntime._encode_key(
-      2,
-      ProtoBufRuntime.WireType.Varint,
-      pointer,
-      bs
-    );
-    pointer += ProtoBufRuntime._encode_uint64(r.denominator, pointer, bs);
-    }
-    return pointer - offset;
-  }
-  // nested encoder
-
-  /**
-   * @dev The encoder for inner struct
-   * @param r The struct to be encoded
-   * @param p The offset of bytes array to start decode
-   * @param bs The bytes array to be decoded
-   * @return The number of bytes encoded
-   */
-  function _encode_nested(Data memory r, uint256 p, bytes memory bs)
-    internal
-    pure
-    returns (uint)
-  {
-    /**
-     * First encoded `r` into a temporary array, and encode the actual size used.
-     * Then copy the temporary array into `bs`.
-     */
-    uint256 offset = p;
-    uint256 pointer = p;
-    bytes memory tmp = new bytes(_estimate(r));
-    uint256 tmpAddr = ProtoBufRuntime.getMemoryAddress(tmp);
-    uint256 bsAddr = ProtoBufRuntime.getMemoryAddress(bs);
-    uint256 size = _encode(r, 32, tmp);
-    pointer += ProtoBufRuntime._encode_varint(size, pointer, bs);
-    ProtoBufRuntime.copyBytes(tmpAddr + 32, bsAddr + pointer, size);
-    pointer += size;
-    delete tmp;
-    return pointer - offset;
-  }
-  // estimator
-
-  /**
-   * @dev The estimator for a struct
-   * @param r The struct to be encoded
-   * @return The number of bytes encoded in estimation
-   */
-  function _estimate(
-    Data memory r
-  ) internal pure returns (uint) {
-    uint256 e;
-    e += 1 + ProtoBufRuntime._sz_uint64(r.numerator);
-    e += 1 + ProtoBufRuntime._sz_uint64(r.denominator);
-    return e;
-  }
-  // empty checker
-
-  function _empty(
-    Data memory r
-  ) internal pure returns (bool) {
-    
-  if (r.numerator != 0) {
-    return false;
-  }
-
-  if (r.denominator != 0) {
-    return false;
-  }
-
-    return true;
-  }
-
-
-  //store function
-  /**
-   * @dev Store in-memory struct to storage
-   * @param input The in-memory struct
-   * @param output The in-storage struct
-   */
-  function store(Data memory input, Data storage output) internal {
-    output.numerator = input.numerator;
-    output.denominator = input.denominator;
-
-  }
-
-
-
-  //utility functions
-  /**
-   * @dev Return an empty struct
-   * @return r The empty struct
-   */
-  function nil() internal pure returns (Data memory r) {
-    assembly {
-      r := 0
-    }
-  }
-
-  /**
-   * @dev Test whether a struct is empty
-   * @param x The struct to be tested
-   * @return r True if it is empty
-   */
-  function isNil(Data memory x) internal pure returns (bool r) {
-    assembly {
-      r := iszero(x)
-    }
-  }
-}
-//library IbcLightclientsParliaV1Fraction
+import "./duration.sol";
 
 library IbcLightclientsParliaV1ClientState {
 
@@ -271,8 +14,8 @@ library IbcLightclientsParliaV1ClientState {
     bytes ibc_store_address;
     bytes ibc_commitments_slot;
     IbcCoreClientV1Height.Data latest_height;
-    IbcLightclientsParliaV1Fraction.Data trust_level;
-    uint64 trusting_period;
+    GoogleProtobufDuration.Data trusting_period;
+    GoogleProtobufDuration.Data max_clock_drift;
     bool frozen;
   }
 
@@ -334,10 +77,10 @@ library IbcLightclientsParliaV1ClientState {
         pointer += _read_latest_height(pointer, bs, r);
       } else
       if (fieldId == 5) {
-        pointer += _read_trust_level(pointer, bs, r);
+        pointer += _read_trusting_period(pointer, bs, r);
       } else
       if (fieldId == 6) {
-        pointer += _read_trusting_period(pointer, bs, r);
+        pointer += _read_max_clock_drift(pointer, bs, r);
       } else
       if (fieldId == 7) {
         pointer += _read_frozen(pointer, bs, r);
@@ -427,13 +170,13 @@ library IbcLightclientsParliaV1ClientState {
    * @param r The in-memory struct
    * @return The number of bytes decoded
    */
-  function _read_trust_level(
+  function _read_trusting_period(
     uint256 p,
     bytes memory bs,
     Data memory r
   ) internal pure returns (uint) {
-    (IbcLightclientsParliaV1Fraction.Data memory x, uint256 sz) = _decode_IbcLightclientsParliaV1Fraction(p, bs);
-    r.trust_level = x;
+    (GoogleProtobufDuration.Data memory x, uint256 sz) = _decode_GoogleProtobufDuration(p, bs);
+    r.trusting_period = x;
     return sz;
   }
 
@@ -444,13 +187,13 @@ library IbcLightclientsParliaV1ClientState {
    * @param r The in-memory struct
    * @return The number of bytes decoded
    */
-  function _read_trusting_period(
+  function _read_max_clock_drift(
     uint256 p,
     bytes memory bs,
     Data memory r
   ) internal pure returns (uint) {
-    (uint64 x, uint256 sz) = ProtoBufRuntime._decode_uint64(p, bs);
-    r.trusting_period = x;
+    (GoogleProtobufDuration.Data memory x, uint256 sz) = _decode_GoogleProtobufDuration(p, bs);
+    r.max_clock_drift = x;
     return sz;
   }
 
@@ -498,15 +241,15 @@ library IbcLightclientsParliaV1ClientState {
    * @return The decoded inner-struct
    * @return The number of bytes used to decode
    */
-  function _decode_IbcLightclientsParliaV1Fraction(uint256 p, bytes memory bs)
+  function _decode_GoogleProtobufDuration(uint256 p, bytes memory bs)
     internal
     pure
-    returns (IbcLightclientsParliaV1Fraction.Data memory, uint)
+    returns (GoogleProtobufDuration.Data memory, uint)
   {
     uint256 pointer = p;
     (uint256 sz, uint256 bytesRead) = ProtoBufRuntime._decode_varint(pointer, bs);
     pointer += bytesRead;
-    (IbcLightclientsParliaV1Fraction.Data memory r, ) = IbcLightclientsParliaV1Fraction._decode(pointer, bs, sz);
+    (GoogleProtobufDuration.Data memory r, ) = GoogleProtobufDuration._decode(pointer, bs, sz);
     return (r, sz + bytesRead);
   }
 
@@ -586,17 +329,17 @@ library IbcLightclientsParliaV1ClientState {
       pointer,
       bs
     );
-    pointer += IbcLightclientsParliaV1Fraction._encode_nested(r.trust_level, pointer, bs);
+    pointer += GoogleProtobufDuration._encode_nested(r.trusting_period, pointer, bs);
     
-    if (r.trusting_period != 0) {
+    
     pointer += ProtoBufRuntime._encode_key(
       6,
-      ProtoBufRuntime.WireType.Varint,
+      ProtoBufRuntime.WireType.LengthDelim,
       pointer,
       bs
     );
-    pointer += ProtoBufRuntime._encode_uint64(r.trusting_period, pointer, bs);
-    }
+    pointer += GoogleProtobufDuration._encode_nested(r.max_clock_drift, pointer, bs);
+    
     if (r.frozen != false) {
     pointer += ProtoBufRuntime._encode_key(
       7,
@@ -653,8 +396,8 @@ library IbcLightclientsParliaV1ClientState {
     e += 1 + ProtoBufRuntime._sz_lendelim(r.ibc_store_address.length);
     e += 1 + ProtoBufRuntime._sz_lendelim(r.ibc_commitments_slot.length);
     e += 1 + ProtoBufRuntime._sz_lendelim(IbcCoreClientV1Height._estimate(r.latest_height));
-    e += 1 + ProtoBufRuntime._sz_lendelim(IbcLightclientsParliaV1Fraction._estimate(r.trust_level));
-    e += 1 + ProtoBufRuntime._sz_uint64(r.trusting_period);
+    e += 1 + ProtoBufRuntime._sz_lendelim(GoogleProtobufDuration._estimate(r.trusting_period));
+    e += 1 + ProtoBufRuntime._sz_lendelim(GoogleProtobufDuration._estimate(r.max_clock_drift));
     e += 1 + 1;
     return e;
   }
@@ -673,10 +416,6 @@ library IbcLightclientsParliaV1ClientState {
   }
 
   if (r.ibc_commitments_slot.length != 0) {
-    return false;
-  }
-
-  if (r.trusting_period != 0) {
     return false;
   }
 
@@ -699,8 +438,8 @@ library IbcLightclientsParliaV1ClientState {
     output.ibc_store_address = input.ibc_store_address;
     output.ibc_commitments_slot = input.ibc_commitments_slot;
     IbcCoreClientV1Height.store(input.latest_height, output.latest_height);
-    IbcLightclientsParliaV1Fraction.store(input.trust_level, output.trust_level);
-    output.trusting_period = input.trusting_period;
+    GoogleProtobufDuration.store(input.trusting_period, output.trusting_period);
+    GoogleProtobufDuration.store(input.max_clock_drift, output.max_clock_drift);
     output.frozen = input.frozen;
 
   }

@@ -5,11 +5,7 @@ option (gogoproto.goproto_getters_all) = false;
 
 import "gogoproto/gogo.proto";
 import "ibc/core/client/v1/client.proto";
-
-message Fraction {
-  uint64 numerator = 1;
-  uint64 denominator = 2;
-}
+import "google/protobuf/duration.proto";
 
 message ClientState {
   uint64 chain_id = 1;
@@ -19,8 +15,8 @@ message ClientState {
 
   ibc.core.client.v1.Height latest_height = 4;
 
-  Fraction trust_level = 5;
-  uint64 trusting_period = 6;
+  google.protobuf.Duration trusting_period = 5 [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
+  google.protobuf.Duration max_clock_drift = 6 [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
 
   bool frozen = 7;
 }

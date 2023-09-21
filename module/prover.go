@@ -126,7 +126,7 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 	if err != nil {
 		return nil, err
 	}
-	previousValidators, err := extractValidatorSet(previousEpochHeader)
+	previousValidators, err := ExtractValidatorSet(previousEpochHeader)
 	if err != nil {
 		return nil, err
 	}
@@ -141,11 +141,8 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 	// create initial client state
 	latestHeight := clienttypes.NewHeight(dstHeader.GetHeight().GetRevisionNumber(), previousEpoch)
 	clientState := ClientState{
-		TrustLevel: &Fraction{
-			Numerator:   pr.config.TrustLevelNumerator,
-			Denominator: pr.config.TrustLevelDenominator,
-		},
 		TrustingPeriod:     pr.config.TrustingPeriod,
+		MaxClockDrift:      pr.config.MaxClockDrift,
 		ChainId:            chainID,
 		LatestHeight:       &latestHeight,
 		Frozen:             false,
@@ -218,7 +215,7 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight ex
 			if err != nil {
 				return nil, fmt.Errorf("SetupHeadersForUpdateByLatestHeight failed to unwrap header : height=%d : %+v", epoch.GetHeight(), err)
 			}
-			previousValidatorSet, err = extractValidatorSet(unwrap)
+			previousValidatorSet, err = ExtractValidatorSet(unwrap)
 			if err != nil {
 				return nil, fmt.Errorf("SetupHeadersForUpdateByLatestHeight failed to extract validator : height=%d : %+v", epoch.GetHeight(), err)
 			}
@@ -307,7 +304,7 @@ func (pr *Prover) queryValidatorSet(epochBlockNumber uint64) ([][]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return extractValidatorSet(header)
+	return ExtractValidatorSet(header)
 }
 
 // requiredHeaderCountToFinalizeAcrossCheckpoints returns the block count to finalize across checkpoints
@@ -367,7 +364,7 @@ func newETHHeader(header *types.Header) (*ETHHeader, error) {
 	return &ETHHeader{Header: rlpHeader}, nil
 }
 
-// requiredHeaderCountToFinalize return the header count to finalize
+// requiredHeaderCountToFinalize return the header count to finalize = checkpoint
 func requiredHeaderCountToFinalize(validatorCount int) uint64 {
 	// The checkpoint is [(block - 1) % epochCount == len(previousValidatorCount / 2)]
 	// for example when the validator count is 21 the checkpoint is 211, 411, 611 ...

@@ -1,0 +1,31 @@
+{
+        "crypto": {
+                "checksum": {
+                        "function": "sha256",
+                        "message": "446362983492fb6ae7d6f5e11b14bc794854c81060f9d7a71d6cbe912a4e476f",
+                        "params": {}
+                },
+                "cipher": {
+                        "function": "aes-128-ctr",
+                        "message": "822df2a93774f43c2322a60f785f220decb27637afaaaf62cc81db8c29aebce7",
+                        "params": {
+                                "iv": "31924604b957f4deabb4b1997fc1e199"
+                        }
+                },
+                "kdf": {
+                        "function": "pbkdf2",
+                        "message": "",
+                        "params": {
+                                "c": 262144,
+                                "dklen": 32,
+                                "prf": "hmac-sha256",
+                                "salt": "46d7e1613c5b49d5a296e796f4a4d27664e2e2ebed798437c8fccae37750c207"
+                        }
+                }
+        },
+        "uuid": "c2f31107-bd81-46ea-bf63-167abce1fd8f",
+        "pubkey": "ab63700b5d3f58338176990c8488a7c319480310b5ec39d23453839ff26116b29a91e20f834835c5e6f670961d7df8ff",
+        "version": 4,
+        "name": "keystore",
+        "path": ""
+}

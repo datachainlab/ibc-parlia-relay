@@ -37,6 +37,8 @@ Percentile = 60
 OracleThreshold = 100
 
 [Node]
+BLSPasswordFile="/root/.ethereum/blspassword.txt"
+BLSWalletDir="/root/.ethereum/bls/wallet"
 DataDir = ""
 InsecureUnlockAllowed = false
 NoUSB = true
