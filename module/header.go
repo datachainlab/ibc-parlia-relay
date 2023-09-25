@@ -14,7 +14,6 @@ import (
 const extraVanity = 32
 const extraSeal = 65
 const validatorBytesLength = 68
-const validatorNumberSize = 1
 
 // Parlia TODO client_type
 const Parlia string = "xx-parlia"
