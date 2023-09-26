@@ -25,6 +25,10 @@ go run main.go update success latest
 # src/client.rs test_error_update_client
 export BSC_RPC_ADDR="rpc node"
 go run main.go update error 
+
+# src/header/eth_headers.rs test_success_verify_finalized_including_not_finalized_block
+export BSC_RPC_ADDR="rpc node"
+go run main.go header success specified --num 31894081
 ```
 
 ### LCP integration data

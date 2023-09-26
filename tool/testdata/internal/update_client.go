@@ -36,6 +36,17 @@ func (m *updateClientModule) success() *cobra.Command {
 		},
 	})
 	cmd.AddCommand(&cobra.Command{
+		Use:   "31894084",
+		Short: "for 31894084 block",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			prover, _, err := createProver()
+			if err != nil {
+				return err
+			}
+			return m.printHeader(prover, 31894084)
+		},
+	})
+	cmd.AddCommand(&cobra.Command{
 		Use:   "epoch",
 		Short: "for epoch block",
 		RunE: func(cmd *cobra.Command, args []string) error {

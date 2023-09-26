@@ -123,6 +123,24 @@ func (c *mockChain) LatestHeight() (exported.Height, error) {
 	return clienttypes.NewHeight(0, c.latestHeight), nil
 }
 
+// queryETHHeaders returns the ETHHeaders
+func (c *mockChain) queryETHHeaders(start uint64, count uint64) ([]*ETHHeader, error) {
+	var ethHeaders []*ETHHeader
+	for i := 0; i < int(count); i++ {
+		height := uint64(i) + start
+		block, err := c.Header(context.TODO(), height)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get ETHHeaders : count = %d, height = %d, %+v", count, height, err)
+		}
+		header, err := newETHHeader(block)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode rlp height=%d, %+v", block.Number.Uint64(), err)
+		}
+		ethHeaders = append(ethHeaders, header)
+	}
+	return ethHeaders, nil
+}
+
 type ProverTestSuite struct {
 	suite.Suite
 	prover *Prover
@@ -276,12 +294,12 @@ func (ts *ProverTestSuite) TestSetupHeadersForUpdate() {
 
 func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 
-	previousEpochETHHeader, tErr := ts.prover.queryETHHeaders(uint64(200), 4)
+	previousEpochETHHeader, tErr := ts.chain.queryETHHeaders(uint64(200), 4)
 	ts.Require().NoError(tErr)
 	previousEpochHeader := &Header{Headers: previousEpochETHHeader}
 
 	assertFn := func(finalizedHeight int64) {
-		finalizedETHHeader, err := ts.prover.queryETHHeaders(uint64(finalizedHeight), 1)
+		finalizedETHHeader, err := ts.chain.queryETHHeaders(uint64(finalizedHeight), 1)
 		ts.Require().NoError(err)
 		finalizedHeader := &Header{Headers: finalizedETHHeader}
 		msg, err := ts.prover.CreateMsgCreateClient("", finalizedHeader, types.AccAddress{})

@@ -90,11 +90,13 @@ func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint6
 		if err != nil || vote == nil {
 			continue
 		}
-		verifyingHeader, err := pr.queryVerifyingHeader(vote.Data.SourceNumber)
+		height := vote.Data.SourceNumber
+		headers, err := pr.QueryVerifyingEthHeaders(height)
 		if err != nil {
+			log.Printf("failed to queryVerifyingHeader seek next %v", err)
 			continue
 		}
-		return verifyingHeader, nil
+		return pr.withProofAndValidators(height, headers)
 	}
 	return nil, fmt.Errorf("No finalized header found ")
 }
@@ -217,40 +219,14 @@ func (pr *Prover) ProveState(ctx core.QueryContext, path string, value []byte) (
 
 // queryVerifyingHeader returns headers to finalize
 func (pr *Prover) queryVerifyingHeader(height uint64) (core.Header, error) {
-	var ethHeaders []*ETHHeader
-	target := height
-	for {
-		targetBlock, targetETHHeader, targetVote, err := pr.queryETHHeader(target)
-		if err != nil {
-			return nil, err
-		}
-		childBlock, childETHHeader, childVote, err := pr.queryETHHeader(target + 1)
-		if err != nil {
-			return nil, err
-		}
-		_, grandChildETHHeader, grandChildVote, err := pr.queryETHHeader(target + 2)
-		if err != nil {
-			return nil, err
-		}
-		ethHeaders = append(ethHeaders, targetETHHeader)
-		target += 1
-
-		// Invalid vote relation
-		if targetVote == nil || childVote == nil || grandChildVote == nil {
-			continue
-		}
-		if grandChildVote.Data.SourceNumber != targetBlock.Number.Uint64() {
-			continue
-		}
-		if grandChildVote.Data.SourceNumber != childVote.Data.TargetNumber {
-			continue
-		}
-		if grandChildVote.Data.TargetNumber != childBlock.Number.Uint64() {
-			continue
-		}
-		ethHeaders = append(ethHeaders, childETHHeader, grandChildETHHeader)
-		break
+	ethHeaders, err := pr.QueryVerifyingEthHeaders(height)
+	if err != nil {
+		return nil, err
 	}
+	return pr.withProofAndValidators(height, ethHeaders)
+}
+
+func (pr *Prover) withProofAndValidators(height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
 
 	// get RLP-encoded account proof
 	rlpAccountProof, _, err := pr.getAccountProof(int64(height))
@@ -280,6 +256,44 @@ func (pr *Prover) queryVerifyingHeader(height uint64) (core.Header, error) {
 	return header, nil
 }
 
+func (pr *Prover) QueryVerifyingEthHeaders(height uint64) ([]*ETHHeader, error) {
+	var ethHeaders []*ETHHeader
+	target := height
+	for {
+		targetBlock, targetETHHeader, _, err := pr.queryETHHeader(target)
+		if err != nil {
+			return nil, err
+		}
+		childBlock, childETHHeader, childVote, err := pr.queryETHHeader(target + 1)
+		if err != nil {
+			return nil, err
+		}
+		_, grandChildETHHeader, grandChildVote, err := pr.queryETHHeader(target + 2)
+		if err != nil {
+			return nil, err
+		}
+		// Append to verify header sequence
+		ethHeaders = append(ethHeaders, targetETHHeader)
+
+		target += 1
+		if childVote == nil || grandChildVote == nil {
+			continue
+		}
+		if grandChildVote.Data.SourceNumber != targetBlock.Number.Uint64() {
+			continue
+		}
+		if grandChildVote.Data.SourceNumber != childVote.Data.TargetNumber {
+			continue
+		}
+		if grandChildVote.Data.TargetNumber != childBlock.Number.Uint64() {
+			continue
+		}
+		ethHeaders = append(ethHeaders, childETHHeader, grandChildETHHeader)
+		break
+	}
+	return ethHeaders, nil
+}
+
 func (pr *Prover) queryETHHeader(height uint64) (*types.Header, *ETHHeader, *VoteAttestation, error) {
 	block, err := pr.chain.Header(context.TODO(), height)
 	if err != nil {
@@ -293,25 +307,10 @@ func (pr *Prover) queryETHHeader(height uint64) (*types.Header, *ETHHeader, *Vot
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	return block, ethHeader, vote, err
-}
-
-// queryETHHeaders returns the ETHHeaders
-func (pr *Prover) queryETHHeaders(start uint64, count uint64) ([]*ETHHeader, error) {
-	var ethHeaders []*ETHHeader
-	for i := 0; i < int(count); i++ {
-		height := uint64(i) + start
-		block, err := pr.chain.Header(context.TODO(), height)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get ETHHeaders : count = %d, height = %d, %+v", count, height, err)
-		}
-		header, err := newETHHeader(block)
-		if err != nil {
-			return nil, fmt.Errorf("failed to encode rlp height=%d, %+v", block.Number.Uint64(), err)
-		}
-		ethHeaders = append(ethHeaders, header)
+	if vote == nil {
+		log.Printf("vote not found %d\n", height)
 	}
-	return ethHeaders, nil
+	return block, ethHeader, vote, err
 }
 
 // queryValidatorSet returns the validator set

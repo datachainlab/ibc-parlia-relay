@@ -129,7 +129,7 @@ func (m *misbehaviorModule) getLocalHeader(chainID int64, port int64, targetHeig
 		if err != nil {
 			return targetHeight, nil, err
 		}
-		targetHeight = latest.GetRevisionHeight()
+		targetHeight = latest.GetRevisionHeight() - 1
 	}
 	config := module.ProverConfig{
 		Debug: true,
