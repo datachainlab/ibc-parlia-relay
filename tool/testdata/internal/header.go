@@ -51,7 +51,7 @@ func (m *headerModule) success() *cobra.Command {
 
 func (m *headerModule) printHeader(prover *module.Prover, height uint64) error {
 	log.Println("printHeader latest=", height)
-	headers, err := prover.QueryVerifyingEthHeaders(height)
+	headers, err := prover.QueryVerifyingEthHeaders(height, height+10)
 	if err != nil {
 		return err
 	}
