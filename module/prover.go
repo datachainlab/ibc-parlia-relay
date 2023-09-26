@@ -91,13 +91,16 @@ func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint6
 			continue
 		}
 		height := vote.Data.SourceNumber
-		headers, err := pr.QueryVerifyingEthHeaders(height, header.Number.Uint64())
+		if pr.config.Debug {
+			log.Printf("Try to seek verifying headers to finalize %d\n", height)
+		}
+		headers, err := pr.QueryVerifyingEthHeaders(height, latestBlockNumber)
 		if err != nil {
 			return nil, err
 		}
 		if headers == nil {
 			if pr.config.Debug {
-				log.Printf("failed to queryVerifyingHeader seek next %d\n", target)
+				log.Printf("failed to seek verifying headers to finalize %d. so seek previous finalized header.\n", height)
 			}
 			continue
 		}
