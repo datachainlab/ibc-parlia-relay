@@ -2,7 +2,6 @@ package module
 
 import (
 	"context"
-	"fmt"
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"math/big"
 	"testing"
@@ -259,24 +258,6 @@ func (c *mockChain) LatestHeight() (exported.Height, error) {
 	return clienttypes.NewHeight(0, c.latestHeight), nil
 }
 
-// queryETHHeaders returns the ETHHeaders
-func (c *mockChain) queryETHHeaders(start uint64, count uint64) ([]*ETHHeader, error) {
-	var ethHeaders []*ETHHeader
-	for i := 0; i < int(count); i++ {
-		height := uint64(i) + start
-		block, err := c.Header(context.TODO(), height)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get ETHHeaders : count = %d, height = %d, %+v", count, height, err)
-		}
-		header, err := newETHHeader(block)
-		if err != nil {
-			return nil, fmt.Errorf("failed to encode rlp height=%d, %+v", block.Number.Uint64(), err)
-		}
-		ethHeaders = append(ethHeaders, header)
-	}
-	return ethHeaders, nil
-}
-
 type ProverTestSuite struct {
 	suite.Suite
 	prover *Prover
@@ -367,6 +348,7 @@ func (ts *ProverTestSuite) TestSetupHeadersForUpdate() {
 func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 
 	finalizedHeader, err := ts.prover.GetLatestFinalizedHeader()
+	ts.Require().NoError(err)
 	previousEpoch, err := ts.chain.Header(context.TODO(), (finalizedHeader.GetHeight().GetRevisionHeight()/constant.BlocksPerEpoch-1)*constant.BlocksPerEpoch)
 	ts.Require().NoError(err)
 	msg, err := ts.prover.CreateMsgCreateClient("", finalizedHeader, types.AccAddress{})
