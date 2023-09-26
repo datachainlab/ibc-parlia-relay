@@ -159,5 +159,6 @@ func CreateHistoryClient() *cobra.Command {
 	}
 	m := historyModule{}
 	cmd.AddCommand(m.mainnet())
+	cmd.AddCommand(m.testnet())
 	return cmd
 }
