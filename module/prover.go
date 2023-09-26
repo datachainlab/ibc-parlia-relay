@@ -91,9 +91,14 @@ func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint6
 			continue
 		}
 		height := vote.Data.SourceNumber
-		headers, err := pr.QueryVerifyingEthHeaders(height)
+		headers, err := pr.QueryVerifyingEthHeaders(height, header.Number.Uint64())
 		if err != nil {
-			log.Printf("failed to queryVerifyingHeader seek next %v", err)
+			return nil, err
+		}
+		if headers == nil {
+			if pr.config.Debug {
+				log.Printf("failed to queryVerifyingHeader seek next %d\n", target)
+			}
 			continue
 		}
 		return pr.withProofAndValidators(height, headers)
@@ -186,9 +191,12 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight ex
 	latestFinalizedHeight := latestFinalizedHeader.GetHeight().GetRevisionHeight()
 	if latestFinalizedHeight > firstUnsavedEpoch {
 		for epochHeight := firstUnsavedEpoch; epochHeight < latestFinalizedHeight; epochHeight += constant.BlocksPerEpoch {
-			epoch, err := pr.queryVerifyingHeader(epochHeight)
+			epoch, err := pr.queryVerifyingHeader(epochHeight, epochHeight+constant.BlocksPerEpoch)
 			if err != nil {
 				return nil, fmt.Errorf("SetupHeadersForUpdateByLatestHeight failed to get past epochs : height=%d : %+v", epochHeight, err)
+			}
+			if epoch == nil {
+				return nil, fmt.Errorf("SetupHeadersForUpdateByLatestHeight no finalized header found after epoch: height=%d", epochHeight)
 			}
 			targetHeaders = append(targetHeaders, epoch)
 		}
@@ -218,8 +226,8 @@ func (pr *Prover) ProveState(ctx core.QueryContext, path string, value []byte) (
 }
 
 // queryVerifyingHeader returns headers to finalize
-func (pr *Prover) queryVerifyingHeader(height uint64) (core.Header, error) {
-	ethHeaders, err := pr.QueryVerifyingEthHeaders(height)
+func (pr *Prover) queryVerifyingHeader(height uint64, limit uint64) (core.Header, error) {
+	ethHeaders, err := pr.QueryVerifyingEthHeaders(height, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -256,10 +264,16 @@ func (pr *Prover) withProofAndValidators(height uint64, ethHeaders []*ETHHeader)
 	return header, nil
 }
 
-func (pr *Prover) QueryVerifyingEthHeaders(height uint64) ([]*ETHHeader, error) {
+func (pr *Prover) QueryVerifyingEthHeaders(height uint64, limit uint64) ([]*ETHHeader, error) {
 	var ethHeaders []*ETHHeader
 	target := height
 	for {
+		if target+2 > limit {
+			if pr.config.Debug {
+				log.Printf("QueryVerifyingEthHeaders target %d> limit %d", target, limit)
+			}
+			return nil, nil
+		}
 		targetBlock, targetETHHeader, _, err := pr.queryETHHeader(target)
 		if err != nil {
 			return nil, err

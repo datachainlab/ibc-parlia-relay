@@ -3,6 +3,7 @@ package internal
 import (
 	"github.com/cometbft/cometbft/libs/json"
 	"github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
+	"github.com/cosmos/ibc-go/v7/modules/core/exported"
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
@@ -83,24 +84,17 @@ func (m *historyModule) outputMsgUpdate(prover *module.Prover, createdEpoch, lat
 	}
 
 	data := updates{}
+	var lastFinalized exported.Height = types.NewHeight(0, createdEpoch)
 	for i := num; i > 0; i-- {
 		log.Println(num - i)
 		targetLatest := latest - i
 		header, err := prover.GetLatestFinalizedHeaderByLatestHeight(targetLatest)
 		if err != nil {
-			return err
+			continue
 		}
-		target, err := header.(*module.Header).Target()
-		if err != nil {
-			return err
-		}
-		clientStateLatestHeight := types.NewHeight(header.GetHeight().GetRevisionNumber(), target.Number.Uint64()-1)
-		if i == num {
-			clientStateLatestHeight = types.NewHeight(header.GetHeight().GetRevisionNumber(), createdEpoch)
-		}
+		blocks, _ := prover.SetupHeadersForUpdateByLatestHeight(lastFinalized, header.(*module.Header))
 
-		blocks, _ := prover.SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight, header.(*module.Header))
-
+		log.Printf("set up complete=%d\n", len(blocks))
 		for _, block := range blocks {
 			log.Printf("finalzied=%d\n", block.GetHeight())
 			pack, err := types.PackClientMessage(block)
@@ -113,7 +107,10 @@ func (m *historyModule) outputMsgUpdate(prover *module.Prover, createdEpoch, lat
 			}
 			data.Data = append(data.Data, updatingData{Header: common.Bytes2Hex(marshal)})
 		}
-		time.Sleep(200 * time.Millisecond)
+		if len(blocks) > 0 {
+			lastFinalized = blocks[0].GetHeight()
+		}
+		time.Sleep(500 * time.Millisecond)
 	}
 	serialized, err := json.Marshal(data)
 	if err != nil {
