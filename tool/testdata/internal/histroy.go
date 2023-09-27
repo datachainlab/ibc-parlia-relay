@@ -67,7 +67,7 @@ func (m *historyModule) testnet() *cobra.Command {
 				return err
 			}
 
-			return m.outputMsgUpdate(prover, createdEpoch, latest.GetRevisionHeight(), num, "create_testnet.json")
+			return m.outputMsgUpdate(prover, createdEpoch, latest.GetRevisionHeight(), num, "update_testnet.json")
 		},
 	}
 	cmd.Flags().Uint64Var(&num, "num", 240, "--num")
