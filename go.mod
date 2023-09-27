@@ -7,12 +7,10 @@ require (
 	github.com/cosmos/cosmos-sdk v0.47.3
 	github.com/cosmos/gogoproto v1.4.10
 	github.com/cosmos/ibc-go/v7 v7.2.0
-	github.com/datachainlab/ethereum-ibc-relay-chain v0.2.1
+	github.com/datachainlab/ethereum-ibc-relay-chain v0.2.2
 	github.com/ethereum/go-ethereum v1.12.0
 	github.com/hyperledger-labs/yui-relayer v0.4.2
-	github.com/spf13/cast v1.5.1
 	github.com/spf13/cobra v1.7.0
-	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/protobuf v1.30.0
 )
@@ -158,8 +156,10 @@ require (
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
 	github.com/spf13/afero v1.9.5 // indirect
+	github.com/spf13/cast v1.5.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/viper v1.16.0 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tendermint/go-amino v0.16.0 // indirect
