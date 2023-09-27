@@ -90,9 +90,14 @@ func (m *historyModule) outputMsgUpdate(prover *module.Prover, createdEpoch, lat
 		targetLatest := latest - i
 		header, err := prover.GetLatestFinalizedHeaderByLatestHeight(targetLatest)
 		if err != nil {
+			log.Println(err)
 			continue
 		}
-		blocks, _ := prover.SetupHeadersForUpdateByLatestHeight(lastFinalized, header.(*module.Header))
+		blocks, err := prover.SetupHeadersForUpdateByLatestHeight(lastFinalized, header.(*module.Header))
+		if err != nil {
+			log.Println(err)
+			continue
+		}
 
 		log.Printf("set up complete=%d\n", len(blocks))
 		for _, block := range blocks {
