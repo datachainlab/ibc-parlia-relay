@@ -71,42 +71,35 @@ func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
 }
 
 // GetLatestFinalizedHeaderByLatestHeight returns the latest finalized header from the chain
-func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint64) (out core.Header, err error) {
-	target := latestBlockNumber
-	for target > 0 {
-		if pr.config.Debug {
-			if target%constant.BlocksPerEpoch == 0 {
-				log.Printf("getting finalized header : %d\n", target)
-			}
-		}
-
-		header, err := pr.chain.Header(context.Background(), target)
+func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint64) (core.Header, error) {
+	for i := latestBlockNumber; i > 0; i-- {
+		header, err := pr.chain.Header(context.Background(), i)
 		if err != nil {
 			return nil, err
 		}
-		target -= 1
-
 		vote, err := getVoteAttestationFromHeader(header)
-		if err != nil || vote == nil {
-			continue
-		}
-		height := vote.Data.SourceNumber
-		if pr.config.Debug {
-			log.Printf("Try to seek verifying headers to finalize %d\n", height)
-		}
-		headers, err := pr.QueryVerifyingEthHeaders(height, latestBlockNumber)
 		if err != nil {
 			return nil, err
 		}
-		if headers == nil {
-			if pr.config.Debug {
-				log.Printf("failed to seek verifying headers to finalize %d. so seek previous finalized header.\n", height)
-			}
+		if vote == nil {
 			continue
 		}
-		return pr.withProofAndValidators(height, headers)
+		probablyFinalized := vote.Data.SourceNumber
+		if pr.config.Debug {
+			log.Printf("Try to seek verifying headers to finalize %d, latest=%d\n", probablyFinalized, latestBlockNumber)
+		}
+		headers, err := pr.QueryVerifyingEthHeaders(probablyFinalized, latestBlockNumber)
+		if err != nil {
+			return nil, err
+		}
+		if headers != nil {
+			return pr.withProofAndValidators(probablyFinalized, headers)
+		}
+		if pr.config.Debug {
+			log.Printf("Failed to seek verifying headers to finalize %d, latest=%d. So seek previous finalized header.\n", probablyFinalized, latestBlockNumber)
+		}
 	}
-	return nil, fmt.Errorf("No finalized header found ")
+	return nil, fmt.Errorf("no finalized header found: %d", latestBlockNumber)
 }
 
 // CreateMsgCreateClient creates a CreateClientMsg to this chain
@@ -269,46 +262,34 @@ func (pr *Prover) withProofAndValidators(height uint64, ethHeaders []*ETHHeader)
 
 func (pr *Prover) QueryVerifyingEthHeaders(height uint64, limit uint64) ([]*ETHHeader, error) {
 	var ethHeaders []*ETHHeader
-	target := height
-	for {
-		if target+2 > limit {
-			if pr.config.Debug {
-				log.Printf("QueryVerifyingEthHeaders target %d> limit %d", target, limit)
-			}
-			return nil, nil
-		}
-		targetBlock, targetETHHeader, _, err := pr.queryETHHeader(target)
+	for i := height; i+2 <= limit; i++ {
+		targetBlock, targetETHHeader, _, err := pr.queryETHHeader(i)
 		if err != nil {
 			return nil, err
 		}
-		childBlock, childETHHeader, childVote, err := pr.queryETHHeader(target + 1)
+		childBlock, childETHHeader, childVote, err := pr.queryETHHeader(i + 1)
 		if err != nil {
 			return nil, err
 		}
-		_, grandChildETHHeader, grandChildVote, err := pr.queryETHHeader(target + 2)
+		_, grandChildETHHeader, grandChildVote, err := pr.queryETHHeader(i + 2)
 		if err != nil {
 			return nil, err
 		}
-		// Append to verify header sequence
-		ethHeaders = append(ethHeaders, targetETHHeader)
 
-		target += 1
-		if childVote == nil || grandChildVote == nil {
+		if childVote == nil || grandChildVote == nil ||
+			grandChildVote.Data.SourceNumber != targetBlock.Number.Uint64() ||
+			grandChildVote.Data.SourceNumber != childVote.Data.TargetNumber ||
+			grandChildVote.Data.TargetNumber != childBlock.Number.Uint64() {
+			// Append to verify header sequence
+			ethHeaders = append(ethHeaders, targetETHHeader)
 			continue
 		}
-		if grandChildVote.Data.SourceNumber != targetBlock.Number.Uint64() {
-			continue
-		}
-		if grandChildVote.Data.SourceNumber != childVote.Data.TargetNumber {
-			continue
-		}
-		if grandChildVote.Data.TargetNumber != childBlock.Number.Uint64() {
-			continue
-		}
-		ethHeaders = append(ethHeaders, childETHHeader, grandChildETHHeader)
-		break
+		return append(ethHeaders, targetETHHeader, childETHHeader, grandChildETHHeader), nil
 	}
-	return ethHeaders, nil
+	if pr.config.Debug {
+		log.Printf("Insufficient verifying headers to finalize %d. limit=%d", height, limit)
+	}
+	return nil, nil
 }
 
 func (pr *Prover) queryETHHeader(height uint64) (*types.Header, *ETHHeader, *VoteAttestation, error) {
@@ -323,9 +304,6 @@ func (pr *Prover) queryETHHeader(height uint64) (*types.Header, *ETHHeader, *Vot
 	vote, err := getVoteAttestationFromHeader(block)
 	if err != nil {
 		return nil, nil, nil, err
-	}
-	if vote == nil {
-		log.Printf("vote not found %d\n", height)
 	}
 	return block, ethHeader, vote, err
 }
