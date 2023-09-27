@@ -338,7 +338,7 @@ func (ts *ProverTestSuite) TestSetupHeadersForUpdate() {
 	ts.Require().NoError(err)
 	ts.Require().Len(setupDone, 2)
 	first := setupDone[0].(*Header)
-	ts.Require().Len(first.Headers, 17) // not vote exists 14blocks(31297201~31297214)
+	ts.Require().Len(first.Headers, 17) // Vote is not present in 14blocks(31297201~31297214)
 	ts.Require().Equal(int(first.GetHeight().GetRevisionHeight()), 31297200)
 	second := setupDone[1].(*Header)
 	ts.Require().Len(second.Headers, 3)
