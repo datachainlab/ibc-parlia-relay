@@ -5,7 +5,6 @@ import (
 	"github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 	"github.com/cosmos/ibc-go/v7/modules/core/exported"
 	"github.com/datachainlab/ibc-parlia-relay/module"
-	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 	"log"
@@ -151,8 +150,7 @@ func (m *historyModule) outputMsgClient(prover *module.Prover, firstNumber uint6
 	if err != nil {
 		return 0, err
 	}
-	epochs := firstHeader.GetHeight().GetRevisionHeight() / constant.BlocksPerEpoch
-	return (epochs - 1) * constant.BlocksPerEpoch, os.WriteFile(path, serialized, 0666)
+	return firstNumber, os.WriteFile(path, serialized, 0666)
 }
 
 func CreateHistoryClient() *cobra.Command {
