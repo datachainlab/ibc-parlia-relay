@@ -50,7 +50,7 @@ func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) (
 	return stateProof.StorageProofRLP[0], nil
 }
 
-func (pr *Prover) getStateRoot(header *types.Header) (common.Hash, error) {
+func (pr *Prover) GetStorageRoot(header *types.Header) (common.Hash, error) {
 	rlpAccountProof, _, err := pr.getAccountProof(header.Number.Int64())
 	if err != nil {
 		return common.Hash{}, err
