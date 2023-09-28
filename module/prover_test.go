@@ -2,7 +2,6 @@ package module
 
 import (
 	"context"
-	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"math/big"
 	"testing"
 	"time"
@@ -349,7 +348,14 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 
 	finalizedHeader, err := ts.prover.GetLatestFinalizedHeader()
 	ts.Require().NoError(err)
-	previousEpoch, err := ts.chain.Header(context.TODO(), (finalizedHeader.GetHeight().GetRevisionHeight()/constant.BlocksPerEpoch-1)*constant.BlocksPerEpoch)
+	target, err := finalizedHeader.(*Header).Target()
+	ts.Require().NoError(err)
+	stateRoot, err := ts.prover.getStateRoot(target)
+	ts.Require().NoError(err)
+	previousEpoch := getPreviousEpoch(finalizedHeader.GetHeight().GetRevisionHeight())
+	previousValidatorSet, err := ts.prover.queryValidatorSet(previousEpoch)
+	currentEpoch := getCurrentEpoch(finalizedHeader.GetHeight().GetRevisionHeight())
+	currentValidatorSet, err := ts.prover.queryValidatorSet(currentEpoch)
 	ts.Require().NoError(err)
 	msg, err := ts.prover.CreateMsgCreateClient("", finalizedHeader, types.AccAddress{})
 	ts.Require().NoError(err)
@@ -363,17 +369,14 @@ func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
 	ts.Require().Equal(common.Bytes2Hex(cs.IbcStoreAddress), ibcHandlerAddress)
 	var commitment [32]byte
 	ts.Require().Equal(common.Bytes2Hex(cs.IbcCommitmentsSlot), common.Bytes2Hex(commitment[:]))
-	ts.Require().Equal(int64(cs.GetLatestHeight().GetRevisionHeight()), previousEpoch.Number.Int64())
-	ts.Require().Equal(cs.GetLatestHeight().GetRevisionNumber(), uint64(0))
+	ts.Require().Equal(cs.GetLatestHeight(), finalizedHeader.GetHeight())
 
 	var consState ConsensusState
 	ts.Require().NoError(proto.Unmarshal(msg.ConsensusState.Value, &consState))
-	validatorSet, err := ExtractValidatorSet(previousEpoch)
-	ts.Require().NoError(err)
-
-	ts.Require().Equal(consState.ValidatorsHash, crypto.Keccak256(validatorSet...))
-	ts.Require().Equal(consState.Timestamp, previousEpoch.Time)
-	ts.Require().Equal(common.BytesToHash(consState.StateRoot), ts.prover.getStateRootOrEmpty(previousEpoch))
+	ts.Require().Equal(consState.CurrentValidatorsHash, crypto.Keccak256(currentValidatorSet...))
+	ts.Require().Equal(consState.PreviousValidatorsHash, crypto.Keccak256(previousValidatorSet...))
+	ts.Require().Equal(consState.Timestamp, target.Time)
+	ts.Require().Equal(common.BytesToHash(consState.StateRoot), stateRoot)
 }
 
 func (ts *ProverTestSuite) TestQueryClientStateWithProof() {

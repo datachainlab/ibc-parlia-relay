@@ -50,16 +50,16 @@ func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) (
 	return stateProof.StorageProofRLP[0], nil
 }
 
-func (pr *Prover) getStateRootOrEmpty(header *types.Header) common.Hash {
+func (pr *Prover) getStateRoot(header *types.Header) (common.Hash, error) {
 	rlpAccountProof, _, err := pr.getAccountProof(header.Number.Int64())
 	if err != nil {
-		return common.Hash{}
+		return common.Hash{}, err
 	}
 	stateAccount, err := verifyAccount(header, rlpAccountProof, pr.chain.IBCAddress())
 	if err != nil {
-		return common.Hash{}
+		return common.Hash{}, err
 	}
-	return stateAccount.Root
+	return stateAccount.Root, nil
 }
 
 type proofList struct {

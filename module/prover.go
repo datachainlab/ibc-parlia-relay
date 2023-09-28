@@ -104,26 +104,34 @@ func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint6
 
 // CreateMsgCreateClient creates a CreateClientMsg to this chain
 func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.AccAddress) (*clienttypes.MsgCreateClient, error) {
-	// Initial client_state must be previous epoch header because lcp-parlia requires validator set when update_client
-	previousEpoch := getPreviousEpoch(dstHeader.GetHeight().GetRevisionHeight())
-	previousEpochHeader, err := pr.chain.Header(context.TODO(), previousEpoch)
-	if err != nil {
-		return nil, err
-	}
-	previousValidators, err := ExtractValidatorSet(previousEpochHeader)
+	currentEpoch := getCurrentEpoch(dstHeader.GetHeight().GetRevisionHeight())
+	currentValidators, err := pr.queryValidatorSet(currentEpoch)
 	if err != nil {
 		return nil, err
 	}
 
-	// get chain id
+	previousEpoch := getPreviousEpoch(dstHeader.GetHeight().GetRevisionHeight())
+	previousValidators, err := pr.queryValidatorSet(previousEpoch)
+	if err != nil {
+		return nil, err
+	}
+	header, err := dstHeader.(*Header).Target()
+	if err != nil {
+		return nil, err
+	}
+
+	stateRoot, err := pr.getStateRoot(header)
+	if err != nil {
+		return nil, err
+	}
+
 	chainID, err := pr.chain.CanonicalChainID(context.TODO())
 	if err != nil {
 		return nil, err
 	}
 
 	var commitmentsSlot [32]byte
-	// create initial client state
-	latestHeight := clienttypes.NewHeight(dstHeader.GetHeight().GetRevisionNumber(), previousEpoch)
+	latestHeight := toHeight(dstHeader.GetHeight())
 	clientState := ClientState{
 		TrustingPeriod:     pr.config.TrustingPeriod,
 		MaxClockDrift:      pr.config.MaxClockDrift,
@@ -138,10 +146,10 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 		return nil, err
 	}
 	consensusState := ConsensusState{
-		Timestamp:      previousEpochHeader.Time,
-		ValidatorsHash: crypto.Keccak256(previousValidators...),
-		// Since ibc handler may not be deployed at the target epoch when create_client is used, state_root is not obtained.
-		StateRoot: pr.getStateRootOrEmpty(previousEpochHeader).Bytes(),
+		Timestamp:              header.Time,
+		PreviousValidatorsHash: crypto.Keccak256(previousValidators...),
+		CurrentValidatorsHash:  crypto.Keccak256(currentValidators...),
+		StateRoot:              stateRoot.Bytes(),
 	}
 	anyConsensusState, err := codectypes.NewAnyWithValue(&consensusState)
 	if err != nil {
