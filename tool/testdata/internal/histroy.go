@@ -150,7 +150,7 @@ func (m *historyModule) outputMsgClient(prover *module.Prover, firstNumber uint6
 	if err != nil {
 		return 0, err
 	}
-	return firstNumber, os.WriteFile(path, serialized, 0666)
+	return firstHeader.GetHeight().GetRevisionHeight(), os.WriteFile(path, serialized, 0666)
 }
 
 func CreateHistoryClient() *cobra.Command {
