@@ -2,6 +2,8 @@
 chain:
 	make -C chains build
 	make -C chains network
+	# Wait for one epoch to use BEP-126 validator
+	sleep 100
 
 .PHONY:contracts
 contracts:

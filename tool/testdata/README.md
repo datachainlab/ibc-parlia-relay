@@ -1,0 +1,39 @@
+## Testdata making tool for lcp-parlia
+
+Set bsc rpc addr.
+
+### Misbehavior
+```sh
+# src/client.rs test_success_submit_misbehavior
+go run main.go misbehavior success 
+
+# src/client.rs test_error_submit_misbehavior
+export BSC_RPC_ADDR="rpc node"
+go run main.go misbehavior error
+```
+
+### Header
+```sh
+# src/client.rs test_success_update_client_epoch
+export BSC_RPC_ADDR="rpc node"
+go run main.go update success epoch
+
+# src/client.rs test_success_update_client_non_epoch
+export BSC_RPC_ADDR="rpc node"
+go run main.go update success latest
+
+# src/client.rs test_error_update_client
+export BSC_RPC_ADDR="rpc node"
+go run main.go update error 
+
+# src/header/eth_headers.rs test_success_verify_finalized_including_not_finalized_block
+export BSC_RPC_ADDR="rpc node"
+go run main.go header success specified --num 31894081
+```
+
+### LCP integration data
+```sh
+export BSC_RPC_ADDR="rpc node"
+go run main.go history mainnet --num 240
+go run main.go history testnet --num 240
+```

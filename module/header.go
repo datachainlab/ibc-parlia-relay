@@ -6,7 +6,6 @@ import (
 
 	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 	"github.com/cosmos/ibc-go/v7/modules/core/exported"
-	"github.com/datachainlab/ibc-parlia-relay/module/env"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -14,7 +13,6 @@ import (
 
 const extraVanity = 32
 const extraSeal = 65
-const validatorBytesLengthBeforeLuban = 20
 const validatorBytesLength = 68
 
 // Parlia TODO client_type
@@ -74,27 +72,26 @@ func (h *Header) Account(path common.Address) (*types.StateAccount, error) {
 	return verifyAccount(target, h.AccountProof, path)
 }
 
-func extractValidatorSet(h *types.Header) ([][]byte, error) {
+func ExtractValidatorSet(h *types.Header) ([][]byte, error) {
 	extra := h.Extra
 	if len(extra) < extraVanity+extraSeal {
 		return nil, fmt.Errorf("invalid extra length : %d", h.Number.Uint64())
 	}
-	var validatorSet [][]byte
-	validators := extra[extraVanity : len(extra)-extraSeal]
-	if h.Number.Uint64() >= env.LubanFork {
-		validatorCount := int(validators[0])
-		validatorsWithBLS := validators[1 : validatorCount*validatorBytesLength]
-		for i := 0; i < validatorCount; i++ {
-			start := validatorBytesLength * i
-			validatorWithBLS := validatorsWithBLS[start : start+validatorBytesLength]
-			validatorSet = append(validatorSet, validatorWithBLS[:validatorBytesLengthBeforeLuban])
-		}
-	} else {
-		validatorCount := len(validators) / validatorBytesLengthBeforeLuban
-		for i := 0; i < validatorCount; i++ {
-			start := validatorBytesLengthBeforeLuban * i
-			validatorSet = append(validatorSet, validators[start:start+validatorBytesLengthBeforeLuban])
-		}
+	num := int(extra[extraVanity])
+	if num == 0 || len(extra) <= extraVanity+extraSeal+num*validatorBytesLength {
+		return nil, fmt.Errorf("invalid validator bytes length: %d", h.Number.Uint64())
 	}
+	start := extraVanity + validatorNumberSize
+	end := start + num*validatorBytesLength
+	validators := extra[start:end]
+
+	var validatorSet [][]byte
+	for i := 0; i < num; i++ {
+		s := validatorBytesLength * i
+		e := s + validatorBytesLength
+		validatorWithBLS := validators[s:e]
+		validatorSet = append(validatorSet, validatorWithBLS)
+	}
+
 	return validatorSet, nil
 }

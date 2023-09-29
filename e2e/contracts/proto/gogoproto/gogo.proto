@@ -8,3 +8,7 @@ import "google/protobuf/descriptor.proto";
 extend google.protobuf.FileOptions {
 	optional bool goproto_getters_all = 63001;
 }
+extend google.protobuf.FieldOptions {
+	optional bool nullable = 65001;
+	optional bool stdduration = 65011;
+}
