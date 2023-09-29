@@ -700,8 +700,8 @@ library IbcLightclientsParliaV1Header {
     IbcLightclientsParliaV1ETHHeader.Data[] headers;
     IbcCoreClientV1Height.Data trusted_height;
     bytes account_proof;
-    bytes[] previous_validators;
     bytes[] current_validators;
+    bytes[] previous_validators;
   }
 
   // Decoder section
@@ -760,10 +760,10 @@ library IbcLightclientsParliaV1Header {
         pointer += _read_account_proof(pointer, bs, r);
       } else
       if (fieldId == 4) {
-        pointer += _read_unpacked_repeated_previous_validators(pointer, bs, nil(), counters);
+        pointer += _read_unpacked_repeated_current_validators(pointer, bs, nil(), counters);
       } else
       if (fieldId == 5) {
-        pointer += _read_unpacked_repeated_current_validators(pointer, bs, nil(), counters);
+        pointer += _read_unpacked_repeated_previous_validators(pointer, bs, nil(), counters);
       } else
       {
         pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
@@ -776,12 +776,12 @@ library IbcLightclientsParliaV1Header {
       r.headers = new IbcLightclientsParliaV1ETHHeader.Data[](counters[1]);
     }
     if (counters[4] > 0) {
-      require(r.previous_validators.length == 0);
-      r.previous_validators = new bytes[](counters[4]);
+      require(r.current_validators.length == 0);
+      r.current_validators = new bytes[](counters[4]);
     }
     if (counters[5] > 0) {
-      require(r.current_validators.length == 0);
-      r.current_validators = new bytes[](counters[5]);
+      require(r.previous_validators.length == 0);
+      r.previous_validators = new bytes[](counters[5]);
     }
 
     while (pointer < offset + sz) {
@@ -791,10 +791,10 @@ library IbcLightclientsParliaV1Header {
         pointer += _read_unpacked_repeated_headers(pointer, bs, r, counters);
       } else
       if (fieldId == 4) {
-        pointer += _read_unpacked_repeated_previous_validators(pointer, bs, r, counters);
+        pointer += _read_unpacked_repeated_current_validators(pointer, bs, r, counters);
       } else
       if (fieldId == 5) {
-        pointer += _read_unpacked_repeated_current_validators(pointer, bs, r, counters);
+        pointer += _read_unpacked_repeated_previous_validators(pointer, bs, r, counters);
       } else
       {
         pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
@@ -874,7 +874,7 @@ library IbcLightclientsParliaV1Header {
    * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
-  function _read_unpacked_repeated_previous_validators(
+  function _read_unpacked_repeated_current_validators(
     uint256 p,
     bytes memory bs,
     Data memory r,
@@ -887,7 +887,7 @@ library IbcLightclientsParliaV1Header {
     if (isNil(r)) {
       counters[4] += 1;
     } else {
-      r.previous_validators[r.previous_validators.length - counters[4]] = x;
+      r.current_validators[r.current_validators.length - counters[4]] = x;
       counters[4] -= 1;
     }
     return sz;
@@ -901,7 +901,7 @@ library IbcLightclientsParliaV1Header {
    * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
-  function _read_unpacked_repeated_current_validators(
+  function _read_unpacked_repeated_previous_validators(
     uint256 p,
     bytes memory bs,
     Data memory r,
@@ -914,7 +914,7 @@ library IbcLightclientsParliaV1Header {
     if (isNil(r)) {
       counters[5] += 1;
     } else {
-      r.current_validators[r.current_validators.length - counters[5]] = x;
+      r.previous_validators[r.previous_validators.length - counters[5]] = x;
       counters[5] -= 1;
     }
     return sz;
@@ -1021,26 +1021,26 @@ library IbcLightclientsParliaV1Header {
     );
     pointer += ProtoBufRuntime._encode_bytes(r.account_proof, pointer, bs);
     }
-    if (r.previous_validators.length != 0) {
-    for(i = 0; i < r.previous_validators.length; i++) {
+    if (r.current_validators.length != 0) {
+    for(i = 0; i < r.current_validators.length; i++) {
       pointer += ProtoBufRuntime._encode_key(
         4,
         ProtoBufRuntime.WireType.LengthDelim,
         pointer,
         bs)
       ;
-      pointer += ProtoBufRuntime._encode_bytes(r.previous_validators[i], pointer, bs);
+      pointer += ProtoBufRuntime._encode_bytes(r.current_validators[i], pointer, bs);
     }
     }
-    if (r.current_validators.length != 0) {
-    for(i = 0; i < r.current_validators.length; i++) {
+    if (r.previous_validators.length != 0) {
+    for(i = 0; i < r.previous_validators.length; i++) {
       pointer += ProtoBufRuntime._encode_key(
         5,
         ProtoBufRuntime.WireType.LengthDelim,
         pointer,
         bs)
       ;
-      pointer += ProtoBufRuntime._encode_bytes(r.current_validators[i], pointer, bs);
+      pointer += ProtoBufRuntime._encode_bytes(r.previous_validators[i], pointer, bs);
     }
     }
     return pointer - offset;
@@ -1091,11 +1091,11 @@ library IbcLightclientsParliaV1Header {
     }
     e += 1 + ProtoBufRuntime._sz_lendelim(IbcCoreClientV1Height._estimate(r.trusted_height));
     e += 1 + ProtoBufRuntime._sz_lendelim(r.account_proof.length);
-    for(i = 0; i < r.previous_validators.length; i++) {
-      e += 1 + ProtoBufRuntime._sz_lendelim(r.previous_validators[i].length);
-    }
     for(i = 0; i < r.current_validators.length; i++) {
       e += 1 + ProtoBufRuntime._sz_lendelim(r.current_validators[i].length);
+    }
+    for(i = 0; i < r.previous_validators.length; i++) {
+      e += 1 + ProtoBufRuntime._sz_lendelim(r.previous_validators[i].length);
     }
     return e;
   }
@@ -1113,11 +1113,11 @@ library IbcLightclientsParliaV1Header {
     return false;
   }
 
-  if (r.previous_validators.length != 0) {
+  if (r.current_validators.length != 0) {
     return false;
   }
 
-  if (r.current_validators.length != 0) {
+  if (r.previous_validators.length != 0) {
     return false;
   }
 
@@ -1139,8 +1139,8 @@ library IbcLightclientsParliaV1Header {
     
     IbcCoreClientV1Height.store(input.trusted_height, output.trusted_height);
     output.account_proof = input.account_proof;
-    output.previous_validators = input.previous_validators;
     output.current_validators = input.current_validators;
+    output.previous_validators = input.previous_validators;
 
   }
 
@@ -1163,24 +1163,6 @@ library IbcLightclientsParliaV1Header {
     self.headers = tmp;
   }
 
-  //array helpers for PreviousValidators
-  /**
-   * @dev Add value to an array
-   * @param self The in-memory struct
-   * @param value The value to add
-   */
-  function addPreviousValidators(Data memory self, bytes memory value) internal pure {
-    /**
-     * First resize the array. Then add the new element to the end.
-     */
-    bytes[] memory tmp = new bytes[](self.previous_validators.length + 1);
-    for (uint256 i = 0; i < self.previous_validators.length; i++) {
-      tmp[i] = self.previous_validators[i];
-    }
-    tmp[self.previous_validators.length] = value;
-    self.previous_validators = tmp;
-  }
-
   //array helpers for CurrentValidators
   /**
    * @dev Add value to an array
@@ -1197,6 +1179,24 @@ library IbcLightclientsParliaV1Header {
     }
     tmp[self.current_validators.length] = value;
     self.current_validators = tmp;
+  }
+
+  //array helpers for PreviousValidators
+  /**
+   * @dev Add value to an array
+   * @param self The in-memory struct
+   * @param value The value to add
+   */
+  function addPreviousValidators(Data memory self, bytes memory value) internal pure {
+    /**
+     * First resize the array. Then add the new element to the end.
+     */
+    bytes[] memory tmp = new bytes[](self.previous_validators.length + 1);
+    for (uint256 i = 0; i < self.previous_validators.length; i++) {
+      tmp[i] = self.previous_validators[i];
+    }
+    tmp[self.previous_validators.length] = value;
+    self.previous_validators = tmp;
   }
 
 
