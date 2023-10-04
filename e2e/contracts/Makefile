@@ -10,6 +10,6 @@ test:
 	sleep 60
 	../testrly tx relay ibc01 --home ../.testrly
 	npx truffle exec apps/recv.js --network bsc_local
-	../testrly query unrelayed-packets ibc01 --home ../.testrly | grep '{"src":null,"dst":null}'
+	../testrly query unrelayed-packets ibc01 --home ../.testrly | grep '{"src":[],"dst":[]}'
 	../testrly tx relay-acknowledgements ibc01 --home ../.testrly
-	../testrly query unrelayed-acknowledgements ibc01 --home ../.testrly | grep '{"src":null,"dst":null}'
+	../testrly query unrelayed-acknowledgements ibc01 --home ../.testrly | grep '{"src":[],"dst":[]}'
