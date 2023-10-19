@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/datachainlab/ibc-parlia-relay/tool/testdata/internal"
+	"github.com/datachainlab/ibc-parlia-relay/tool/testdata/internal/membership"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"log"
@@ -18,6 +19,7 @@ func main() {
 	rootCmd.AddCommand(internal.CreateUpdateClient())
 	rootCmd.AddCommand(internal.CreateHistoryClient())
 	rootCmd.AddCommand(internal.CreateHeader())
+	rootCmd.AddCommand(membership.CreateVerifyMembership())
 
 	if err := rootCmd.ExecuteContext(context.Background()); err != nil {
 		log.Panicf("Failed to run command : %+v", err)
