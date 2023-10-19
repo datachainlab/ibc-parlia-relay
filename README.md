@@ -35,11 +35,12 @@ go build -tags dev -ldflags="-X github.com/datachainlab/ibc-parlia-relay/module/
 
 ## Development
 
-Generate proto buf with protobuf definition of [lcp-parlia](https://github.com/datachainlab/lcp-parlia).
+Generate proto buf with protobuf definition of [parlia-elc](https://github.com/datachainlab/parlia-elc).
 
 ```
 cd $GOPATH/github.com/datachainlab
-git clone https://github.com/datachainlab/lcp-parlia
+git clone https://github.com/datachainlab/parlia-elc
 cd ibc-parlia-relay
+make proto-import
 make proto-gen
 ```
