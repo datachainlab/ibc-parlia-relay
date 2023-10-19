@@ -5,7 +5,6 @@ import (
 	"github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 	"github.com/cosmos/ibc-go/v7/modules/core/exported"
 	"github.com/datachainlab/ibc-parlia-relay/module"
-	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
 	"log"
@@ -19,8 +18,7 @@ type historyModule struct {
 func (m *historyModule) mainnet() *cobra.Command {
 	var num uint64
 	cmd := &cobra.Command{
-		Use:   "mainnet",
-		Short: "create many data testdata",
+		Use: "mainnet",
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			log.Printf("num = %d\n", num)
@@ -48,8 +46,7 @@ func (m *historyModule) mainnet() *cobra.Command {
 func (m *historyModule) testnet() *cobra.Command {
 	var num uint64
 	cmd := &cobra.Command{
-		Use:   "testnet",
-		Short: "create many data testdata",
+		Use: "testnet",
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			log.Printf("num = %d\n", num)
@@ -153,14 +150,12 @@ func (m *historyModule) outputMsgClient(prover *module.Prover, firstNumber uint6
 	if err != nil {
 		return 0, err
 	}
-	epochs := firstHeader.GetHeight().GetRevisionHeight() / constant.BlocksPerEpoch
-	return (epochs - 1) * constant.BlocksPerEpoch, os.WriteFile(path, serialized, 0666)
+	return firstHeader.GetHeight().GetRevisionHeight(), os.WriteFile(path, serialized, 0666)
 }
 
 func CreateHistoryClient() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "history",
-		Short: "Create testdata for update client. ",
+		Use: "history",
 	}
 	m := historyModule{}
 	cmd.AddCommand(m.mainnet())

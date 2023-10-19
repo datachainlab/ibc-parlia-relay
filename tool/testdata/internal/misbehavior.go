@@ -18,8 +18,7 @@ type misbehaviorModule struct {
 
 func (m *misbehaviorModule) success() *cobra.Command {
 	return &cobra.Command{
-		Use:   "success",
-		Short: "create misbehavior testdata for success",
+		Use: "success",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			chainID := int64(9999)
 			targetHeight, header1, err := m.getLocalHeader(chainID, 8645, 0)
@@ -53,8 +52,7 @@ func (m *misbehaviorModule) success() *cobra.Command {
 
 func (m *misbehaviorModule) error() *cobra.Command {
 	return &cobra.Command{
-		Use:   "error",
-		Short: "create misbehavior testdata for error",
+		Use: "error",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			prover, chain, err := createProver()
 			if err != nil {
@@ -155,8 +153,7 @@ func (m *misbehaviorModule) getLocalHeader(chainID int64, port int64, targetHeig
 
 func CreateMisbehavior() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "misbehavior",
-		Short: "Create testdata for misbehavior. ",
+		Use: "misbehavior",
 	}
 	m := misbehaviorModule{}
 	cmd.AddCommand(m.success())

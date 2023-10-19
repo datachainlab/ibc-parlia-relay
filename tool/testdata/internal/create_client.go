@@ -1,13 +1,11 @@
 package internal
 
 import (
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
 	"log"
-	"time"
 )
 
 type createClientModule struct {
@@ -15,39 +13,46 @@ type createClientModule struct {
 
 func (m *createClientModule) createClientSuccessCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "success",
-		Short: "create CreateClient testdata for success",
+		Use: "success",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_, chain, err := createProver()
+			prover, _, err := createProver()
 			if err != nil {
 				return err
 			}
-			latest, err := chain.LatestHeight()
+			header, err := prover.GetLatestFinalizedHeader()
+			message, err := prover.CreateMsgCreateClient("", header, common.HexToAddress(mainAndTestNetIbcAddress).Bytes())
 			if err != nil {
 				return err
 			}
-			var commitmentsSlot [32]byte
-			// create initial client state
-			latestHeight := types.NewHeight(latest.GetRevisionNumber(), latest.GetRevisionHeight())
-			clientState := module.ClientState{
-				TrustingPeriod:     100 * time.Second,
-				MaxClockDrift:      1 * time.Millisecond,
-				ChainId:            56,
-				LatestHeight:       &latestHeight,
-				Frozen:             false,
-				IbcStoreAddress:    common.HexToAddress(mainAndTestNetIbcAddress).Bytes(),
-				IbcCommitmentsSlot: commitmentsSlot[:],
-			}
-			anyClientState, err := codectypes.NewAnyWithValue(&clientState)
+			clientState, err := message.ClientState.Marshal()
 			if err != nil {
 				return err
 			}
-			csb, err := anyClientState.Marshal()
+			consState, err := message.ConsensusState.Marshal()
 			if err != nil {
 				return err
 			}
-			log.Println("clientState", common.Bytes2Hex(csb))
-			log.Println("height", latestHeight)
+			currentValidatorSet, err := prover.QueryValidatorSet(module.GetCurrentEpoch(header.GetHeight().GetRevisionHeight()))
+			if err != nil {
+				return err
+			}
+			previousValidatorSet, err := prover.QueryValidatorSet(module.GetPreviousEpoch(header.GetHeight().GetRevisionHeight()))
+			if err != nil {
+				return err
+			}
+			target, err := header.(*module.Header).Target()
+			if err != nil {
+				return err
+			}
+			storageRoot, err := prover.GetStorageRoot(target)
+			log.Println("clientState", common.Bytes2Hex(clientState))
+			log.Println("consensusState", common.Bytes2Hex(consState))
+			log.Println("height", target.Number)
+			log.Println("time", target.Time)
+			log.Println("currentValidatorSet", common.BytesToHash(crypto.Keccak256(currentValidatorSet...)))
+			log.Println("previousValidatorSet", common.Bytes2Hex(crypto.Keccak256(previousValidatorSet...)))
+			log.Println("storageRoot", storageRoot)
+
 			return nil
 		},
 	}
@@ -56,8 +61,7 @@ func (m *createClientModule) createClientSuccessCmd() *cobra.Command {
 
 func CreateCreateClient() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "Create testdata for Create client. ",
+		Use: "create",
 	}
 	m := createClientModule{}
 	cmd.AddCommand(m.createClientSuccessCmd())

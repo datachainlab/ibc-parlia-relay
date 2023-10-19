@@ -13,12 +13,10 @@ type headerModule struct {
 
 func (m *headerModule) success() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "success",
-		Short: "create updateClient testdata for success",
+		Use: "success",
 	}
 	cmd.AddCommand(&cobra.Command{
-		Use:   "latest",
-		Short: "for latest block",
+		Use: "latest",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			prover, chain, err := createProver()
 			if err != nil {
@@ -34,8 +32,7 @@ func (m *headerModule) success() *cobra.Command {
 
 	var num uint64
 	specified := &cobra.Command{
-		Use:   "specified",
-		Short: "for specified block",
+		Use: "specified",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			prover, _, err := createProver()
 			if err != nil {
@@ -78,8 +75,7 @@ func (m *headerModule) printHeader(prover *module.Prover, height uint64) error {
 
 func CreateHeader() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "header",
-		Short: "Create testdata for update client. ",
+		Use: "header",
 	}
 	m := headerModule{}
 	cmd.AddCommand(m.success())

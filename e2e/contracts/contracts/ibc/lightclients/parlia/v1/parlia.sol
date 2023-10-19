@@ -1231,7 +1231,8 @@ library IbcLightclientsParliaV1ConsensusState {
   struct Data {
     bytes state_root;
     uint64 timestamp;
-    bytes validators_hash;
+    bytes current_validators_hash;
+    bytes previous_validators_hash;
   }
 
   // Decoder section
@@ -1286,7 +1287,10 @@ library IbcLightclientsParliaV1ConsensusState {
         pointer += _read_timestamp(pointer, bs, r);
       } else
       if (fieldId == 3) {
-        pointer += _read_validators_hash(pointer, bs, r);
+        pointer += _read_current_validators_hash(pointer, bs, r);
+      } else
+      if (fieldId == 4) {
+        pointer += _read_previous_validators_hash(pointer, bs, r);
       } else
       {
         pointer += ProtoBufRuntime._skip_field_decode(wireType, pointer, bs);
@@ -1339,13 +1343,30 @@ library IbcLightclientsParliaV1ConsensusState {
    * @param r The in-memory struct
    * @return The number of bytes decoded
    */
-  function _read_validators_hash(
+  function _read_current_validators_hash(
     uint256 p,
     bytes memory bs,
     Data memory r
   ) internal pure returns (uint) {
     (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
-    r.validators_hash = x;
+    r.current_validators_hash = x;
+    return sz;
+  }
+
+  /**
+   * @dev The decoder for reading a field
+   * @param p The offset of bytes array to start decode
+   * @param bs The bytes array to be decoded
+   * @param r The in-memory struct
+   * @return The number of bytes decoded
+   */
+  function _read_previous_validators_hash(
+    uint256 p,
+    bytes memory bs,
+    Data memory r
+  ) internal pure returns (uint) {
+    (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
+    r.previous_validators_hash = x;
     return sz;
   }
 
@@ -1400,14 +1421,23 @@ library IbcLightclientsParliaV1ConsensusState {
     );
     pointer += ProtoBufRuntime._encode_uint64(r.timestamp, pointer, bs);
     }
-    if (r.validators_hash.length != 0) {
+    if (r.current_validators_hash.length != 0) {
     pointer += ProtoBufRuntime._encode_key(
       3,
       ProtoBufRuntime.WireType.LengthDelim,
       pointer,
       bs
     );
-    pointer += ProtoBufRuntime._encode_bytes(r.validators_hash, pointer, bs);
+    pointer += ProtoBufRuntime._encode_bytes(r.current_validators_hash, pointer, bs);
+    }
+    if (r.previous_validators_hash.length != 0) {
+    pointer += ProtoBufRuntime._encode_key(
+      4,
+      ProtoBufRuntime.WireType.LengthDelim,
+      pointer,
+      bs
+    );
+    pointer += ProtoBufRuntime._encode_bytes(r.previous_validators_hash, pointer, bs);
     }
     return pointer - offset;
   }
@@ -1454,7 +1484,8 @@ library IbcLightclientsParliaV1ConsensusState {
     uint256 e;
     e += 1 + ProtoBufRuntime._sz_lendelim(r.state_root.length);
     e += 1 + ProtoBufRuntime._sz_uint64(r.timestamp);
-    e += 1 + ProtoBufRuntime._sz_lendelim(r.validators_hash.length);
+    e += 1 + ProtoBufRuntime._sz_lendelim(r.current_validators_hash.length);
+    e += 1 + ProtoBufRuntime._sz_lendelim(r.previous_validators_hash.length);
     return e;
   }
   // empty checker
@@ -1471,7 +1502,11 @@ library IbcLightclientsParliaV1ConsensusState {
     return false;
   }
 
-  if (r.validators_hash.length != 0) {
+  if (r.current_validators_hash.length != 0) {
+    return false;
+  }
+
+  if (r.previous_validators_hash.length != 0) {
     return false;
   }
 
@@ -1488,7 +1523,8 @@ library IbcLightclientsParliaV1ConsensusState {
   function store(Data memory input, Data storage output) internal {
     output.state_root = input.state_root;
     output.timestamp = input.timestamp;
-    output.validators_hash = input.validators_hash;
+    output.current_validators_hash = input.current_validators_hash;
+    output.previous_validators_hash = input.previous_validators_hash;
 
   }
 

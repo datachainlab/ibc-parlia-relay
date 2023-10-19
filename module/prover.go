@@ -104,26 +104,34 @@ func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint6
 
 // CreateMsgCreateClient creates a CreateClientMsg to this chain
 func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.AccAddress) (*clienttypes.MsgCreateClient, error) {
-	// Initial client_state must be previous epoch header because lcp-parlia requires validator set when update_client
-	previousEpoch := getPreviousEpoch(dstHeader.GetHeight().GetRevisionHeight())
-	previousEpochHeader, err := pr.chain.Header(context.TODO(), previousEpoch)
-	if err != nil {
-		return nil, err
-	}
-	previousValidators, err := ExtractValidatorSet(previousEpochHeader)
+	currentEpoch := GetCurrentEpoch(dstHeader.GetHeight().GetRevisionHeight())
+	currentValidators, err := pr.QueryValidatorSet(currentEpoch)
 	if err != nil {
 		return nil, err
 	}
 
-	// get chain id
+	previousEpoch := GetPreviousEpoch(dstHeader.GetHeight().GetRevisionHeight())
+	previousValidators, err := pr.QueryValidatorSet(previousEpoch)
+	if err != nil {
+		return nil, err
+	}
+	header, err := dstHeader.(*Header).Target()
+	if err != nil {
+		return nil, err
+	}
+
+	stateRoot, err := pr.GetStorageRoot(header)
+	if err != nil {
+		return nil, err
+	}
+
 	chainID, err := pr.chain.CanonicalChainID(context.TODO())
 	if err != nil {
 		return nil, err
 	}
 
 	var commitmentsSlot [32]byte
-	// create initial client state
-	latestHeight := clienttypes.NewHeight(dstHeader.GetHeight().GetRevisionNumber(), previousEpoch)
+	latestHeight := toHeight(dstHeader.GetHeight())
 	clientState := ClientState{
 		TrustingPeriod:     pr.config.TrustingPeriod,
 		MaxClockDrift:      pr.config.MaxClockDrift,
@@ -138,10 +146,10 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 		return nil, err
 	}
 	consensusState := ConsensusState{
-		Timestamp:      previousEpochHeader.Time,
-		ValidatorsHash: crypto.Keccak256(previousValidators...),
-		// Since ibc handler may not be deployed at the target epoch when create_client is used, state_root is not obtained.
-		StateRoot: pr.getStateRootOrEmpty(previousEpochHeader).Bytes(),
+		Timestamp:              header.Time,
+		PreviousValidatorsHash: crypto.Keccak256(previousValidators...),
+		CurrentValidatorsHash:  crypto.Keccak256(currentValidators...),
+		StateRoot:              stateRoot.Bytes(),
 	}
 	anyConsensusState, err := codectypes.NewAnyWithValue(&consensusState)
 	if err != nil {
@@ -244,15 +252,15 @@ func (pr *Prover) withProofAndValidators(height uint64, ethHeaders []*ETHHeader)
 	}
 
 	// Get validator set for verify headers
-	previousEpoch := getPreviousEpoch(height)
-	header.PreviousValidators, err = pr.queryValidatorSet(previousEpoch)
+	previousEpoch := GetPreviousEpoch(height)
+	header.PreviousValidators, err = pr.QueryValidatorSet(previousEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
 	}
 	// Epoch doesn't need to get validator set because it contains validator set.
 	if !isEpoch(height) {
-		currentEpoch := getCurrentEpoch(height)
-		header.CurrentValidators, err = pr.queryValidatorSet(currentEpoch)
+		currentEpoch := GetCurrentEpoch(height)
+		header.CurrentValidators, err = pr.QueryValidatorSet(currentEpoch)
 		if err != nil {
 			return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
 		}
@@ -308,8 +316,8 @@ func (pr *Prover) queryETHHeader(height uint64) (*types.Header, *ETHHeader, *Vot
 	return block, ethHeader, vote, err
 }
 
-// queryValidatorSet returns the validator set
-func (pr *Prover) queryValidatorSet(epochBlockNumber uint64) ([][]byte, error) {
+// QueryValidatorSet returns the validator set
+func (pr *Prover) QueryValidatorSet(epochBlockNumber uint64) ([][]byte, error) {
 	header, err := pr.chain.Header(context.TODO(), epochBlockNumber)
 	if err != nil {
 		return nil, err
@@ -326,7 +334,7 @@ func newETHHeader(header *types.Header) (*ETHHeader, error) {
 	return &ETHHeader{Header: rlpHeader}, nil
 }
 
-func getPreviousEpoch(v uint64) uint64 {
+func GetPreviousEpoch(v uint64) uint64 {
 	epochCount := v / constant.BlocksPerEpoch
 	return uint64(math.MaxInt64(0, int64(epochCount)-1)) * constant.BlocksPerEpoch
 }
@@ -335,7 +343,7 @@ func isEpoch(v uint64) bool {
 	return v%constant.BlocksPerEpoch == 0
 }
 
-func getCurrentEpoch(v uint64) uint64 {
+func GetCurrentEpoch(v uint64) uint64 {
 	epochCount := v / constant.BlocksPerEpoch
 	return epochCount * constant.BlocksPerEpoch
 }
