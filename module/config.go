@@ -2,7 +2,6 @@ package module
 
 import (
 	"fmt"
-
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
 	"github.com/hyperledger-labs/yui-relayer/core"
 )
@@ -15,4 +14,8 @@ func (c *ProverConfig) Build(chain core.Chain) (core.Prover, error) {
 		return nil, fmt.Errorf("chain type must be %T, not %T", &ethereum.Chain{}, chain)
 	}
 	return NewProver(NewChain(chain_), c), nil
+}
+
+func (c *ProverConfig) Validate() error {
+	return nil
 }

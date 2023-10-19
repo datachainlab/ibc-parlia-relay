@@ -2,6 +2,7 @@ package module
 
 import (
 	"context"
+	"github.com/hyperledger-labs/yui-relayer/log"
 	"math/big"
 	"testing"
 	"time"
@@ -279,7 +280,10 @@ func (ts *ProverTestSuite) SetupTest() {
 
 	err = chain.Init("", 0, codec, false)
 	ts.Require().NoError(err)
-	// call SetRelayInfo
+
+	err = log.InitLogger("DEBUG", "text", "stdout")
+	ts.Require().NoError(err)
+
 	err = chain.SetRelayInfo(&core.PathEnd{
 		ClientID:     "mock-client-0",
 		ConnectionID: "connection-0",
@@ -292,7 +296,6 @@ func (ts *ProverTestSuite) SetupTest() {
 	config := ProverConfig{
 		TrustingPeriod: 100 * time.Second,
 		MaxClockDrift:  1 * time.Millisecond,
-		Debug:          true,
 	}
 	ts.chain = &mockChain{
 		Chain:        NewChain(chain),

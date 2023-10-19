@@ -20,7 +20,7 @@ func (m *misbehaviorModule) success() *cobra.Command {
 	return &cobra.Command{
 		Use: "success",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			chainID := int64(9999)
+			chainID := uint64(9999)
 			targetHeight, header1, err := m.getLocalHeader(chainID, 8645, 0)
 			if err != nil {
 				log.Panic(err)
@@ -111,7 +111,7 @@ func (m *misbehaviorModule) error() *cobra.Command {
 	}
 }
 
-func (m *misbehaviorModule) getLocalHeader(chainID int64, port int64, targetHeight uint64) (uint64, *module.Header, error) {
+func (m *misbehaviorModule) getLocalHeader(chainID uint64, port int64, targetHeight uint64) (uint64, *module.Header, error) {
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
 		EthChainId:  chainID,
 		RpcAddr:     fmt.Sprintf("http://localhost:%d", port),
