@@ -3,7 +3,7 @@ package module
 import (
 	"context"
 	"fmt"
-	"log"
+	"github.com/hyperledger-labs/yui-relayer/log"
 	"time"
 
 	"github.com/cometbft/cometbft/libs/math"
@@ -64,14 +64,13 @@ func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if pr.config.Debug {
-		log.Printf("GetLatestFinalizedHeader: finalized = %d, latest = %d\n", header.GetHeight(), latestHeight)
-	}
+	log.GetLogger().Debug("GetLatestFinalizedHeader", "finalized", header.GetHeight(), "latest", latestHeight)
 	return header, err
 }
 
 // GetLatestFinalizedHeaderByLatestHeight returns the latest finalized header from the chain
 func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint64) (core.Header, error) {
+	logger := log.GetLogger()
 	for i := latestBlockNumber; i > 0; i-- {
 		header, err := pr.chain.Header(context.Background(), i)
 		if err != nil {
@@ -85,9 +84,9 @@ func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint6
 			continue
 		}
 		probablyFinalized := vote.Data.SourceNumber
-		if pr.config.Debug {
-			log.Printf("Try to seek verifying headers to finalize %d, latest=%d\n", probablyFinalized, latestBlockNumber)
-		}
+
+		logger.Debug("Try to seek verifying headers to finalize", "probablyFinalized", probablyFinalized, "latest", latestBlockNumber)
+
 		headers, err := pr.QueryVerifyingEthHeaders(probablyFinalized, latestBlockNumber)
 		if err != nil {
 			return nil, err
@@ -95,9 +94,7 @@ func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint6
 		if headers != nil {
 			return pr.withProofAndValidators(probablyFinalized, headers)
 		}
-		if pr.config.Debug {
-			log.Printf("Failed to seek verifying headers to finalize %d, latest=%d. So seek previous finalized header.\n", probablyFinalized, latestBlockNumber)
-		}
+		logger.Debug("Failed to seek verifying headers to finalize. So seek previous finalized header.", "probablyFinalized", probablyFinalized, "latest", latestBlockNumber)
 	}
 	return nil, fmt.Errorf("no finalized header found: %d", latestBlockNumber)
 }
@@ -207,6 +204,7 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight ex
 	}
 	targetHeaders = append(targetHeaders, latestFinalizedHeader)
 
+	logger := log.GetLogger()
 	for i, h := range targetHeaders {
 		var trustedHeight clienttypes.Height
 		if i == 0 {
@@ -216,9 +214,7 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight ex
 		}
 		h.(*Header).TrustedHeight = &trustedHeight
 
-		if pr.config.Debug {
-			log.Printf("SetupHeadersForUpdateByLatestHeight: targetHeight=%v, trustedHeight=%v, headerLength=%d, \n", h.GetHeight(), trustedHeight, len(h.(*Header).Headers))
-		}
+		logger.Debug("SetupHeadersForUpdateByLatestHeight", "target", h.GetHeight(), "trusted", trustedHeight, "headerSize", len(h.(*Header).Headers))
 	}
 	return targetHeaders, nil
 }
@@ -294,9 +290,7 @@ func (pr *Prover) QueryVerifyingEthHeaders(height uint64, limit uint64) ([]*ETHH
 		}
 		return append(ethHeaders, targetETHHeader, childETHHeader, grandChildETHHeader), nil
 	}
-	if pr.config.Debug {
-		log.Printf("Insufficient verifying headers to finalize %d. limit=%d", height, limit)
-	}
+	log.GetLogger().Debug("Insufficient verifying headers to finalize", "height", height, "limit", limit)
 	return nil, nil
 }
 

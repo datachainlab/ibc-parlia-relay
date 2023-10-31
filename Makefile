@@ -1,5 +1,5 @@
 # TODO should be shared?
-BSC_IBC_PROTO ?= ../lcp-parlia/proto/definitions
+BSC_IBC_PROTO ?= ../parlia-elc/proto/definitions
 
 DOCKER := $(shell which docker)
 
