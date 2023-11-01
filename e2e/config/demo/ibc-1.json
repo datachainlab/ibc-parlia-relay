@@ -14,6 +14,11 @@
     "max_retry_for_inclusion": 5
   },
   "prover": {
-    "@type": "/relayer.provers.parlia.config.ProverConfig"
+    "@type": "/relayer.provers.parlia.config.ProverConfig",
+    "trustingPeriod": "86400s",
+    "refreshThresholdRate": {
+      "numerator": 1,
+      "denominator": 2
+    }
   }
 }

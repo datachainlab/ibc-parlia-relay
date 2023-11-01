@@ -8,4 +8,10 @@ import "gogoproto/gogo.proto";
 message ProverConfig {
   google.protobuf.Duration trusting_period = 1 [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
   google.protobuf.Duration max_clock_drift = 2 [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
+  Fraction refresh_threshold_rate = 5;
+}
+
+message Fraction {
+  uint64 numerator   = 1;
+  uint64 denominator = 2;
 }
