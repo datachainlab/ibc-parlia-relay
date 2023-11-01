@@ -12,7 +12,7 @@ import (
 )
 
 type Chain interface {
-	core.Chain
+	core.FinalityAwareChain
 	Header(ctx context.Context, height uint64) (*types.Header, error)
 	IBCAddress() common.Address
 	CanonicalChainID(ctx context.Context) (uint64, error)
@@ -49,4 +49,8 @@ func (c *ethChain) CanonicalChainID(ctx context.Context) (uint64, error) {
 
 func (c *ethChain) GetProof(address common.Address, storageKeys [][]byte, blockNumber *big.Int) (*client.StateProof, error) {
 	return c.Client().GetProof(address, storageKeys, blockNumber)
+}
+
+func (c *ethChain) GetLatestFinalizedHeader() (latestFinalizedHeader core.Header, err error) {
+	panic("never call")
 }

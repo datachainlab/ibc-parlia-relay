@@ -23,10 +23,6 @@ import (
 
 var _ core.Prover = (*Prover)(nil)
 
-type DebuggableChain struct {
-	Chain
-}
-
 type Prover struct {
 	chain  Chain
 	config *ProverConfig

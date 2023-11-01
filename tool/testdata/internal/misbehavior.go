@@ -129,9 +129,7 @@ func (m *misbehaviorModule) getLocalHeader(chainID uint64, port int64, targetHei
 		}
 		targetHeight = latest.GetRevisionHeight() - 1
 	}
-	config := module.ProverConfig{
-		Debug: true,
-	}
+	config := module.ProverConfig{}
 	prover := module.NewProver(module.NewChain(chain), &config).(*module.Prover)
 
 	// Get Finalized header

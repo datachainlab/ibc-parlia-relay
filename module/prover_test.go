@@ -336,7 +336,7 @@ func (ts *ProverTestSuite) TestSetupHeadersForUpdate() {
 
 	header, err := ts.prover.GetLatestFinalizedHeaderByLatestHeight(latest)
 	ts.Require().NoError(err)
-	setupDone, err := ts.prover.SetupHeadersForUpdate(&dst, header)
+	setupDone, err := ts.prover.SetupHeadersForUpdate(dst.Chain, header)
 	ts.Require().NoError(err)
 	ts.Require().Len(setupDone, 2)
 	first := setupDone[0].(*Header)
