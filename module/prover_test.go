@@ -279,6 +279,10 @@ func (c *mockChain) Timestamp(height exported.Height) (time.Time, error) {
 	return time.Unix(int64(c.chainTimestamp[height]), 0), nil
 }
 
+func (c *mockChain) GetLatestFinalizedHeader() (latestFinalizedHeader core.Header, err error) {
+	panic("never call")
+}
+
 type ProverTestSuite struct {
 	suite.Suite
 	prover *Prover
@@ -363,7 +367,7 @@ func (ts *ProverTestSuite) TestSetupHeadersForUpdate() {
 
 	header, err := ts.prover.GetLatestFinalizedHeaderByLatestHeight(latest)
 	ts.Require().NoError(err)
-	setupDone, err := ts.prover.SetupHeadersForUpdate(dst.Chain, header)
+	setupDone, err := ts.prover.SetupHeadersForUpdate(dst.Chain.(*mockChain), header)
 	ts.Require().NoError(err)
 	ts.Require().Len(setupDone, 2)
 	first := setupDone[0].(*Header)
