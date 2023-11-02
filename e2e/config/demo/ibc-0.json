@@ -15,7 +15,7 @@
   },
   "prover": {
     "@type": "/relayer.provers.parlia.config.ProverConfig",
-    "trustingPeriod": "50s",
+    "trustingPeriod": "86400s",
     "maxClockDrift" : "0.001s",
     "refreshThresholdRate": {
       "numerator": 1,
