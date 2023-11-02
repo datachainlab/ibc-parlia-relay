@@ -43,7 +43,6 @@ func createProver() (*module.Prover, core.Chain, error) {
 	}
 
 	config := module.ProverConfig{
-		Debug:          true,
 		TrustingPeriod: 86400 * time.Second,
 		MaxClockDrift:  1 * time.Millisecond,
 	}

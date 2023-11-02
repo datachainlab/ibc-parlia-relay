@@ -29,7 +29,7 @@ func (m *verifyMembershipModule) latest() *cobra.Command {
 	return &cobra.Command{
 		Use: "latest",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			chainID := int64(9999)
+			chainID := uint64(9999)
 			connection := conntypes.ConnectionEnd{
 				ClientId: "xx-parlia-0",
 				Versions: []*conntypes.Version{{
@@ -66,7 +66,7 @@ func (m *verifyMembershipModule) latest() *cobra.Command {
 	}
 }
 
-func (m *verifyMembershipModule) proveState(chainID int64, port int64, path string, value []byte) (common.Hash, []byte, types.Height, error) {
+func (m *verifyMembershipModule) proveState(chainID uint64, port int64, path string, value []byte) (common.Hash, []byte, types.Height, error) {
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
 		EthChainId:  chainID,
 		RpcAddr:     fmt.Sprintf("http://localhost:%d", port),
@@ -81,9 +81,7 @@ func (m *verifyMembershipModule) proveState(chainID int64, port int64, path stri
 	if err != nil {
 		return common.Hash{}, nil, types.Height{}, err
 	}
-	config := module.ProverConfig{
-		Debug: true,
-	}
+	config := module.ProverConfig{}
 	prover := module.NewProver(module.NewChain(chain), &config).(*module.Prover)
 
 	ctx := core.NewQueryContext(context.Background(), latest)

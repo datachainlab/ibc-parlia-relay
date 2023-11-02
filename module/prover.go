@@ -23,10 +23,6 @@ import (
 
 var _ core.Prover = (*Prover)(nil)
 
-type DebuggableChain struct {
-	Chain
-}
-
 type Prover struct {
 	chain  Chain
 	config *ProverConfig
@@ -161,14 +157,14 @@ func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.A
 }
 
 // SetupHeadersForUpdate creates a new header based on a given header
-func (pr *Prover) SetupHeadersForUpdate(dstChain core.ChainInfoICS02Querier, latestFinalizedHeader core.Header) ([]core.Header, error) {
+func (pr *Prover) SetupHeadersForUpdate(counterparty core.FinalityAwareChain, latestFinalizedHeader core.Header) ([]core.Header, error) {
 	header := latestFinalizedHeader.(*Header)
 	// LCP doesn't need height / EVM needs latest height
-	latestHeightOnDstChain, err := dstChain.LatestHeight()
+	latestHeightOnDstChain, err := counterparty.LatestHeight()
 	if err != nil {
 		return nil, err
 	}
-	csRes, err := dstChain.QueryClientState(core.NewQueryContext(context.TODO(), latestHeightOnDstChain))
+	csRes, err := counterparty.QueryClientState(core.NewQueryContext(context.TODO(), latestHeightOnDstChain))
 	if err != nil {
 		return nil, fmt.Errorf("no client state found : SetupHeadersForUpdate: height = %d, %+v", latestHeightOnDstChain.GetRevisionHeight(), err)
 	}
@@ -223,6 +219,61 @@ func (pr *Prover) ProveState(ctx core.QueryContext, path string, value []byte) (
 	proofHeight := toHeight(ctx.Height())
 	proof, err := pr.getStateCommitmentProof([]byte(path), proofHeight)
 	return proof, proofHeight, err
+}
+
+func (pr *Prover) CheckRefreshRequired(counterparty core.ChainInfoICS02Querier) (bool, error) {
+	cpQueryHeight, err := counterparty.LatestHeight()
+	if err != nil {
+		return false, fmt.Errorf("failed to get the latest height of the counterparty chain: %+v", err)
+	}
+	cpQueryCtx := core.NewQueryContext(context.TODO(), cpQueryHeight)
+
+	resCs, err := counterparty.QueryClientState(cpQueryCtx)
+	if err != nil {
+		return false, fmt.Errorf("failed to query the client state on the counterparty chain: %+v", err)
+	}
+
+	var cs exported.ClientState
+	if err = pr.chain.Codec().UnpackAny(resCs.ClientState, &cs); err != nil {
+		return false, fmt.Errorf("failed to unpack Any into tendermint client state: %+v", err)
+	}
+
+	resCons, err := counterparty.QueryClientConsensusState(cpQueryCtx, cs.GetLatestHeight())
+	if err != nil {
+		return false, fmt.Errorf("failed to query the consensus state on the counterparty chain: %+v", err)
+	}
+
+	var cons exported.ConsensusState
+	if err = pr.chain.Codec().UnpackAny(resCons.ConsensusState, &cons); err != nil {
+		return false, fmt.Errorf("failed to unpack Any into tendermint consensus state: %+v", err)
+	}
+
+	// cons.GetTimestamp() returns not nsec but sec
+	lcLastTimestamp := time.Unix(int64(cons.GetTimestamp()), 0)
+
+	selfQueryHeight, err := pr.chain.LatestHeight()
+	if err != nil {
+		return false, fmt.Errorf("failed to get the latest height of the self chain: %+v", err)
+	}
+
+	selfTimestamp, err := pr.chain.Timestamp(selfQueryHeight)
+	if err != nil {
+		return false, fmt.Errorf("failed to get timestamp of the self chain: %+v", err)
+	}
+
+	elapsedTime := selfTimestamp.Sub(lcLastTimestamp)
+
+	durationMulByFraction := func(d time.Duration, f *Fraction) time.Duration {
+		nsec := d.Nanoseconds() * int64(f.Numerator) / int64(f.Denominator)
+		return time.Duration(nsec) * time.Nanosecond
+	}
+	threshold := durationMulByFraction(pr.config.GetTrustingPeriod(), pr.config.GetRefreshThresholdRate())
+	needsRefresh := elapsedTime > threshold
+	if needsRefresh {
+		log.GetLogger().Debug("needs refresh", "elapsedTime", elapsedTime, "threshold", threshold)
+	}
+
+	return needsRefresh, nil
 }
 
 // queryVerifyingHeader returns headers to finalize

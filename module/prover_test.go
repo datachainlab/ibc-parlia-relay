@@ -35,8 +35,10 @@ const (
 
 type mockChain struct {
 	Chain
-	latestHeight uint64
-	chainID      uint64
+	latestHeight            uint64
+	consensusStateTimestamp map[exported.Height]uint64
+	chainTimestamp          map[exported.Height]uint64
+	chainID                 uint64
 }
 
 func (c *mockChain) CanonicalChainID(ctx context.Context) (uint64, error) {
@@ -54,6 +56,21 @@ func (c *mockChain) QueryClientState(ctx core.QueryContext) (*clienttypes.QueryC
 		return nil, err
 	}
 	return clienttypes.NewQueryClientStateResponse(anyClientState, nil, cHeight), nil
+}
+
+func (c *mockChain) QueryClientConsensusState(ctx core.QueryContext, height exported.Height) (*clienttypes.QueryConsensusStateResponse, error) {
+	cHeight := clienttypes.NewHeight(ctx.Height().GetRevisionNumber(), ctx.Height().GetRevisionHeight())
+	cs := ConsensusState{
+		StateRoot:              common.Hash{}.Bytes(),
+		Timestamp:              c.consensusStateTimestamp[height],
+		CurrentValidatorsHash:  common.Hash{}.Bytes(),
+		PreviousValidatorsHash: common.Hash{}.Bytes(),
+	}
+	anyConsensusState, err := codectypes.NewAnyWithValue(&cs)
+	if err != nil {
+		return nil, err
+	}
+	return clienttypes.NewQueryConsensusStateResponse(anyConsensusState, nil, cHeight), nil
 }
 
 func (c *mockChain) Header(_ context.Context, height uint64) (*types2.Header, error) {
@@ -258,6 +275,14 @@ func (c *mockChain) LatestHeight() (exported.Height, error) {
 	return clienttypes.NewHeight(0, c.latestHeight), nil
 }
 
+func (c *mockChain) Timestamp(height exported.Height) (time.Time, error) {
+	return time.Unix(int64(c.chainTimestamp[height]), 0), nil
+}
+
+func (c *mockChain) GetLatestFinalizedHeader() (latestFinalizedHeader core.Header, err error) {
+	panic("never call")
+}
+
 type ProverTestSuite struct {
 	suite.Suite
 	prover *Prover
@@ -296,11 +321,17 @@ func (ts *ProverTestSuite) SetupTest() {
 	config := ProverConfig{
 		TrustingPeriod: 100 * time.Second,
 		MaxClockDrift:  1 * time.Millisecond,
+		RefreshThresholdRate: &Fraction{
+			Numerator:   1,
+			Denominator: 2,
+		},
 	}
 	ts.chain = &mockChain{
-		Chain:        NewChain(chain),
-		latestHeight: 31297221,
-		chainID:      9999,
+		Chain:                   NewChain(chain),
+		latestHeight:            31297221,
+		chainID:                 9999,
+		consensusStateTimestamp: make(map[exported.Height]uint64),
+		chainTimestamp:          make(map[exported.Height]uint64),
 	}
 	ts.prover = NewProver(ts.chain, &config).(*Prover)
 }
@@ -336,7 +367,7 @@ func (ts *ProverTestSuite) TestSetupHeadersForUpdate() {
 
 	header, err := ts.prover.GetLatestFinalizedHeaderByLatestHeight(latest)
 	ts.Require().NoError(err)
-	setupDone, err := ts.prover.SetupHeadersForUpdate(&dst, header)
+	setupDone, err := ts.prover.SetupHeadersForUpdate(dst.Chain.(*mockChain), header)
 	ts.Require().NoError(err)
 	ts.Require().Len(setupDone, 2)
 	first := setupDone[0].(*Header)
@@ -461,4 +492,30 @@ func (ts *ProverTestSuite) TestConnectionStateProofAsLCPCommitment() {
 	ts.Require().Equal(commitmentValue.String(), "0x22ab576a7df38bb4860ffbc65f30d5a66536fb2d8ec3d5d7d4ab9a3ead0e4312")
 	ts.Require().Equal(commitmentHeight, uint64(317))
 	ts.Require().Equal(commitmentStateId.String(), "0xee0b5f32ae2bff0d82149ea22b02e350fbbe467a514ba80bbadd89007df1d167")
+}
+
+func (ts *ProverTestSuite) TestCheckRefreshRequired() {
+	type dstMock struct {
+		Chain
+		core.Prover
+	}
+	dst := dstMock{
+		Chain:  ts.prover.chain,
+		Prover: ts.prover,
+	}
+	now := time.Now()
+	height := clienttypes.NewHeight(0, ts.chain.latestHeight)
+	ts.chain.chainTimestamp[height] = uint64(now.Unix())
+
+	// should refresh
+	ts.chain.consensusStateTimestamp[height] = uint64(now.Add(-51 * time.Second).Unix())
+	required, err := ts.prover.CheckRefreshRequired(dst)
+	ts.Require().NoError(err)
+	ts.Require().True(required)
+
+	// needless
+	ts.chain.consensusStateTimestamp[height] = uint64(now.Add(-50 * time.Second).Unix())
+	required, err = ts.prover.CheckRefreshRequired(dst)
+	ts.Require().NoError(err)
+	ts.Require().False(required)
 }

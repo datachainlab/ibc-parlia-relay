@@ -112,7 +112,7 @@ func (cs *ConsensusState) ClientType() string {
 }
 
 func (cs *ConsensusState) GetTimestamp() uint64 {
-	panic("not implemented")
+	return cs.Timestamp
 }
 
 // ValidateBasic defines basic validation for the mock-client consensus state.
