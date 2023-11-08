@@ -8,7 +8,7 @@ module.exports = async (callback) => {
 
   const port = "transfer";
   const channel = "channel-0";
-  const timeoutHeight = 0;
+  const timeoutHeight = 10000000;
   const mintAmount = 100;
   const sendingAmount = 20
 
@@ -44,6 +44,7 @@ module.exports = async (callback) => {
     callback()
 
   }catch (e) {
+    console.log(e)
     callback(e);
   }
 };
