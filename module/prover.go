@@ -6,7 +6,6 @@ import (
 	"github.com/hyperledger-labs/yui-relayer/log"
 	"time"
 
-	"github.com/cometbft/cometbft/libs/math"
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -381,7 +380,10 @@ func newETHHeader(header *types.Header) (*ETHHeader, error) {
 
 func GetPreviousEpoch(v uint64) uint64 {
 	epochCount := v / constant.BlocksPerEpoch
-	return uint64(math.MaxInt64(0, int64(epochCount)-1)) * constant.BlocksPerEpoch
+	if epochCount == 0 {
+		return 0
+	}
+	return (epochCount - 1) * constant.BlocksPerEpoch
 }
 
 func isEpoch(v uint64) bool {

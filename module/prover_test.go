@@ -2,6 +2,7 @@ package module
 
 import (
 	"context"
+	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/hyperledger-labs/yui-relayer/log"
 	"math/big"
 	"testing"
@@ -518,4 +519,13 @@ func (ts *ProverTestSuite) TestCheckRefreshRequired() {
 	required, err = ts.prover.CheckRefreshRequired(dst)
 	ts.Require().NoError(err)
 	ts.Require().False(required)
+}
+
+func (ts *ProverTestSuite) TestGetPreviousEpoch() {
+	ts.Require().Equal(constant.BlocksPerEpoch, GetPreviousEpoch(2*constant.BlocksPerEpoch))
+	ts.Require().Equal(uint64(0), GetPreviousEpoch(2*constant.BlocksPerEpoch-1))
+	ts.Require().Equal(uint64(0), GetPreviousEpoch(constant.BlocksPerEpoch+1))
+	ts.Require().Equal(uint64(0), GetPreviousEpoch(constant.BlocksPerEpoch))
+	ts.Require().Equal(uint64(0), GetPreviousEpoch(constant.BlocksPerEpoch-1))
+	ts.Require().Equal(uint64(0), GetPreviousEpoch(0))
 }

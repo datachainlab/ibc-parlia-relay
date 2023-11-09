@@ -15,6 +15,7 @@ module.exports = async (callback) => {
     callback()
 
   }catch (e) {
+    console.log(e)
     callback(e);
   }
 };
