@@ -5,6 +5,7 @@ import (
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/hyperledger-labs/yui-relayer/log"
 	"math/big"
+	"strings"
 	"testing"
 	"time"
 
@@ -530,7 +531,7 @@ func (ts *ProverTestSuite) TestGetPreviousEpoch() {
 	ts.Require().Equal(uint64(0), GetPreviousEpoch(0))
 }
 
-func (ts *ProverTestSuite) Test_setupHeadersForUpdate() {
+func (ts *ProverTestSuite) TestSuccess_setupHeadersForUpdate() {
 
 	verify := func(latestHeight, nextHeight uint64, expected int) {
 		clientStateLatestHeight := clienttypes.NewHeight(0, latestHeight)
@@ -584,4 +585,25 @@ func (ts *ProverTestSuite) Test_setupHeadersForUpdate() {
 	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch, 9)
 	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch+1, 10)
 
+}
+
+func (ts *ProverTestSuite) TestError_setupHeadersForUpdate() {
+
+	verify := func(latestHeight, nextHeight uint64) {
+		clientStateLatestHeight := clienttypes.NewHeight(0, latestHeight)
+		target, err := newETHHeader(&types2.Header{
+			Number: big.NewInt(int64(nextHeight)),
+		})
+		ts.Require().NoError(err)
+		latestFinalizedHeader := &Header{
+			Headers: []*ETHHeader{target},
+		}
+		fn := func(height uint64, _ uint64) (core.Header, error) {
+			return nil, nil
+		}
+		_, err = setupHeadersForUpdate(fn, clientStateLatestHeight, latestFinalizedHeader)
+		ts.Require().True(strings.Contains(err.Error(), "setupHeadersForUpdate no finalized header found"))
+	}
+
+	verify(0, constant.BlocksPerEpoch+1)
 }

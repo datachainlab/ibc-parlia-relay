@@ -177,6 +177,10 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight ex
 		if err != nil {
 			return nil, err
 		}
+		// No finalized header found
+		if ethHeaders == nil {
+			return nil, nil
+		}
 		return pr.withProofAndValidators(height, ethHeaders)
 	}
 	return setupHeadersForUpdate(queryVerifyingHeader, clientStateLatestHeight, latestFinalizedHeader)
