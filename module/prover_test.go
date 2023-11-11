@@ -529,3 +529,59 @@ func (ts *ProverTestSuite) TestGetPreviousEpoch() {
 	ts.Require().Equal(uint64(0), GetPreviousEpoch(constant.BlocksPerEpoch-1))
 	ts.Require().Equal(uint64(0), GetPreviousEpoch(0))
 }
+
+func (ts *ProverTestSuite) Test_setupHeadersForUpdate() {
+
+	verify := func(latestHeight, nextHeight uint64, expected int) {
+		clientStateLatestHeight := clienttypes.NewHeight(0, latestHeight)
+		target, err := newETHHeader(&types2.Header{
+			Number: big.NewInt(int64(nextHeight)),
+		})
+		ts.Require().NoError(err)
+		latestFinalizedHeader := &Header{
+			Headers: []*ETHHeader{target},
+		}
+		fn := func(height uint64, _ uint64) (core.Header, error) {
+			h, e := newETHHeader(&types2.Header{
+				Number: big.NewInt(int64(height)),
+			})
+			return &Header{
+				Headers: []*ETHHeader{h},
+			}, e
+		}
+		targets, err := setupHeadersForUpdate(fn, clientStateLatestHeight, latestFinalizedHeader)
+		ts.Require().NoError(err)
+		ts.Require().Len(targets, expected)
+		for i, h := range targets {
+			trusted := h.(*Header).TrustedHeight
+			if i == 0 {
+				ts.Require().Equal(trusted.RevisionHeight, latestHeight)
+			} else {
+				ts.Require().Equal(*trusted, targets[i-1].GetHeight())
+			}
+		}
+	}
+
+	verify(0, constant.BlocksPerEpoch-1, 1)
+	verify(0, constant.BlocksPerEpoch, 1)
+	verify(0, constant.BlocksPerEpoch+1, 2)
+	verify(0, 10*constant.BlocksPerEpoch-1, 10)
+	verify(0, 10*constant.BlocksPerEpoch, 10)
+	verify(0, 10*constant.BlocksPerEpoch+1, 11)
+	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch-1, 0)
+	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch, 1)
+	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch+1, 2)
+	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch-1, 10)
+	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch, 10)
+	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch+1, 11)
+	verify(constant.BlocksPerEpoch, constant.BlocksPerEpoch, 0)
+	verify(constant.BlocksPerEpoch, constant.BlocksPerEpoch+1, 1)
+	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch-1, 9)
+	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch, 9)
+	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch+1, 10)
+	verify(constant.BlocksPerEpoch+1, constant.BlocksPerEpoch+1, 0)
+	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch-1, 9)
+	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch, 9)
+	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch+1, 10)
+
+}
