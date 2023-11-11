@@ -15,7 +15,7 @@ func (m *createClientModule) createClientSuccessCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "success",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			prover, _, err := createProver()
+			prover, chain, err := createProver()
 			if err != nil {
 				return err
 			}
@@ -32,11 +32,11 @@ func (m *createClientModule) createClientSuccessCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			currentValidatorSet, err := prover.QueryValidatorSet(module.GetCurrentEpoch(header.GetHeight().GetRevisionHeight()))
+			currentValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetCurrentEpoch(header.GetHeight().GetRevisionHeight()))
 			if err != nil {
 				return err
 			}
-			previousValidatorSet, err := prover.QueryValidatorSet(module.GetPreviousEpoch(header.GetHeight().GetRevisionHeight()))
+			previousValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetPreviousEpoch(header.GetHeight().GetRevisionHeight()))
 			if err != nil {
 				return err
 			}
