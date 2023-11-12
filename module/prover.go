@@ -62,33 +62,7 @@ func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
 
 // GetLatestFinalizedHeaderByLatestHeight returns the latest finalized header from the chain
 func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint64) (core.Header, error) {
-	logger := log.GetLogger()
-	for i := latestBlockNumber; i > 0; i-- {
-		header, err := pr.chain.Header(context.Background(), i)
-		if err != nil {
-			return nil, err
-		}
-		vote, err := getVoteAttestationFromHeader(header)
-		if err != nil {
-			return nil, err
-		}
-		if vote == nil {
-			continue
-		}
-		probablyFinalized := vote.Data.SourceNumber
-
-		logger.Debug("Try to seek verifying headers to finalize", "probablyFinalized", probablyFinalized, "latest", latestBlockNumber)
-
-		headers, err := QueryVerifyingEthHeaders(pr.chain.Header, probablyFinalized, latestBlockNumber)
-		if err != nil {
-			return nil, err
-		}
-		if headers != nil {
-			return pr.withProofAndValidators(probablyFinalized, headers)
-		}
-		logger.Debug("Failed to seek verifying headers to finalize. So seek previous finalized header.", "probablyFinalized", probablyFinalized, "latest", latestBlockNumber)
-	}
-	return nil, fmt.Errorf("no finalized header found: %d", latestBlockNumber)
+	return getLatestFinalizedHeader(pr.chain.Header, pr.withProofAndValidators, latestBlockNumber)
 }
 
 // CreateMsgCreateClient creates a CreateClientMsg to this chain
@@ -275,6 +249,36 @@ func (pr *Prover) withProofAndValidators(height uint64, ethHeaders []*ETHHeader)
 		}
 	}
 	return header, nil
+}
+
+func getLatestFinalizedHeader(getHeader getHeaderFn, withProofAndValidators func(uint64, []*ETHHeader) (core.Header, error), latestBlockNumber uint64) (core.Header, error) {
+	logger := log.GetLogger()
+	for i := latestBlockNumber; i > 0; i-- {
+		header, err := getHeader(context.Background(), i)
+		if err != nil {
+			return nil, err
+		}
+		vote, err := getVoteAttestationFromHeader(header)
+		if err != nil {
+			return nil, err
+		}
+		if vote == nil {
+			continue
+		}
+		probablyFinalized := vote.Data.SourceNumber
+
+		logger.Debug("Try to seek verifying headers to finalize", "probablyFinalized", probablyFinalized, "latest", latestBlockNumber)
+
+		headers, err := QueryVerifyingEthHeaders(getHeader, probablyFinalized, latestBlockNumber)
+		if err != nil {
+			return nil, err
+		}
+		if headers != nil {
+			return withProofAndValidators(probablyFinalized, headers)
+		}
+		logger.Debug("Failed to seek verifying headers to finalize. So seek previous finalized header.", "probablyFinalized", probablyFinalized, "latest", latestBlockNumber)
+	}
+	return nil, fmt.Errorf("no finalized header found: %d", latestBlockNumber)
 }
 
 func setupHeadersForUpdate(queryVerifyingHeader func(uint64, uint64) (core.Header, error), clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
