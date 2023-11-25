@@ -32,7 +32,7 @@ func (m *updateClientModule) success() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return m.printHeader(prover, latest.GetRevisionHeight())
+			return m.printHeader(prover, chain, latest.GetRevisionHeight())
 		},
 	})
 	cmd.AddCommand(&cobra.Command{
@@ -48,7 +48,7 @@ func (m *updateClientModule) success() *cobra.Command {
 				return err
 			}
 			epochCount := latest.GetRevisionHeight() / constant.BlocksPerEpoch
-			return m.printHeader(prover, epochCount*constant.BlocksPerEpoch+2)
+			return m.printHeader(prover, chain, epochCount*constant.BlocksPerEpoch+2)
 		},
 	})
 	return cmd
@@ -88,11 +88,11 @@ func (m *updateClientModule) error() *cobra.Command {
 				return err
 			}
 			trustedHeight := header.(*module.Header).TrustedHeight.GetRevisionHeight()
-			trustedCurrentValidatorSet, err := prover.QueryValidatorSet(module.GetCurrentEpoch(trustedHeight))
+			trustedCurrentValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetCurrentEpoch(trustedHeight))
 			if err != nil {
 				return err
 			}
-			trustedPreviousValidatorSet, err := prover.QueryValidatorSet(module.GetPreviousEpoch(trustedHeight))
+			trustedPreviousValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetPreviousEpoch(trustedHeight))
 			if err != nil {
 				return err
 			}
@@ -108,7 +108,7 @@ func (m *updateClientModule) error() *cobra.Command {
 	}
 }
 
-func (m *updateClientModule) printHeader(prover *module.Prover, height uint64) error {
+func (m *updateClientModule) printHeader(prover *module.Prover, chain module.Chain, height uint64) error {
 	log.Println("printHeader latest=", height)
 	iHeader, err := prover.GetLatestFinalizedHeaderByLatestHeight(height)
 	if err != nil {
@@ -144,11 +144,11 @@ func (m *updateClientModule) printHeader(prover *module.Prover, height uint64) e
 		return err
 	}
 	trustedHeight := header.TrustedHeight.GetRevisionHeight()
-	trustedCurrentValidatorSet, err := prover.QueryValidatorSet(module.GetCurrentEpoch(trustedHeight))
+	trustedCurrentValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetCurrentEpoch(trustedHeight))
 	if err != nil {
 		return err
 	}
-	trustedPreviousValidatorSet, err := prover.QueryValidatorSet(module.GetPreviousEpoch(trustedHeight))
+	trustedPreviousValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetPreviousEpoch(trustedHeight))
 	if err != nil {
 		return err
 	}

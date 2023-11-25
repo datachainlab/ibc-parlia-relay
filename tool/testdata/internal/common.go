@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
 	"github.com/datachainlab/ibc-parlia-relay/module"
-	"github.com/hyperledger-labs/yui-relayer/core"
 	"github.com/spf13/viper"
 	"time"
 )
@@ -26,7 +25,7 @@ func createRPCAddr() (string, error) {
 	return rpcAddr, nil
 }
 
-func createProver() (*module.Prover, core.Chain, error) {
+func createProver() (*module.Prover, module.Chain, error) {
 	rpcAddr, err := createRPCAddr()
 	if err != nil {
 		return nil, nil, err
@@ -39,7 +38,7 @@ func createProver() (*module.Prover, core.Chain, error) {
 		IbcAddress:  mainAndTestNetIbcAddress,
 	})
 	if err != nil {
-		return nil, chain, err
+		return nil, nil, err
 	}
 
 	config := module.ProverConfig{
@@ -47,5 +46,5 @@ func createProver() (*module.Prover, core.Chain, error) {
 		MaxClockDrift:  1 * time.Millisecond,
 	}
 	ec := module.NewChain(chain)
-	return module.NewProver(ec, &config).(*module.Prover), chain, nil
+	return module.NewProver(ec, &config).(*module.Prover), ec, nil
 }

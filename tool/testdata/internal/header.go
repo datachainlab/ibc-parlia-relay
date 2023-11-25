@@ -18,7 +18,7 @@ func (m *headerModule) success() *cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use: "latest",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			prover, chain, err := createProver()
+			_, chain, err := createProver()
 			if err != nil {
 				return err
 			}
@@ -26,7 +26,7 @@ func (m *headerModule) success() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return m.printHeader(prover, latest.GetRevisionHeight())
+			return m.printHeader(chain, latest.GetRevisionHeight())
 		},
 	})
 
@@ -34,11 +34,11 @@ func (m *headerModule) success() *cobra.Command {
 	specified := &cobra.Command{
 		Use: "specified",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			prover, _, err := createProver()
+			_, chain, err := createProver()
 			if err != nil {
 				return err
 			}
-			return m.printHeader(prover, num)
+			return m.printHeader(chain, num)
 		},
 	}
 	specified.Flags().Uint64Var(&num, "num", num, "--num")
@@ -46,9 +46,9 @@ func (m *headerModule) success() *cobra.Command {
 	return cmd
 }
 
-func (m *headerModule) printHeader(prover *module.Prover, height uint64) error {
+func (m *headerModule) printHeader(chain module.Chain, height uint64) error {
 	log.Println("printHeader latest=", height)
-	headers, err := prover.QueryVerifyingEthHeaders(height, height+10)
+	headers, err := module.QueryVerifyingEthHeaders(chain.Header, height, height+10)
 	if err != nil {
 		return err
 	}
