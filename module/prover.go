@@ -6,12 +6,10 @@ import (
 	"github.com/hyperledger-labs/yui-relayer/log"
 	"time"
 
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/cosmos/cosmos-sdk/codec"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 	"github.com/cosmos/ibc-go/v7/modules/core/exported"
 	"github.com/hyperledger-labs/yui-relayer/core"
@@ -62,68 +60,35 @@ func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
 
 // GetLatestFinalizedHeaderByLatestHeight returns the latest finalized header from the chain
 func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint64) (core.Header, error) {
-	return getLatestFinalizedHeader(pr.chain.Header, pr.withProofAndValidators, latestBlockNumber)
+	height, finalizedHeader, err := getLatestFinalizedHeader(pr.chain.Header, latestBlockNumber)
+	if err != nil {
+		return nil, err
+	}
+	// Make headers verifiable
+	return pr.withProofAndValidators(height, finalizedHeader)
 }
 
-// CreateMsgCreateClient creates a CreateClientMsg to this chain
-func (pr *Prover) CreateMsgCreateClient(_ string, dstHeader core.Header, _ sdk.AccAddress) (*clienttypes.MsgCreateClient, error) {
-	currentEpoch := GetCurrentEpoch(dstHeader.GetHeight().GetRevisionHeight())
-	currentValidators, err := QueryValidatorSet(pr.chain.Header, currentEpoch)
+// CreateInitialLightClientState returns a pair of ClientState and ConsensusState based on the state of the self chain at `height`.
+// These states will be submitted to the counterparty chain as MsgCreateClient.
+// If `height` is nil, the latest finalized height is selected automatically.
+func (pr *Prover) CreateInitialLightClientState(height exported.Height) (exported.ClientState, exported.ConsensusState, error) {
+	latestHeight, err := pr.chain.LatestHeight()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
-	previousEpoch := GetPreviousEpoch(dstHeader.GetHeight().GetRevisionHeight())
-	previousValidators, err := QueryValidatorSet(pr.chain.Header, previousEpoch)
+	var finalizedHeader []*ETHHeader
+	if height == nil {
+		_, finalizedHeader, err = getLatestFinalizedHeader(pr.chain.Header, latestHeight.GetRevisionHeight())
+	} else {
+		finalizedHeader, err = GetFinalizedHeader(pr.chain.Header, height.GetRevisionHeight(), latestHeight.GetRevisionHeight())
+	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	header, err := dstHeader.(*Header).Target()
-	if err != nil {
-		return nil, err
-	}
-
-	stateRoot, err := pr.GetStorageRoot(header)
-	if err != nil {
-		return nil, err
-	}
-
-	chainID, err := pr.chain.CanonicalChainID(context.TODO())
-	if err != nil {
-		return nil, err
-	}
-
-	var commitmentsSlot [32]byte
-	latestHeight := toHeight(dstHeader.GetHeight())
-	clientState := ClientState{
-		TrustingPeriod:     pr.config.TrustingPeriod,
-		MaxClockDrift:      pr.config.MaxClockDrift,
-		ChainId:            chainID,
-		LatestHeight:       &latestHeight,
-		Frozen:             false,
-		IbcStoreAddress:    pr.chain.IBCAddress().Bytes(),
-		IbcCommitmentsSlot: commitmentsSlot[:],
-	}
-	anyClientState, err := codectypes.NewAnyWithValue(&clientState)
-	if err != nil {
-		return nil, err
-	}
-	consensusState := ConsensusState{
-		Timestamp:              header.Time,
-		PreviousValidatorsHash: crypto.Keccak256(previousValidators...),
-		CurrentValidatorsHash:  crypto.Keccak256(currentValidators...),
-		StateRoot:              stateRoot.Bytes(),
-	}
-	anyConsensusState, err := codectypes.NewAnyWithValue(&consensusState)
-	if err != nil {
-		return nil, err
-	}
-
-	return &clienttypes.MsgCreateClient{
-		ClientState:    anyClientState,
-		ConsensusState: anyConsensusState,
-		Signer:         "",
-	}, nil
+	//Header should be Finalized, not necessarily Verifiable.
+	return pr.buildInitialState(&Header{
+		Headers: finalizedHeader,
+	})
 }
 
 // SetupHeadersForUpdate creates a new header based on a given header
@@ -147,7 +112,7 @@ func (pr *Prover) SetupHeadersForUpdate(counterparty core.FinalityAwareChain, la
 
 func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
 	queryVerifyingHeader := func(height uint64, limit uint64) (core.Header, error) {
-		ethHeaders, err := QueryVerifyingEthHeaders(pr.chain.Header, height, limit)
+		ethHeaders, err := GetFinalizedHeader(pr.chain.Header, height, limit)
 		if err != nil {
 			return nil, err
 		}
@@ -251,16 +216,16 @@ func (pr *Prover) withProofAndValidators(height uint64, ethHeaders []*ETHHeader)
 	return header, nil
 }
 
-func getLatestFinalizedHeader(getHeader getHeaderFn, withProofAndValidators func(uint64, []*ETHHeader) (core.Header, error), latestBlockNumber uint64) (core.Header, error) {
+func getLatestFinalizedHeader(getHeader getHeaderFn, latestBlockNumber uint64) (uint64, []*ETHHeader, error) {
 	logger := log.GetLogger()
 	for i := latestBlockNumber; i > 0; i-- {
 		header, err := getHeader(context.Background(), i)
 		if err != nil {
-			return nil, err
+			return 0, nil, err
 		}
 		vote, err := getVoteAttestationFromHeader(header)
 		if err != nil {
-			return nil, err
+			return 0, nil, err
 		}
 		if vote == nil {
 			continue
@@ -269,16 +234,16 @@ func getLatestFinalizedHeader(getHeader getHeaderFn, withProofAndValidators func
 
 		logger.Debug("Try to seek verifying headers to finalize", "probablyFinalized", probablyFinalized, "latest", latestBlockNumber)
 
-		headers, err := QueryVerifyingEthHeaders(getHeader, probablyFinalized, latestBlockNumber)
+		headers, err := GetFinalizedHeader(getHeader, probablyFinalized, latestBlockNumber)
 		if err != nil {
-			return nil, err
+			return 0, nil, err
 		}
 		if headers != nil {
-			return withProofAndValidators(probablyFinalized, headers)
+			return probablyFinalized, headers, nil
 		}
 		logger.Debug("Failed to seek verifying headers to finalize. So seek previous finalized header.", "probablyFinalized", probablyFinalized, "latest", latestBlockNumber)
 	}
-	return nil, fmt.Errorf("no finalized header found: %d", latestBlockNumber)
+	return 0, nil, fmt.Errorf("no finalized header found: %d", latestBlockNumber)
 }
 
 func setupHeadersForUpdate(queryVerifyingHeader func(uint64, uint64) (core.Header, error), clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
@@ -319,6 +284,53 @@ func setupHeadersForUpdate(queryVerifyingHeader func(uint64, uint64) (core.Heade
 		logger.Debug("setupHeadersForUpdate", "target", h.GetHeight(), "trusted", trustedHeight, "headerSize", len(h.(*Header).Headers))
 	}
 	return targetHeaders, nil
+}
+
+func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState, exported.ConsensusState, error) {
+	currentEpoch := GetCurrentEpoch(dstHeader.GetHeight().GetRevisionHeight())
+	currentValidators, err := QueryValidatorSet(pr.chain.Header, currentEpoch)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	previousEpoch := GetPreviousEpoch(dstHeader.GetHeight().GetRevisionHeight())
+	previousValidators, err := QueryValidatorSet(pr.chain.Header, previousEpoch)
+	if err != nil {
+		return nil, nil, err
+	}
+	header, err := dstHeader.(*Header).Target()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stateRoot, err := pr.GetStorageRoot(header)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	chainID, err := pr.chain.CanonicalChainID(context.TODO())
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var commitmentsSlot [32]byte
+	latestHeight := toHeight(dstHeader.GetHeight())
+	clientState := ClientState{
+		TrustingPeriod:     pr.config.TrustingPeriod,
+		MaxClockDrift:      pr.config.MaxClockDrift,
+		ChainId:            chainID,
+		LatestHeight:       &latestHeight,
+		Frozen:             false,
+		IbcStoreAddress:    pr.chain.IBCAddress().Bytes(),
+		IbcCommitmentsSlot: commitmentsSlot[:],
+	}
+	consensusState := ConsensusState{
+		Timestamp:              header.Time,
+		PreviousValidatorsHash: crypto.Keccak256(previousValidators...),
+		CurrentValidatorsHash:  crypto.Keccak256(currentValidators...),
+		StateRoot:              stateRoot.Bytes(),
+	}
+	return &clientState, &consensusState, nil
 }
 
 func GetPreviousEpoch(v uint64) uint64 {

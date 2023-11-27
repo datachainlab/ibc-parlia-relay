@@ -9,7 +9,7 @@ import (
 
 type getHeaderFn func(context.Context, uint64) (*types.Header, error)
 
-func QueryVerifyingEthHeaders(fn getHeaderFn, height uint64, limit uint64) ([]*ETHHeader, error) {
+func GetFinalizedHeader(fn getHeaderFn, height uint64, limit uint64) ([]*ETHHeader, error) {
 	var ethHeaders []*ETHHeader
 	for i := height; i+2 <= limit; i++ {
 		targetBlock, targetETHHeader, _, err := queryETHHeader(fn, i)
