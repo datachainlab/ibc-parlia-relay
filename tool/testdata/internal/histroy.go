@@ -2,10 +2,12 @@ package internal
 
 import (
 	"github.com/cometbft/cometbft/libs/json"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 	"github.com/cosmos/ibc-go/v7/modules/core/exported"
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/golang/protobuf/proto"
 	"github.com/spf13/cobra"
 	"log"
 	"os"
@@ -130,15 +132,25 @@ func (m *historyModule) outputMsgClient(prover *module.Prover, firstNumber uint6
 		ClientState    string `json:"clientState"`
 		ConsensusState string `json:"consensusState"`
 	}
-	msgCreateClient, err := prover.CreateMsgCreateClient("", firstHeader, nil)
+	cs, consState, err := prover.CreateInitialLightClientState(types.NewHeight(0, firstNumber))
 	if err != nil {
 		return 0, err
 	}
-	anyClientState, err := msgCreateClient.ClientState.Marshal()
+
+	protoClientState, err := codectypes.NewAnyWithValue(cs.(proto.Message))
 	if err != nil {
 		return 0, err
 	}
-	anyConsState, err := msgCreateClient.ConsensusState.Marshal()
+	protoConsState, err := codectypes.NewAnyWithValue(consState.(proto.Message))
+	if err != nil {
+		return 0, err
+	}
+
+	anyClientState, err := protoClientState.Marshal()
+	if err != nil {
+		return 0, err
+	}
+	anyConsState, err := protoConsState.Marshal()
 	if err != nil {
 		return 0, err
 	}

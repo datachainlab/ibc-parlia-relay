@@ -2,7 +2,9 @@ package internal
 
 import (
 	"fmt"
+	"github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
+	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum/signers/hd"
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/spf13/viper"
 	"time"
@@ -25,17 +27,28 @@ func createRPCAddr() (string, error) {
 	return rpcAddr, nil
 }
 
+func CreateSignerConfig() *types.Any {
+	signerConfig := &hd.SignerConfig{
+		Mnemonic: hdwMnemonic,
+		Path:     hdwPath,
+	}
+	anySignerConfig, err := types.NewAnyWithValue(signerConfig)
+	if err != nil {
+		panic(err)
+	}
+	return anySignerConfig
+}
+
 func createProver() (*module.Prover, module.Chain, error) {
 	rpcAddr, err := createRPCAddr()
 	if err != nil {
 		return nil, nil, err
 	}
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
-		EthChainId:  56,
-		RpcAddr:     rpcAddr,
-		HdwMnemonic: hdwMnemonic,
-		HdwPath:     hdwPath,
-		IbcAddress:  mainAndTestNetIbcAddress,
+		EthChainId: 56,
+		RpcAddr:    rpcAddr,
+		Signer:     CreateSignerConfig(),
+		IbcAddress: mainAndTestNetIbcAddress,
 	})
 	if err != nil {
 		return nil, nil, err

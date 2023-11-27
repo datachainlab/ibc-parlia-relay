@@ -1,6 +1,8 @@
 package internal
 
 import (
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	"github.com/cosmos/gogoproto/proto"
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -19,39 +21,42 @@ func (m *createClientModule) createClientSuccessCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			header, err := prover.GetLatestFinalizedHeader()
-			message, err := prover.CreateMsgCreateClient("", header, common.HexToAddress(mainAndTestNetIbcAddress).Bytes())
+			cs, consState, err := prover.CreateInitialLightClientState(nil)
 			if err != nil {
 				return err
 			}
-			clientState, err := message.ClientState.Marshal()
+
+			protoClientState, err := codectypes.NewAnyWithValue(cs.(proto.Message))
 			if err != nil {
 				return err
 			}
-			consState, err := message.ConsensusState.Marshal()
+			protoConsState, err := codectypes.NewAnyWithValue(consState.(proto.Message))
 			if err != nil {
 				return err
 			}
-			currentValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetCurrentEpoch(header.GetHeight().GetRevisionHeight()))
+			anyClientState, err := protoClientState.Marshal()
 			if err != nil {
 				return err
 			}
-			previousValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetPreviousEpoch(header.GetHeight().GetRevisionHeight()))
+			anyConsState, err := protoConsState.Marshal()
 			if err != nil {
 				return err
 			}
-			target, err := header.(*module.Header).Target()
+			currentValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetCurrentEpoch(cs.GetLatestHeight().GetRevisionHeight()))
 			if err != nil {
 				return err
 			}
-			storageRoot, err := prover.GetStorageRoot(target)
-			log.Println("clientState", common.Bytes2Hex(clientState))
-			log.Println("consensusState", common.Bytes2Hex(consState))
-			log.Println("height", target.Number)
-			log.Println("time", target.Time)
+			previousValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetPreviousEpoch(cs.GetLatestHeight().GetRevisionHeight()))
+			if err != nil {
+				return err
+			}
+			log.Println("clientState", common.Bytes2Hex(anyClientState))
+			log.Println("consensusState", common.Bytes2Hex(anyConsState))
+			log.Println("height", cs.GetLatestHeight().GetRevisionHeight())
+			log.Println("time", consState.GetTimestamp())
 			log.Println("currentValidatorSet", common.BytesToHash(crypto.Keccak256(currentValidatorSet...)))
 			log.Println("previousValidatorSet", common.Bytes2Hex(crypto.Keccak256(previousValidatorSet...)))
-			log.Println("storageRoot", storageRoot)
+			log.Println("storageRoot", consState.(*module.ConsensusState).StateRoot)
 
 			return nil
 		},

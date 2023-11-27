@@ -48,7 +48,7 @@ func (m *headerModule) success() *cobra.Command {
 
 func (m *headerModule) printHeader(chain module.Chain, height uint64) error {
 	log.Println("printHeader latest=", height)
-	headers, err := module.QueryVerifyingEthHeaders(chain.Header, height, height+10)
+	headers, err := module.GetFinalizedHeader(chain.Header, height, height+10)
 	if err != nil {
 		return err
 	}
