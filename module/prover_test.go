@@ -386,36 +386,46 @@ func (ts *ProverTestSuite) TestSetupHeadersForUpdate() {
 
 func (ts *ProverTestSuite) TestCreateInitialLightClientState() {
 
-	finalizedHeader, err := ts.prover.GetLatestFinalizedHeader()
-	ts.Require().NoError(err)
-	target, err := finalizedHeader.(*Header).Target()
-	ts.Require().NoError(err)
-	stateRoot, err := ts.prover.GetStorageRoot(target)
-	ts.Require().NoError(err)
-	previousEpoch := GetPreviousEpoch(finalizedHeader.GetHeight().GetRevisionHeight())
-	previousValidatorSet, err := QueryValidatorSet(ts.prover.chain.Header, previousEpoch)
-	ts.Require().NoError(err)
-	currentEpoch := GetCurrentEpoch(finalizedHeader.GetHeight().GetRevisionHeight())
-	currentValidatorSet, err := QueryValidatorSet(ts.prover.chain.Header, currentEpoch)
-	ts.Require().NoError(err)
+	heights := []exported.Height{nil, clienttypes.NewHeight(0, 31297218)}
 
-	s1, s2, err := ts.prover.CreateInitialLightClientState(nil)
-	cs := s1.(*ClientState)
-	ts.Require().NoError(err)
-	ts.Require().Equal(cs.ChainId, uint64(9999))
-	ts.Require().Equal(cs.TrustingPeriod, 100*time.Second)
-	ts.Require().Equal(cs.MaxClockDrift, 1*time.Millisecond)
-	ts.Require().False(cs.Frozen)
-	ts.Require().Equal(common.Bytes2Hex(cs.IbcStoreAddress), ibcHandlerAddress)
-	var commitment [32]byte
-	ts.Require().Equal(common.Bytes2Hex(cs.IbcCommitmentsSlot), common.Bytes2Hex(commitment[:]))
-	ts.Require().Equal(cs.GetLatestHeight(), finalizedHeader.GetHeight())
+	for _, height := range heights {
+		var err error
+		var finalizedHeader core.Header
+		if height == nil {
+			finalizedHeader, err = ts.prover.GetLatestFinalizedHeader()
+		} else {
+			finalizedHeader, err = ts.prover.GetLatestFinalizedHeaderByLatestHeight(height.GetRevisionHeight() + 2)
+		}
+		ts.Require().NoError(err)
+		target, err := finalizedHeader.(*Header).Target()
+		ts.Require().NoError(err)
+		stateRoot, err := ts.prover.GetStorageRoot(target)
+		ts.Require().NoError(err)
+		previousEpoch := GetPreviousEpoch(finalizedHeader.GetHeight().GetRevisionHeight())
+		previousValidatorSet, err := QueryValidatorSet(ts.prover.chain.Header, previousEpoch)
+		ts.Require().NoError(err)
+		currentEpoch := GetCurrentEpoch(finalizedHeader.GetHeight().GetRevisionHeight())
+		currentValidatorSet, err := QueryValidatorSet(ts.prover.chain.Header, currentEpoch)
+		ts.Require().NoError(err)
 
-	consState := s2.(*ConsensusState)
-	ts.Require().Equal(consState.CurrentValidatorsHash, crypto.Keccak256(currentValidatorSet...))
-	ts.Require().Equal(consState.PreviousValidatorsHash, crypto.Keccak256(previousValidatorSet...))
-	ts.Require().Equal(consState.Timestamp, target.Time)
-	ts.Require().Equal(common.BytesToHash(consState.StateRoot), stateRoot)
+		s1, s2, err := ts.prover.CreateInitialLightClientState(height)
+		ts.Require().NoError(err)
+		cs := s1.(*ClientState)
+		ts.Require().Equal(cs.ChainId, uint64(9999))
+		ts.Require().Equal(cs.TrustingPeriod, 100*time.Second)
+		ts.Require().Equal(cs.MaxClockDrift, 1*time.Millisecond)
+		ts.Require().False(cs.Frozen)
+		ts.Require().Equal(common.Bytes2Hex(cs.IbcStoreAddress), ibcHandlerAddress)
+		var commitment [32]byte
+		ts.Require().Equal(common.Bytes2Hex(cs.IbcCommitmentsSlot), common.Bytes2Hex(commitment[:]))
+		ts.Require().Equal(cs.GetLatestHeight(), finalizedHeader.GetHeight())
+
+		consState := s2.(*ConsensusState)
+		ts.Require().Equal(consState.CurrentValidatorsHash, crypto.Keccak256(currentValidatorSet...))
+		ts.Require().Equal(consState.PreviousValidatorsHash, crypto.Keccak256(previousValidatorSet...))
+		ts.Require().Equal(consState.Timestamp, target.Time)
+		ts.Require().Equal(common.BytesToHash(consState.StateRoot), stateRoot)
+	}
 }
 
 func (ts *ProverTestSuite) TestQueryClientStateWithProof() {

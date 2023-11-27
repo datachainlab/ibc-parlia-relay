@@ -44,30 +44,6 @@ func (pr *Prover) SetupForRelay(ctx context.Context) error {
 	return nil
 }
 
-// GetLatestFinalizedHeader returns the latest finalized header from the chain
-func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
-	latestHeight, err := pr.chain.LatestHeight()
-	if err != nil {
-		return nil, err
-	}
-	header, err := pr.GetLatestFinalizedHeaderByLatestHeight(latestHeight.GetRevisionHeight())
-	if err != nil {
-		return nil, err
-	}
-	log.GetLogger().Debug("GetLatestFinalizedHeader", "finalized", header.GetHeight(), "latest", latestHeight)
-	return header, err
-}
-
-// GetLatestFinalizedHeaderByLatestHeight returns the latest finalized header from the chain
-func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint64) (core.Header, error) {
-	height, finalizedHeader, err := getLatestFinalizedHeader(pr.chain.Header, latestBlockNumber)
-	if err != nil {
-		return nil, err
-	}
-	// Make headers verifiable
-	return pr.withProofAndValidators(height, finalizedHeader)
-}
-
 // CreateInitialLightClientState returns a pair of ClientState and ConsensusState based on the state of the self chain at `height`.
 // These states will be submitted to the counterparty chain as MsgCreateClient.
 // If `height` is nil, the latest finalized height is selected automatically.
@@ -89,6 +65,30 @@ func (pr *Prover) CreateInitialLightClientState(height exported.Height) (exporte
 	return pr.buildInitialState(&Header{
 		Headers: finalizedHeader,
 	})
+}
+
+// GetLatestFinalizedHeader returns the latest finalized header from the chain
+func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
+	latestHeight, err := pr.chain.LatestHeight()
+	if err != nil {
+		return nil, err
+	}
+	header, err := pr.GetLatestFinalizedHeaderByLatestHeight(latestHeight.GetRevisionHeight())
+	if err != nil {
+		return nil, err
+	}
+	log.GetLogger().Debug("GetLatestFinalizedHeader", "finalized", header.GetHeight(), "latest", latestHeight)
+	return header, err
+}
+
+// GetLatestFinalizedHeaderByLatestHeight returns the latest finalized verifiable header from the chain
+func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint64) (core.Header, error) {
+	height, finalizedHeader, err := getLatestFinalizedHeader(pr.chain.Header, latestBlockNumber)
+	if err != nil {
+		return nil, err
+	}
+	// Make headers verifiable
+	return pr.withProofAndValidators(height, finalizedHeader)
 }
 
 // SetupHeadersForUpdate creates a new header based on a given header
