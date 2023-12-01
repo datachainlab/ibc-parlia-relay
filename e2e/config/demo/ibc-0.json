@@ -12,7 +12,7 @@
     "ibc_address": "0x702E40245797c5a2108A566b3CE2Bf14Bc6aF841",
     "initial_send_checkpoint": 0,
     "initial_recv_checkpoint": 0,
-    "enable_debug_trace": true,
+    "enable_debug_trace": false,
     "average_block_time_msec": 3000,
     "max_retry_for_inclusion": 5
   },
