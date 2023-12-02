@@ -384,7 +384,7 @@ func (ts *ProverTestSuite) TestSetupHeadersForUpdate() {
 	ts.Require().Equal(int(second.GetHeight().GetRevisionHeight()), 31297219)
 }
 
-func (ts *ProverTestSuite) TestCreateInitialLightClientState() {
+func (ts *ProverTestSuite) TestSuccessCreateInitialLightClientState() {
 
 	heights := []exported.Height{nil, clienttypes.NewHeight(0, 31297218)}
 
@@ -426,6 +426,12 @@ func (ts *ProverTestSuite) TestCreateInitialLightClientState() {
 		ts.Require().Equal(consState.Timestamp, target.Time)
 		ts.Require().Equal(common.BytesToHash(consState.StateRoot), stateRoot)
 	}
+}
+
+func (ts *ProverTestSuite) TestErrorCreateInitialLightClientState() {
+	// No finalized header found
+	_, _, err := ts.prover.CreateInitialLightClientState(clienttypes.NewHeight(0, 999999999))
+	ts.Require().Equal(err.Error(), "invalid header length")
 }
 
 func (ts *ProverTestSuite) TestQueryClientStateWithProof() {
