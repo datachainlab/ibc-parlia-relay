@@ -114,8 +114,8 @@ func (pr *Prover) SetupHeadersForUpdate(counterparty core.FinalityAwareChain, la
 }
 
 func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
-	queryVerifyingHeader := func(height uint64, limit uint64) (core.Header, error) {
-		ethHeaders, err := GetFinalizedHeader(pr.chain.Header, height, limit)
+	queryVerifyingHeader := func(height uint64, limitHeight uint64) (core.Header, error) {
+		ethHeaders, err := GetFinalizedHeader(pr.chain.Header, height, limitHeight)
 		if err != nil {
 			return nil, err
 		}
