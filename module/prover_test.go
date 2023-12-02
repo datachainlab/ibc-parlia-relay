@@ -386,7 +386,7 @@ func (ts *ProverTestSuite) TestSetupHeadersForUpdate() {
 
 func (ts *ProverTestSuite) TestSuccessCreateInitialLightClientState() {
 
-	heights := []exported.Height{nil, clienttypes.NewHeight(0, 31297218)}
+	heights := []exported.Height{nil, clienttypes.NewHeight(0, 31297219)}
 
 	for _, height := range heights {
 		var err error
@@ -430,8 +430,8 @@ func (ts *ProverTestSuite) TestSuccessCreateInitialLightClientState() {
 
 func (ts *ProverTestSuite) TestErrorCreateInitialLightClientState() {
 	// No finalized header found
-	_, _, err := ts.prover.CreateInitialLightClientState(clienttypes.NewHeight(0, 999999999))
-	ts.Require().Equal(err.Error(), "invalid header length")
+	_, _, err := ts.prover.CreateInitialLightClientState(clienttypes.NewHeight(0, 31297220))
+	ts.Require().Equal(err.Error(), "no finalized headers were found up to 31297221")
 }
 
 func (ts *ProverTestSuite) TestQueryClientStateWithProof() {

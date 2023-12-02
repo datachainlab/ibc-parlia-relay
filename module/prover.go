@@ -61,6 +61,9 @@ func (pr *Prover) CreateInitialLightClientState(height exported.Height) (exporte
 	if err != nil {
 		return nil, nil, err
 	}
+	if len(finalizedHeader) == 0 {
+		return nil, nil, fmt.Errorf("no finalized headers were found up to %d", latestHeight.GetRevisionHeight())
+	}
 	//Header should be Finalized, not necessarily Verifiable.
 	return pr.buildInitialState(&Header{
 		Headers: finalizedHeader,
