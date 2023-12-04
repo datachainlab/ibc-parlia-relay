@@ -9,9 +9,9 @@ import (
 
 type getHeaderFn func(context.Context, uint64) (*types.Header, error)
 
-func QueryVerifyingEthHeaders(fn getHeaderFn, height uint64, limit uint64) ([]*ETHHeader, error) {
+func GetFinalizedHeader(fn getHeaderFn, height uint64, limitHeight uint64) ([]*ETHHeader, error) {
 	var ethHeaders []*ETHHeader
-	for i := height; i+2 <= limit; i++ {
+	for i := height; i+2 <= limitHeight; i++ {
 		targetBlock, targetETHHeader, _, err := queryETHHeader(fn, i)
 		if err != nil {
 			return nil, err
@@ -35,7 +35,7 @@ func QueryVerifyingEthHeaders(fn getHeaderFn, height uint64, limit uint64) ([]*E
 		}
 		return append(ethHeaders, targetETHHeader, childETHHeader, grandChildETHHeader), nil
 	}
-	log.GetLogger().Debug("Insufficient verifying headers to finalize", "height", height, "limit", limit)
+	log.GetLogger().Debug("Insufficient verifying headers to finalize", "height", height, "limit", limitHeight)
 	return nil, nil
 }
 

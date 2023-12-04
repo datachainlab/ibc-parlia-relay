@@ -21,7 +21,7 @@ func TestHeaderQueryTestSuite(t *testing.T) {
 func (ts *HeaderQueryTestSuite) SetupTest() {
 }
 
-func (ts *HeaderQueryTestSuite) TestErrorQueryVerifyingEthHeaders() {
+func (ts *HeaderQueryTestSuite) TestErrorGetFinalizedHeader() {
 	ts.Require().NoError(log.InitLogger("INFO", "json", "stdout"))
 	fn := func(ctx context.Context, height uint64) (*types.Header, error) {
 		return &types.Header{
@@ -30,7 +30,7 @@ func (ts *HeaderQueryTestSuite) TestErrorQueryVerifyingEthHeaders() {
 	}
 
 	// No finalized header found
-	headers, err := QueryVerifyingEthHeaders(fn, 1, 10)
+	headers, err := GetFinalizedHeader(fn, 1, 10)
 	ts.Require().NoError(err)
 	ts.Require().Nil(headers)
 
@@ -45,12 +45,12 @@ func (ts *HeaderQueryTestSuite) TestErrorQueryVerifyingEthHeaders() {
 	}
 
 	// No finalized header found ( invalid relation )
-	headers, err = QueryVerifyingEthHeaders(fn, 31835592, 31835602)
+	headers, err = GetFinalizedHeader(fn, 31835592, 31835602)
 	ts.Require().NoError(err)
 	ts.Require().Nil(headers)
 }
 
-func (ts *HeaderQueryTestSuite) TestSuccessQueryVerifyingEthHeaders() {
+func (ts *HeaderQueryTestSuite) TestSuccessGetFinalizedHeader() {
 	ts.Require().NoError(log.InitLogger("INFO", "json", "stdout"))
 	fn := func(ctx context.Context, height uint64) (*types.Header, error) {
 		header := &types.Header{
@@ -64,7 +64,7 @@ func (ts *HeaderQueryTestSuite) TestSuccessQueryVerifyingEthHeaders() {
 		return header, nil
 	}
 
-	headers, err := QueryVerifyingEthHeaders(fn, 31835592, 31835602)
+	headers, err := GetFinalizedHeader(fn, 31835592, 31835602)
 	ts.Require().NoError(err)
 	ts.Require().Len(headers, 11)
 }

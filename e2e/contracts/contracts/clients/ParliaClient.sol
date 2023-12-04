@@ -38,9 +38,14 @@ contract ParliaClient is ILightClient {
     address internal ibcHandler;
     mapping(string => ClientState.Data) internal clientStates;
     mapping(string => mapping(uint128 => ConsensusState.Data)) internal consensusStates;
+    mapping(string => ClientStatus) internal statuses;
 
     constructor(address ibcHandler_) {
         ibcHandler = ibcHandler_;
+    }
+
+    function getStatus(string calldata clientId) external view virtual override returns (ClientStatus) {
+        return statuses[clientId];
     }
 
     /**
@@ -76,6 +81,7 @@ contract ParliaClient is ILightClient {
 
         clientStates[clientId] = clientState;
         consensusStates[clientId][height.toUint128()] = consensusState;
+        statuses[clientId] = ClientStatus.Active;
         return (
             keccak256(clientStateBytes),
             ConsensusStateUpdate({consensusStateCommitment: keccak256(consensusStateBytes), height: height}),

@@ -9,6 +9,7 @@ import (
 	host "github.com/cosmos/ibc-go/v7/modules/core/24-host"
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
 	"github.com/datachainlab/ibc-parlia-relay/module"
+	"github.com/datachainlab/ibc-parlia-relay/tool/testdata/internal"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/hyperledger-labs/yui-relayer/core"
 	"github.com/spf13/cobra"
@@ -68,11 +69,10 @@ func (m *verifyMembershipModule) latest() *cobra.Command {
 
 func (m *verifyMembershipModule) proveState(chainID uint64, port int64, path string, value []byte) (common.Hash, []byte, types.Height, error) {
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
-		EthChainId:  chainID,
-		RpcAddr:     fmt.Sprintf("http://localhost:%d", port),
-		HdwMnemonic: hdwMnemonic,
-		HdwPath:     hdwPath,
-		IbcAddress:  ibcAddress,
+		EthChainId: chainID,
+		RpcAddr:    fmt.Sprintf("http://localhost:%d", port),
+		Signer:     internal.CreateSignerConfig(),
+		IbcAddress: ibcAddress,
 	})
 	if err != nil {
 		return common.Hash{}, nil, types.Height{}, err

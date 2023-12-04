@@ -113,11 +113,10 @@ func (m *misbehaviorModule) error() *cobra.Command {
 
 func (m *misbehaviorModule) getLocalHeader(chainID uint64, port int64, targetHeight uint64) (uint64, *module.Header, error) {
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
-		EthChainId:  chainID,
-		RpcAddr:     fmt.Sprintf("http://localhost:%d", port),
-		HdwMnemonic: hdwMnemonic,
-		HdwPath:     hdwPath,
-		IbcAddress:  ibcAddress,
+		EthChainId: chainID,
+		RpcAddr:    fmt.Sprintf("http://localhost:%d", port),
+		Signer:     CreateSignerConfig(),
+		IbcAddress: ibcAddress,
 	})
 	if err != nil {
 		return targetHeight, nil, err

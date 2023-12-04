@@ -16,7 +16,7 @@ module.exports = async function (deployer) {
   await deployer.deploy(IBCHandler, IBCClient.address, IBCConnection.address, IBCChannelHandshake.address, IBCPacket.address);
 
   await deployer.deploy(ParliaClient, IBCHandler.address);
-  await deployer.deploy(ERC20Token, "simple", "simple", 1000000);
+  await deployer.deploy(ERC20Token, "simple_erc_20_token_for_test", "simple_erc_20_token_for_test", 1000000);
   await deployer.deploy(ICS20Bank);
   await deployer.deploy(ICS20TransferBank, IBCHandler.address, ICS20Bank.address);
 };

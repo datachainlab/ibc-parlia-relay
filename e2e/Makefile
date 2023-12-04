@@ -3,7 +3,7 @@ chain:
 	make -C chains build
 	make -C chains network
 	# Wait for one epoch to use BEP-126 validator
-	sleep 100
+	sleep 60
 
 .PHONY:contracts
 contracts:
@@ -17,7 +17,6 @@ relayer:
 	./testrly config init --home .testrly
 	./testrly chains add-dir config/demo/ --home .testrly
 	./testrly paths add ibc0 ibc1 ibc01 --file=config/path.json --home .testrly
-	sleep 100
 	./testrly tx clients ibc01 --home .testrly
 	./testrly tx update-clients ibc01 --home .testrly
 	./testrly tx connection ibc01 --home .testrly

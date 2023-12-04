@@ -2,7 +2,7 @@ package module
 
 import (
 	"context"
-	"errors"
+	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum/signers/hd"
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/hyperledger-labs/yui-relayer/log"
 	"math/big"
@@ -11,8 +11,6 @@ import (
 	"time"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/gogoproto/proto"
 	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 	conntypes "github.com/cosmos/ibc-go/v7/modules/core/03-connection/types"
 	types3 "github.com/cosmos/ibc-go/v7/modules/core/23-commitment/types"
@@ -297,11 +295,16 @@ func TestProverTestSuite(t *testing.T) {
 }
 
 func (ts *ProverTestSuite) SetupTest() {
+	signerConfig := &hd.SignerConfig{
+		Mnemonic: hdwMnemonic,
+		Path:     hdwPath,
+	}
+	anySignerConfig, err := codectypes.NewAnyWithValue(signerConfig)
+	ts.Require().NoError(err)
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
-		EthChainId:  9999,
-		HdwMnemonic: hdwMnemonic,
-		HdwPath:     hdwPath,
-		IbcAddress:  ibcHandlerAddress,
+		EthChainId: 9999,
+		IbcAddress: ibcHandlerAddress,
+		Signer:     anySignerConfig,
 	})
 	ts.Require().NoError(err)
 	codec := core.MakeCodec()
@@ -381,40 +384,54 @@ func (ts *ProverTestSuite) TestSetupHeadersForUpdate() {
 	ts.Require().Equal(int(second.GetHeight().GetRevisionHeight()), 31297219)
 }
 
-func (ts *ProverTestSuite) TestCreateMsgCreateClient() {
+func (ts *ProverTestSuite) TestSuccessCreateInitialLightClientState() {
 
-	finalizedHeader, err := ts.prover.GetLatestFinalizedHeader()
-	ts.Require().NoError(err)
-	target, err := finalizedHeader.(*Header).Target()
-	ts.Require().NoError(err)
-	stateRoot, err := ts.prover.GetStorageRoot(target)
-	ts.Require().NoError(err)
-	previousEpoch := GetPreviousEpoch(finalizedHeader.GetHeight().GetRevisionHeight())
-	previousValidatorSet, err := QueryValidatorSet(ts.prover.chain.Header, previousEpoch)
-	ts.Require().NoError(err)
-	currentEpoch := GetCurrentEpoch(finalizedHeader.GetHeight().GetRevisionHeight())
-	currentValidatorSet, err := QueryValidatorSet(ts.prover.chain.Header, currentEpoch)
-	ts.Require().NoError(err)
-	msg, err := ts.prover.CreateMsgCreateClient("", finalizedHeader, types.AccAddress{})
-	ts.Require().NoError(err)
-	ts.Require().Equal(msg.ClientState.TypeUrl, "/ibc.lightclients.parlia.v1.ClientState")
-	var cs ClientState
-	ts.Require().NoError(proto.Unmarshal(msg.ClientState.Value, &cs))
-	ts.Require().Equal(cs.ChainId, uint64(9999))
-	ts.Require().Equal(cs.TrustingPeriod, 100*time.Second)
-	ts.Require().Equal(cs.MaxClockDrift, 1*time.Millisecond)
-	ts.Require().False(cs.Frozen)
-	ts.Require().Equal(common.Bytes2Hex(cs.IbcStoreAddress), ibcHandlerAddress)
-	var commitment [32]byte
-	ts.Require().Equal(common.Bytes2Hex(cs.IbcCommitmentsSlot), common.Bytes2Hex(commitment[:]))
-	ts.Require().Equal(cs.GetLatestHeight(), finalizedHeader.GetHeight())
+	heights := []exported.Height{nil, clienttypes.NewHeight(0, 31297219)}
 
-	var consState ConsensusState
-	ts.Require().NoError(proto.Unmarshal(msg.ConsensusState.Value, &consState))
-	ts.Require().Equal(consState.CurrentValidatorsHash, crypto.Keccak256(currentValidatorSet...))
-	ts.Require().Equal(consState.PreviousValidatorsHash, crypto.Keccak256(previousValidatorSet...))
-	ts.Require().Equal(consState.Timestamp, target.Time)
-	ts.Require().Equal(common.BytesToHash(consState.StateRoot), stateRoot)
+	for _, height := range heights {
+		var err error
+		var finalizedHeader core.Header
+		if height == nil {
+			finalizedHeader, err = ts.prover.GetLatestFinalizedHeader()
+		} else {
+			finalizedHeader, err = ts.prover.GetLatestFinalizedHeaderByLatestHeight(height.GetRevisionHeight() + 2)
+		}
+		ts.Require().NoError(err)
+		target, err := finalizedHeader.(*Header).Target()
+		ts.Require().NoError(err)
+		stateRoot, err := ts.prover.GetStorageRoot(target)
+		ts.Require().NoError(err)
+		previousEpoch := GetPreviousEpoch(finalizedHeader.GetHeight().GetRevisionHeight())
+		previousValidatorSet, err := QueryValidatorSet(ts.prover.chain.Header, previousEpoch)
+		ts.Require().NoError(err)
+		currentEpoch := GetCurrentEpoch(finalizedHeader.GetHeight().GetRevisionHeight())
+		currentValidatorSet, err := QueryValidatorSet(ts.prover.chain.Header, currentEpoch)
+		ts.Require().NoError(err)
+
+		s1, s2, err := ts.prover.CreateInitialLightClientState(height)
+		ts.Require().NoError(err)
+		cs := s1.(*ClientState)
+		ts.Require().Equal(cs.ChainId, uint64(9999))
+		ts.Require().Equal(cs.TrustingPeriod, 100*time.Second)
+		ts.Require().Equal(cs.MaxClockDrift, 1*time.Millisecond)
+		ts.Require().False(cs.Frozen)
+		ts.Require().Equal(common.Bytes2Hex(cs.IbcStoreAddress), ibcHandlerAddress)
+		var commitment [32]byte
+		ts.Require().Equal(common.Bytes2Hex(cs.IbcCommitmentsSlot), common.Bytes2Hex(commitment[:]))
+		ts.Require().Equal(cs.GetLatestHeight(), finalizedHeader.GetHeight())
+
+		consState := s2.(*ConsensusState)
+		ts.Require().Equal(consState.CurrentValidatorsHash, crypto.Keccak256(currentValidatorSet...))
+		ts.Require().Equal(consState.PreviousValidatorsHash, crypto.Keccak256(previousValidatorSet...))
+		ts.Require().Equal(consState.Timestamp, target.Time)
+		ts.Require().Equal(common.BytesToHash(consState.StateRoot), stateRoot)
+	}
+}
+
+func (ts *ProverTestSuite) TestErrorCreateInitialLightClientState() {
+	// No finalized header found
+	_, _, err := ts.prover.CreateInitialLightClientState(clienttypes.NewHeight(0, 31297220))
+	ts.Require().Equal(err.Error(), "no finalized headers were found up to 31297221")
 }
 
 func (ts *ProverTestSuite) TestQueryClientStateWithProof() {
@@ -623,16 +640,10 @@ func (ts *ProverTestSuite) TestSuccess_getLatestFinalizedHeader() {
 			}
 			return header, nil
 		}
-		withProofAndValidator := func(_ uint64, src []*ETHHeader) (core.Header, error) {
-			return &Header{
-				Headers:      src,
-				AccountProof: []byte{10},
-			}, nil
-		}
-		header, err := getLatestFinalizedHeader(getHeader, withProofAndValidator, latestBlockNumber)
+		height, h, err := getLatestFinalizedHeader(getHeader, latestBlockNumber)
 		ts.Require().NoError(err)
-		ts.Require().Equal(header.(*Header).AccountProof, []byte{10})
-		ts.Require().Equal(int(header.(*Header).GetHeight().GetRevisionHeight()), 31835600)
+		ts.Require().Len(h, 3)
+		ts.Require().Equal(int(height), 31835600)
 	}
 	for i := 31835602; i < 31835602+100; i++ {
 		verify(uint64(i))
@@ -648,10 +659,7 @@ func (ts *ProverTestSuite) TestError_getLatestFinalizedHeader_NoVote() {
 				Extra:  extra,
 			}, nil
 		}
-		withProofAndValidator := func(_ uint64, src []*ETHHeader) (core.Header, error) {
-			return nil, errors.New("unexpected call")
-		}
-		_, err := getLatestFinalizedHeader(getHeader, withProofAndValidator, latestBlockNumber)
+		_, _, err := getLatestFinalizedHeader(getHeader, latestBlockNumber)
 		ts.Require().True(strings.Contains(err.Error(), "no finalized header found"))
 	}
 

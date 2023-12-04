@@ -7,7 +7,7 @@ module.exports = async (callback) => {
   try {
 
     const bank = await ICS20Bank.deployed()
-    const bobAmount = await bank.balanceOf(bob, `transfer/channel-0/simple`)
+    const bobAmount = await bank.balanceOf(bob, `transfer/channel-0/simple_erc_20_token_for_test`)
     console.log("received = ", bobAmount.toString())
     if (parseInt(bobAmount.toString(), 10) !== 20) {
       return callback("bob amount error");
