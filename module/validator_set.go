@@ -6,7 +6,17 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-func QueryValidatorSet(fn getHeaderFn, epochBlockNumber uint64) ([][]byte, error) {
+type Validators [][]byte
+
+func (v Validators) CheckpointValue() uint64 {
+	return uint64(len(v)/2 + 1)
+}
+
+func (v Validators) Checkpoint(epoch uint64) uint64 {
+	return epoch + v.CheckpointValue()
+}
+
+func QueryValidatorSet(fn getHeaderFn, epochBlockNumber uint64) (Validators, error) {
 	header, err := fn(context.TODO(), epochBlockNumber)
 	if err != nil {
 		return nil, err
@@ -14,7 +24,7 @@ func QueryValidatorSet(fn getHeaderFn, epochBlockNumber uint64) ([][]byte, error
 	return ExtractValidatorSet(header)
 }
 
-func ExtractValidatorSet(h *types.Header) ([][]byte, error) {
+func ExtractValidatorSet(h *types.Header) (Validators, error) {
 	extra := h.Extra
 	if len(extra) < extraVanity+extraSeal {
 		return nil, fmt.Errorf("invalid extra length : %d", h.Number.Uint64())
