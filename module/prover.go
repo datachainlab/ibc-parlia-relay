@@ -125,7 +125,10 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight ex
 		}
 		return pr.withProofAndValidators(height, ethHeaders)
 	}
-	return setupHeadersForUpdate(queryVerifyingHeader, pr.chain.Header, clientStateLatestHeight, latestFinalizedHeader)
+	queryAdditionalVerifyingHeader := func(height uint64, limitHeight uint64) ([]*ETHHeader, error) {
+		return GetFinalizedHeader(pr.chain.Header, height, limitHeight)
+	}
+	return setupHeadersForUpdate(queryVerifyingHeader, pr.chain.Header, queryAdditionalVerifyingHeader, clientStateLatestHeight, latestFinalizedHeader)
 }
 
 func (pr *Prover) ProveState(ctx core.QueryContext, path string, value []byte) ([]byte, clienttypes.Height, error) {
@@ -249,7 +252,13 @@ func getLatestFinalizedHeader(getHeader getHeaderFn, latestBlockNumber uint64) (
 	return 0, nil, fmt.Errorf("no finalized header found: %d", latestBlockNumber)
 }
 
-func setupHeadersForUpdate(queryVerifyingHeader func(uint64, uint64) (core.Header, error), hFn getHeaderFn, clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
+func setupHeadersForUpdate(
+	queryVerifyingHeader func(uint64, uint64) (core.Header, error),
+	getHeader getHeaderFn,
+	queryAdditionalVerifyingHeader func(uint64, uint64) ([]*ETHHeader, error),
+	clientStateLatestHeight exported.Height,
+	latestFinalizedHeader *Header,
+) ([]core.Header, error) {
 	targetHeaders := make([]core.Header, 0)
 
 	// Needless to update already saved state
@@ -270,13 +279,14 @@ func setupHeadersForUpdate(queryVerifyingHeader func(uint64, uint64) (core.Heade
 		//	 - finalized by 410 -> add 400 : neighboring epoch
 		//	 - finalized by 411 〜 611 + 2 = 613 -> add 600 non-neighboring epoch
 		//	 - finalized by 614 〜 811 + 2 = 813 -> add 800 non-neighboring epoch
-		previousValidatorSet, err := QueryValidatorSet(hFn, epochHeight-constant.BlocksPerEpoch)
-		if err != nil {
-			return nil, fmt.Errorf("setupHeadersForUpdate failed to get checkpoint : height=%d : %+v", prevSavedEpoch, err)
-		}
-		checkpoint := previousValidatorSet.Checkpoint(epochHeight)
 		if epochHeight == prevSavedEpoch+constant.BlocksPerEpoch {
 			// neighboring epoch needs block before checkpoint
+			previousValidatorSet, err := QueryValidatorSet(getHeader, epochHeight-constant.BlocksPerEpoch)
+			if err != nil {
+				return nil, fmt.Errorf("setupHeadersForUpdate failed to get checkpoint : height=%d : %+v", prevSavedEpoch, err)
+			}
+			//TODO 次のnextCheckpointまでOK
+			checkpoint := previousValidatorSet.Checkpoint(epochHeight)
 			finalizedEpoch, err := queryVerifyingHeader(epochHeight, checkpoint-1)
 			if err != nil {
 				return nil, fmt.Errorf("setupHeadersForUpdate failed to get past epochs : height=%d : %+v", epochHeight, err)
@@ -289,13 +299,14 @@ func setupHeadersForUpdate(queryVerifyingHeader func(uint64, uint64) (core.Heade
 			targetHeaders = append(targetHeaders, finalizedEpoch)
 		} else {
 			// non-neighboring epoch needs to be finalized after checkpoint
-			currentValidatorSet, err := QueryValidatorSet(hFn, epochHeight)
+			currentValidatorSet, err := QueryValidatorSet(getHeader, epochHeight)
 			if err != nil {
 				return nil, fmt.Errorf("setupHeadersForUpdate failed to get checkpoint : height=%d : %+v", prevSavedEpoch, err)
 			}
 
-			//TODO currentValidatorSet must contain 1/3 trusted validator set
+			// TODO currentValidatorSet must contain 1/3 trusted validator set
 			nextCheckpoint := currentValidatorSet.Checkpoint(epochHeight + constant.BlocksPerEpoch)
+			// TODO append after checkpoint headers to verify
 			finalizedEpoch, err := queryVerifyingHeader(epochHeight, nextCheckpoint-1)
 			if err != nil {
 				return nil, fmt.Errorf("setupHeadersForUpdate failed to get past epochs : height=%d : %+v", epochHeight, err)
@@ -306,7 +317,7 @@ func setupHeadersForUpdate(queryVerifyingHeader func(uint64, uint64) (core.Heade
 			}
 
 			// Trusted validator set is required for non-neighboring epoch
-			trustedValidatorSet, err := QueryValidatorSet(hFn, prevSavedEpoch)
+			trustedValidatorSet, err := QueryValidatorSet(getHeader, prevSavedEpoch)
 			if err != nil {
 				return nil, fmt.Errorf("setupHeadersForUpdate failed to get checkpoint : height=%d : %+v", prevSavedEpoch, err)
 			}
@@ -316,27 +327,39 @@ func setupHeadersForUpdate(queryVerifyingHeader func(uint64, uint64) (core.Heade
 		}
 	}
 
-	// Not epoch or neighboring epoch
-	if !isEpoch(latestFinalizedHeight) || prevSavedEpoch+constant.BlocksPerEpoch <= latestFinalizedHeight {
+	if !isEpoch(latestFinalizedHeight) {
+		// ex) prevSavedEpoch = 200, latest 401, not append latest because it can not be verified
+		if prevSavedEpoch < toEpoch(latestFinalizedHeight) {
+			return withTrustedHeight(append(targetHeaders), clientStateLatestHeight), nil
+		}
 		return withTrustedHeight(append(targetHeaders, latestFinalizedHeader), clientStateLatestHeight), nil
 	}
 
-	// Non-neighboring epoch needs after checkpoint headers
+	// neighboring epoch : ex) prevSavedEpoch = 200, latest 400
+	if prevSavedEpoch+constant.BlocksPerEpoch == latestFinalizedHeight {
+		return withTrustedHeight(append(targetHeaders, latestFinalizedHeader), clientStateLatestHeight), nil
+	}
+
+	targetHeader, err := latestFinalizedHeader.Target()
+	if err != nil {
+		return nil, err
+	}
 	lastHeader, err := latestFinalizedHeader.Last()
 	if err != nil {
 		return nil, err
 	}
-	checkpoint := Validators(latestFinalizedHeader.PreviousValidators).Checkpoint(prevSavedEpoch)
+	checkpoint := Validators(latestFinalizedHeader.PreviousValidators).Checkpoint(targetHeader.Number.Uint64())
+	// Non-neighboring epoch needs after checkpoint headers. latestFinalizedHeader.Target is epoch.
 	if lastHeader.Number.Uint64() >= checkpoint+2 {
 		return withTrustedHeight(append(targetHeaders, latestFinalizedHeader), clientStateLatestHeight), nil
 	}
-	nextCheckpoint := Validators(latestFinalizedHeader.CurrentValidators).Checkpoint(prevSavedEpoch + constant.BlocksPerEpoch)
-	finalizedHeadersAfterCheckpoint, err := GetFinalizedHeader(hFn, checkpoint, nextCheckpoint-1)
+	nextCheckpoint := Validators(latestFinalizedHeader.CurrentValidators).Checkpoint(targetHeader.Number.Uint64() + constant.BlocksPerEpoch)
+	finalizedHeadersAfterCheckpoint, err := queryAdditionalVerifyingHeader(checkpoint, nextCheckpoint-1)
 	if err != nil {
 		return nil, err
 	}
 
-	// No finalized header after epoch
+	// No finalized header after epoch. latest can not be verified.
 	if finalizedHeadersAfterCheckpoint == nil {
 		return withTrustedHeight(targetHeaders, clientStateLatestHeight), nil
 	}
