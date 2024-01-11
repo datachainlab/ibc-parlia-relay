@@ -279,15 +279,14 @@ func setupHeadersForUpdate(
 		//	 - finalized by 410 -> add 400 : neighboring epoch
 		//	 - finalized by 411 〜 611 + 2 = 613 -> add 600 non-neighboring epoch
 		//	 - finalized by 614 〜 811 + 2 = 813 -> add 800 non-neighboring epoch
+		currentValidatorSet, err := QueryValidatorSet(getHeader, epochHeight)
+		if err != nil {
+			return nil, fmt.Errorf("setupHeadersForUpdate failed to get checkpoint : height=%d : %+v", prevSavedEpoch, err)
+		}
+		nextCheckpoint := currentValidatorSet.Checkpoint(epochHeight + constant.BlocksPerEpoch)
 		if epochHeight == prevSavedEpoch+constant.BlocksPerEpoch {
 			// neighboring epoch needs block before checkpoint
-			previousValidatorSet, err := QueryValidatorSet(getHeader, epochHeight-constant.BlocksPerEpoch)
-			if err != nil {
-				return nil, fmt.Errorf("setupHeadersForUpdate failed to get checkpoint : height=%d : %+v", prevSavedEpoch, err)
-			}
-			//TODO 次のnextCheckpointまでOK
-			checkpoint := previousValidatorSet.Checkpoint(epochHeight)
-			finalizedEpoch, err := queryVerifyingHeader(epochHeight, checkpoint-1)
+			finalizedEpoch, err := queryVerifyingHeader(epochHeight, nextCheckpoint-1)
 			if err != nil {
 				return nil, fmt.Errorf("setupHeadersForUpdate failed to get past epochs : height=%d : %+v", epochHeight, err)
 			}
@@ -299,13 +298,7 @@ func setupHeadersForUpdate(
 			targetHeaders = append(targetHeaders, finalizedEpoch)
 		} else {
 			// non-neighboring epoch needs to be finalized after checkpoint
-			currentValidatorSet, err := QueryValidatorSet(getHeader, epochHeight)
-			if err != nil {
-				return nil, fmt.Errorf("setupHeadersForUpdate failed to get checkpoint : height=%d : %+v", prevSavedEpoch, err)
-			}
-
 			// TODO currentValidatorSet must contain 1/3 trusted validator set
-			nextCheckpoint := currentValidatorSet.Checkpoint(epochHeight + constant.BlocksPerEpoch)
 			// TODO append after checkpoint headers to verify
 			finalizedEpoch, err := queryVerifyingHeader(epochHeight, nextCheckpoint-1)
 			if err != nil {
