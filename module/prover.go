@@ -266,17 +266,16 @@ func setupHeadersForUpdate(queryVerifyingHeader func(uint64, uint64) (core.Heade
 	// Append insufficient epoch blocks
 	prevSavedEpoch := toEpoch(savedLatestHeight)
 	for epochHeight := firstUnsavedEpoch; epochHeight < latestFinalizedHeight; epochHeight += constant.BlocksPerEpoch {
-		// TODO 次のepochまでにfinalizeするかどうかチェック、なければスキップ
-		// 1. ex) trusted = 200の
-		//	 - if 410までにfinalize -> add 400 隣接epoch
-		//	 - else if 411 〜 610 + 3 = 613までにfinalize -> add 600 非隣接epoch
-		//	 - else if 614 〜 810 + 3 = 813までにfinalize -> add 800 非隣接epoch
+		// ex) trusted = 200
+		//	 - finalized by 410 -> add 400 : neighboring epoch
+		//	 - finalized by 411 〜 611 + 2 = 613 -> add 600 non-neighboring epoch
+		//	 - finalized by 614 〜 811 + 2 = 813 -> add 800 non-neighboring epoch
 		previousValidatorSet, err := QueryValidatorSet(hFn, epochHeight-constant.BlocksPerEpoch)
 		if err != nil {
 			return nil, fmt.Errorf("setupHeadersForUpdate failed to get checkpoint : height=%d : %+v", prevSavedEpoch, err)
 		}
 		checkpoint := previousValidatorSet.Checkpoint(epochHeight)
-		if epochHeight == prevSavedEpoch+1 {
+		if epochHeight == prevSavedEpoch+constant.BlocksPerEpoch {
 			// neighboring epoch needs block before checkpoint
 			finalizedEpoch, err := queryVerifyingHeader(epochHeight, checkpoint-1)
 			if err != nil {
@@ -294,6 +293,8 @@ func setupHeadersForUpdate(queryVerifyingHeader func(uint64, uint64) (core.Heade
 			if err != nil {
 				return nil, fmt.Errorf("setupHeadersForUpdate failed to get checkpoint : height=%d : %+v", prevSavedEpoch, err)
 			}
+
+			//TODO currentValidatorSet must contain 1/3 trusted validator set
 			nextCheckpoint := currentValidatorSet.Checkpoint(epochHeight + constant.BlocksPerEpoch)
 			finalizedEpoch, err := queryVerifyingHeader(epochHeight, nextCheckpoint-1)
 			if err != nil {
@@ -315,7 +316,8 @@ func setupHeadersForUpdate(queryVerifyingHeader func(uint64, uint64) (core.Heade
 		}
 	}
 
-	if prevSavedEpoch != toEpoch(latestFinalizedHeight) {
+	// Not epoch or neighboring epoch
+	if !isEpoch(latestFinalizedHeight) || prevSavedEpoch+constant.BlocksPerEpoch <= latestFinalizedHeight {
 		return withTrustedHeight(append(targetHeaders, latestFinalizedHeader), clientStateLatestHeight), nil
 	}
 
