@@ -127,7 +127,7 @@ func setupNonNeighboringEpochHeader(
 		return nil, fmt.Errorf("setupNonNeighboringEpochHeader: failed to get previous validator set: epochHeight=%d : %+v", epochHeight-constant.BlocksPerEpoch, err)
 	}
 	checkpoint := previousValidatorSet.Checkpoint(epochHeight)
-	if checkpoint+2 < limit {
+	if checkpoint+2 > limit {
 		// Must wait more header
 		return nil, nil
 	}
