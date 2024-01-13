@@ -114,7 +114,7 @@ func setupNonNeighboringEpochHeader(
 	}
 	if !trustedValidatorSet.Contains(currentValidatorSet) {
 		// It is recommended to recreate the Client.
-		return nil, fmt.Errorf("setupNonNeighboringEpochHeader: currentValidatorSet must contain 1/3 trusted validator set : epochHeight=%d, trustedEpochHeight=%d", epochHeight, trustedEpochHeight)
+		return nil, fmt.Errorf("setupNonNeighboringEpochHeader: invalid untrusted validator set: epochHeight=%d, trustedEpochHeight=%d", epochHeight, trustedEpochHeight)
 	}
 
 	// ex) trusted(prevSaved = 200), epochHeight = 600 must be finalized from 611 to min(810,latest)
