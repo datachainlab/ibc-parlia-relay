@@ -63,7 +63,7 @@ func setupHeadersForUpdate(
 	if isEpoch(latestFinalizedHeight) ||
 		// ex) trusted = 200, latest 401, not append latest because it can not be verified
 		trustedEpochHeight < toEpoch(latestFinalizedHeight) {
-		return withTrustedHeight(append(targetHeaders), clientStateLatestHeight), nil
+		return withTrustedHeight(targetHeaders, clientStateLatestHeight), nil
 	}
 	return withTrustedHeight(append(targetHeaders, latestFinalizedHeader), clientStateLatestHeight), nil
 }
