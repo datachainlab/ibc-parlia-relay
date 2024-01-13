@@ -37,7 +37,7 @@ func setupHeadersForUpdate(
 	trustedEpochHeight := toEpoch(savedLatestHeight)
 	for epochHeight := firstUnsavedEpoch; epochHeight < latestFinalizedHeight; epochHeight += constant.BlocksPerEpoch {
 		if epochHeight == trustedEpochHeight+constant.BlocksPerEpoch {
-			verifiableEpoch, err := setupNeighboringEpochHeader(getHeader, queryVerifyingNeighboringEpochHeader, epochHeight, latestHeight)
+			verifiableEpoch, err := setupNeighboringEpochHeader(getHeader, queryVerifyingNeighboringEpochHeader, epochHeight, trustedEpochHeight, latestHeight)
 			if err != nil {
 				return nil, err
 			}
@@ -89,47 +89,65 @@ func setupNeighboringEpochHeader(
 	getHeader getHeaderFn,
 	queryVerifyingHeader queryVerifyingNeighboringEpochHeaderFn,
 	epochHeight uint64,
+	trustedEpochHeight uint64,
 	latestHeight exported.Height,
 ) (core.Header, error) {
-	// ex) trusted(prevSaved = 200), epochHeight = 400 must be finalized by min(610,latest)
 	// neighboring epoch needs block before checkpoint
 	currentValidatorSet, err := queryValidatorSet(getHeader, epochHeight)
 	if err != nil {
-		return nil, fmt.Errorf("setupHeadersForUpdate failed to get checkpoint : height=%d : %+v", epochHeight, err)
+		return nil, fmt.Errorf("setupNeighboringEpochHeader: failed to get current validator set: epochHeight=%d : %+v", epochHeight, err)
 	}
-	nextCheckpoint := currentValidatorSet.Checkpoint(epochHeight + constant.BlocksPerEpoch)
-	limit := minUint64(nextCheckpoint-1, latestHeight.GetRevisionHeight())
-	return queryVerifyingHeader(epochHeight, limit)
+	trustedValidatorSet, err := queryValidatorSet(getHeader, trustedEpochHeight)
+	if err != nil {
+		return nil, fmt.Errorf("setupNeighboringEpochHeader: failed to get trusted validator set: trustedEpochHeight=%d : %+v", trustedEpochHeight, err)
+	}
+	if trustedValidatorSet.Contains(currentValidatorSet) {
+		// ex) trusted(prevSaved = 200), epochHeight = 400 must be finalized by min(610,latest)
+		nextCheckpoint := currentValidatorSet.Checkpoint(epochHeight + constant.BlocksPerEpoch)
+		limit := minUint64(nextCheckpoint-1, latestHeight.GetRevisionHeight())
+		return queryVerifyingHeader(epochHeight, limit)
+	} else {
+		// ex) trusted(prevSaved = 200), epochHeight = 400 must be finalized by min(410,latest)
+		checkpoint := trustedValidatorSet.Checkpoint(epochHeight)
+		limit := minUint64(checkpoint-1, latestHeight.GetRevisionHeight())
+		return queryVerifyingHeader(epochHeight, limit)
+	}
 }
 
 func setupNonNeighboringEpochHeader(
 	getHeader getHeaderFn,
 	queryVerifyingHeader queryVerifyingNonNeighboringEpochHeaderFn,
 	epochHeight uint64,
-	trustedEpoch uint64,
+	trustedEpochHeight uint64,
 	latestHeight exported.Height,
 ) (core.Header, error) {
-	// ex) trusted(prevSaved = 200), epochHeight = 600 must be finalized from 611 〜 min(latest,810)
 	currentValidatorSet, err := queryValidatorSet(getHeader, epochHeight)
 	if err != nil {
-		return nil, fmt.Errorf("setupNonNeighboringEpochHeader failed to get curent validator : trustedEpoch=%d : %+v", trustedEpoch, err)
+		return nil, fmt.Errorf("setupNonNeighboringEpochHeader: failed to get curent validator set: trustedEpochHeight=%d : %+v", trustedEpochHeight, err)
 	}
-	nextCheckpoint := currentValidatorSet.Checkpoint(epochHeight + constant.BlocksPerEpoch)
-	limit := minUint64(nextCheckpoint-1, latestHeight.GetRevisionHeight())
-	trustedValidatorSet, err := queryValidatorSet(getHeader, trustedEpoch)
+	trustedValidatorSet, err := queryValidatorSet(getHeader, trustedEpochHeight)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get trusted validator set: trustedEpoch=%d : %+v", trustedEpoch, err)
+		return nil, fmt.Errorf("setupNonNeighboringEpochHeader: failed to get trusted validator set: trustedEpochHeight=%d : %+v", trustedEpochHeight, err)
 	}
 	if !trustedValidatorSet.Contains(currentValidatorSet) {
-		return nil, fmt.Errorf("currentValidatorSet must contain 1/3 trusted validator set : epoch=%d, trustedEpoch=%d", epochHeight, trustedEpoch)
+		// It is recommended to recreate the Client.
+		return nil, fmt.Errorf("setupNonNeighboringEpochHeader: currentValidatorSet must contain 1/3 trusted validator set : epochHeight=%d, trustedEpochHeight=%d", epochHeight, trustedEpochHeight)
 	}
+
+	// ex) trusted(prevSaved = 200), epochHeight = 600 must be finalized from 611 to min(810,latest)
+	nextCheckpoint := currentValidatorSet.Checkpoint(epochHeight + constant.BlocksPerEpoch)
+	limit := minUint64(nextCheckpoint-1, latestHeight.GetRevisionHeight())
 
 	// Headers after checkpoint are required to verify
 	previousValidatorSet, err := queryValidatorSet(getHeader, epochHeight-constant.BlocksPerEpoch)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get previous validator set: height=%d : %+v", epochHeight, err)
+		return nil, fmt.Errorf("setupNonNeighboringEpochHeader: failed to get previous validator set: epochHeight=%d : %+v", epochHeight-constant.BlocksPerEpoch, err)
 	}
 	checkpoint := previousValidatorSet.Checkpoint(epochHeight)
+	if checkpoint+2 < limit {
+		// Must wait more header
+		return nil, nil
+	}
 	h, err := queryVerifyingHeader(epochHeight, limit, checkpoint)
 	if h != nil {
 		h.(*Header).TrustedCurrentValidators = trustedValidatorSet
