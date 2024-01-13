@@ -38,15 +38,15 @@ func ceilDiv(x, y int) int {
 	return (x + y - 1) / y
 }
 
-func QueryValidatorSet(fn getHeaderFn, epochBlockNumber uint64) (Validators, error) {
+func queryValidatorSet(fn getHeaderFn, epochBlockNumber uint64) (Validators, error) {
 	header, err := fn(context.TODO(), epochBlockNumber)
 	if err != nil {
 		return nil, err
 	}
-	return ExtractValidatorSet(header)
+	return extractValidatorSet(header)
 }
 
-func ExtractValidatorSet(h *types.Header) (Validators, error) {
+func extractValidatorSet(h *types.Header) (Validators, error) {
 	extra := h.Extra
 	if len(extra) < extraVanity+extraSeal {
 		return nil, fmt.Errorf("invalid extra length : %d", h.Number.Uint64())
