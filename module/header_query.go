@@ -39,6 +39,25 @@ func GetFinalizedHeader(fn getHeaderFn, height uint64, limitHeight uint64) ([]*E
 	return nil, nil
 }
 
+func GetFinalizedHeaderForNonNeighboringEpoch(fn getHeaderFn, height uint64, limitHeight uint64, checkpoint uint64) ([]*ETHHeader, error) {
+	var ethHeaders []*ETHHeader
+	for i := height; i < checkpoint; i++ {
+		_, h, _, err := queryETHHeader(fn, i)
+		if err != nil {
+			return nil, err
+		}
+		ethHeaders = append(ethHeaders, h)
+	}
+	afterCheckpoint, err := GetFinalizedHeader(fn, checkpoint, limitHeight)
+	if err != nil {
+		return nil, err
+	}
+	if afterCheckpoint == nil {
+		return nil, nil
+	}
+	return append(ethHeaders, afterCheckpoint...), nil
+}
+
 func queryETHHeader(fn getHeaderFn, height uint64) (*types.Header, *ETHHeader, *VoteAttestation, error) {
 	block, err := fn(context.TODO(), height)
 	if err != nil {
