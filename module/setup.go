@@ -9,12 +9,12 @@ import (
 	"github.com/hyperledger-labs/yui-relayer/log"
 )
 
-type queryVerifyingNeighboringEpochHeaderFn = func(uint64, uint64) (core.Header, error)
-type queryVerifyingNonNeighboringEpochHeaderFn = func(uint64, uint64, uint64) (core.Header, error)
+type queryVerifiableNeighboringEpochHeaderFn = func(uint64, uint64) (core.Header, error)
+type queryVerifiableNonNeighboringEpochHeaderFn = func(uint64, uint64, uint64) (core.Header, error)
 
 func setupHeadersForUpdate(
-	queryVerifyingNeighboringEpochHeader queryVerifyingNeighboringEpochHeaderFn,
-	queryVerifyingNonNeighboringEpochHeader queryVerifyingNonNeighboringEpochHeaderFn,
+	queryVerifiableNeighboringEpochHeader queryVerifiableNeighboringEpochHeaderFn,
+	queryVerifiableNonNeighboringEpochHeader queryVerifiableNonNeighboringEpochHeaderFn,
 	getHeader getHeaderFn,
 	clientStateLatestHeight exported.Height,
 	latestFinalizedHeader *Header,
@@ -29,15 +29,15 @@ func setupHeadersForUpdate(
 	savedLatestHeight := clientStateLatestHeight.GetRevisionHeight()
 	firstUnsavedEpoch := toEpoch(savedLatestHeight) + constant.BlocksPerEpoch
 	latestFinalizedHeight := latestFinalizedHeader.GetHeight().GetRevisionHeight()
-	if latestFinalizedHeight <= firstUnsavedEpoch {
+	if latestFinalizedHeight < firstUnsavedEpoch {
 		return withTrustedHeight(append(targetHeaders, latestFinalizedHeader), clientStateLatestHeight), nil
 	}
 
 	// Append insufficient epoch blocks
 	trustedEpochHeight := toEpoch(savedLatestHeight)
-	for epochHeight := firstUnsavedEpoch; epochHeight < latestFinalizedHeight; epochHeight += constant.BlocksPerEpoch {
+	for epochHeight := firstUnsavedEpoch; epochHeight <= latestFinalizedHeight; epochHeight += constant.BlocksPerEpoch {
 		if epochHeight == trustedEpochHeight+constant.BlocksPerEpoch {
-			verifiableEpoch, err := setupNeighboringEpochHeader(getHeader, queryVerifyingNeighboringEpochHeader, epochHeight, trustedEpochHeight, latestHeight)
+			verifiableEpoch, err := setupNeighboringEpochHeader(getHeader, queryVerifiableNeighboringEpochHeader, epochHeight, trustedEpochHeight, latestHeight)
 			if err != nil {
 				return nil, err
 			}
@@ -47,7 +47,7 @@ func setupHeadersForUpdate(
 			}
 			targetHeaders = append(targetHeaders, verifiableEpoch)
 		} else {
-			verifiableEpoch, err := setupNonNeighboringEpochHeader(getHeader, queryVerifyingNonNeighboringEpochHeader, epochHeight, trustedEpochHeight, latestHeight)
+			verifiableEpoch, err := setupNonNeighboringEpochHeader(getHeader, queryVerifiableNonNeighboringEpochHeader, epochHeight, trustedEpochHeight, latestHeight)
 			if err != nil {
 				return nil, err
 			}
@@ -60,34 +60,17 @@ func setupHeadersForUpdate(
 		trustedEpochHeight = epochHeight
 	}
 
-	if !isEpoch(latestFinalizedHeight) {
-		if trustedEpochHeight < toEpoch(latestFinalizedHeight) {
-			// ex) trusted = 200, latest 401, not append latest because it can not be verified
-			return withTrustedHeight(append(targetHeaders), clientStateLatestHeight), nil
-		}
-		return withTrustedHeight(append(targetHeaders, latestFinalizedHeader), clientStateLatestHeight), nil
-	}
-
-	if trustedEpochHeight+constant.BlocksPerEpoch == latestFinalizedHeight {
-		// neighboring epoch : ex) prevSavedEpoch = 200, latest 400
-		return withTrustedHeight(append(targetHeaders, latestFinalizedHeader), clientStateLatestHeight), nil
-	}
-
-	//Refresh latest finalized header
-	latestVerifiableHeader, err := setupNonNeighboringEpochHeader(getHeader, queryVerifyingNonNeighboringEpochHeader, latestFinalizedHeight, trustedEpochHeight, latestHeight)
-	if err != nil {
-		return nil, err
-	}
-	if latestVerifiableHeader == nil {
-		// No finalized header after checkpoint. latest can not be verified.
-		return withTrustedHeight(targetHeaders, clientStateLatestHeight), nil
+	if isEpoch(latestFinalizedHeight) ||
+		// ex) trusted = 200, latest 401, not append latest because it can not be verified
+		trustedEpochHeight < toEpoch(latestFinalizedHeight) {
+		return withTrustedHeight(append(targetHeaders), clientStateLatestHeight), nil
 	}
 	return withTrustedHeight(append(targetHeaders, latestFinalizedHeader), clientStateLatestHeight), nil
 }
 
 func setupNeighboringEpochHeader(
 	getHeader getHeaderFn,
-	queryVerifyingHeader queryVerifyingNeighboringEpochHeaderFn,
+	queryVerifiableHeader queryVerifiableNeighboringEpochHeaderFn,
 	epochHeight uint64,
 	trustedEpochHeight uint64,
 	latestHeight exported.Height,
@@ -105,18 +88,18 @@ func setupNeighboringEpochHeader(
 		// ex) trusted(prevSaved = 200), epochHeight = 400 must be finalized by min(610,latest)
 		nextCheckpoint := currentValidatorSet.Checkpoint(epochHeight + constant.BlocksPerEpoch)
 		limit := minUint64(nextCheckpoint-1, latestHeight.GetRevisionHeight())
-		return queryVerifyingHeader(epochHeight, limit)
+		return queryVerifiableHeader(epochHeight, limit)
 	} else {
 		// ex) trusted(prevSaved = 200), epochHeight = 400 must be finalized by min(410,latest)
 		checkpoint := trustedValidatorSet.Checkpoint(epochHeight)
 		limit := minUint64(checkpoint-1, latestHeight.GetRevisionHeight())
-		return queryVerifyingHeader(epochHeight, limit)
+		return queryVerifiableHeader(epochHeight, limit)
 	}
 }
 
 func setupNonNeighboringEpochHeader(
 	getHeader getHeaderFn,
-	queryVerifyingHeader queryVerifyingNonNeighboringEpochHeaderFn,
+	queryVerifiableHeader queryVerifiableNonNeighboringEpochHeaderFn,
 	epochHeight uint64,
 	trustedEpochHeight uint64,
 	latestHeight exported.Height,
@@ -148,7 +131,7 @@ func setupNonNeighboringEpochHeader(
 		// Must wait more header
 		return nil, nil
 	}
-	h, err := queryVerifyingHeader(epochHeight, limit, checkpoint)
+	h, err := queryVerifiableHeader(epochHeight, limit, checkpoint)
 	if h != nil {
 		h.(*Header).TrustedCurrentValidators = trustedValidatorSet
 	}

@@ -113,7 +113,7 @@ func (pr *Prover) SetupHeadersForUpdate(counterparty core.FinalityAwareChain, la
 }
 
 func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
-	queryVerifyingHeader := func(height uint64, limitHeight uint64) (core.Header, error) {
+	queryVerifiableNeighboringEpochHeader := func(height uint64, limitHeight uint64) (core.Header, error) {
 		ethHeaders, err := queryFinalizedHeader(pr.chain.Header, height, limitHeight)
 		if err != nil {
 			return nil, err
@@ -124,7 +124,7 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight ex
 		}
 		return pr.withProofAndValidators(height, ethHeaders)
 	}
-	queryVerifyingHeaderNonNeighboringEpoch := func(height uint64, limitHeight uint64, checkpoint uint64) (core.Header, error) {
+	queryVerifiableNonNeighboringEpochHeader := func(height uint64, limitHeight uint64, checkpoint uint64) (core.Header, error) {
 		ethHeaders, err := queryFinalizedHeaderAfterCheckpoint(pr.chain.Header, height, limitHeight, checkpoint)
 		if err != nil {
 			return nil, err
@@ -140,8 +140,8 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight ex
 		return nil, err
 	}
 	return setupHeadersForUpdate(
-		queryVerifyingHeader,
-		queryVerifyingHeaderNonNeighboringEpoch,
+		queryVerifiableNeighboringEpochHeader,
+		queryVerifiableNonNeighboringEpochHeader,
 		pr.chain.Header,
 		clientStateLatestHeight,
 		latestFinalizedHeader,
