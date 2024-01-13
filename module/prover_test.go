@@ -34,7 +34,8 @@ const (
 
 type mockChain struct {
 	Chain
-	latestHeight            uint64
+	chainLatestHeight       uint64
+	clientStateLatestHeight uint64
 	consensusStateTimestamp map[exported.Height]uint64
 	chainTimestamp          map[exported.Height]uint64
 	chainID                 uint64
@@ -45,7 +46,7 @@ func (c *mockChain) CanonicalChainID(ctx context.Context) (uint64, error) {
 }
 
 func (c *mockChain) QueryClientState(ctx core.QueryContext) (*clienttypes.QueryClientStateResponse, error) {
-	cHeight := clienttypes.NewHeight(ctx.Height().GetRevisionNumber(), ctx.Height().GetRevisionHeight())
+	cHeight := clienttypes.NewHeight(ctx.Height().GetRevisionNumber(), c.clientStateLatestHeight)
 	cs := ClientState{
 		LatestHeight:    &cHeight,
 		IbcStoreAddress: common.Hex2Bytes(ibcHandlerAddress),
@@ -57,11 +58,11 @@ func (c *mockChain) QueryClientState(ctx core.QueryContext) (*clienttypes.QueryC
 	return clienttypes.NewQueryClientStateResponse(anyClientState, nil, cHeight), nil
 }
 
-func (c *mockChain) QueryClientConsensusState(ctx core.QueryContext, height exported.Height) (*clienttypes.QueryConsensusStateResponse, error) {
-	cHeight := clienttypes.NewHeight(ctx.Height().GetRevisionNumber(), ctx.Height().GetRevisionHeight())
+func (c *mockChain) QueryClientConsensusState(_ core.QueryContext, height exported.Height) (*clienttypes.QueryConsensusStateResponse, error) {
+	cHeight := clienttypes.NewHeight(height.GetRevisionNumber(), height.GetRevisionHeight())
 	cs := ConsensusState{
 		StateRoot:              common.Hash{}.Bytes(),
-		Timestamp:              c.consensusStateTimestamp[height],
+		Timestamp:              c.consensusStateTimestamp[cHeight],
 		CurrentValidatorsHash:  common.Hash{}.Bytes(),
 		PreviousValidatorsHash: common.Hash{}.Bytes(),
 	}
@@ -271,7 +272,7 @@ func (c *mockChain) GetProof(_ common.Address, _ [][]byte, _ *big.Int) (*client.
 }
 
 func (c *mockChain) LatestHeight() (exported.Height, error) {
-	return clienttypes.NewHeight(0, c.latestHeight), nil
+	return clienttypes.NewHeight(0, c.chainLatestHeight), nil
 }
 
 func (c *mockChain) Timestamp(height exported.Height) (time.Time, error) {
@@ -332,7 +333,8 @@ func (ts *ProverTestSuite) SetupTest() {
 	}
 	ts.chain = &mockChain{
 		Chain:                   NewChain(chain),
-		latestHeight:            31297221,
+		chainLatestHeight:       31297221,
+		clientStateLatestHeight: 31297000,
 		chainID:                 9999,
 		consensusStateTimestamp: make(map[exported.Height]uint64),
 		chainTimestamp:          make(map[exported.Height]uint64),
@@ -363,13 +365,8 @@ func (ts *ProverTestSuite) TestSetupHeadersForUpdate() {
 		Chain:  ts.prover.chain,
 		Prover: ts.prover,
 	}
-	latest := ts.chain.latestHeight
-	defer func() {
-		ts.chain.latestHeight = latest
-	}()
-	ts.chain.latestHeight = 31297000
 
-	header, err := ts.prover.GetLatestFinalizedHeaderByLatestHeight(latest)
+	header, err := ts.prover.GetLatestFinalizedHeaderByLatestHeight(ts.chain.chainLatestHeight)
 	ts.Require().NoError(err)
 	setupDone, err := ts.prover.SetupHeadersForUpdate(dst.Chain.(*mockChain), header)
 	ts.Require().NoError(err)
@@ -433,13 +430,19 @@ func (ts *ProverTestSuite) TestErrorCreateInitialLightClientState() {
 }
 
 func (ts *ProverTestSuite) TestQueryClientStateWithProof() {
-	ctx := core.NewQueryContext(context.TODO(), clienttypes.NewHeight(0, 21400))
-	cs, err := ts.prover.chain.QueryClientState(ctx)
+	saved := ts.chain.clientStateLatestHeight
+	defer func() {
+		ts.chain.clientStateLatestHeight = saved
+	}()
+	ts.chain.clientStateLatestHeight = 21400
+
+	cs, err := ts.prover.chain.QueryClientState(core.NewQueryContext(context.TODO(), clienttypes.NewHeight(0, 0)))
 	ts.Require().NoError(err)
 
 	bzCs, err := ts.prover.chain.Codec().Marshal(cs)
 	ts.Require().NoError(err)
 
+	ctx := core.NewQueryContext(context.TODO(), clienttypes.NewHeight(0, 21400))
 	proof, proofHeight, err := ts.prover.ProveState(ctx, host.FullClientStatePath(ts.prover.chain.Path().ClientID), bzCs)
 	ts.Require().NoError(err)
 
@@ -522,17 +525,19 @@ func (ts *ProverTestSuite) TestCheckRefreshRequired() {
 		Prover: ts.prover,
 	}
 	now := time.Now()
-	height := clienttypes.NewHeight(0, ts.chain.latestHeight)
-	ts.chain.chainTimestamp[height] = uint64(now.Unix())
+	chainHeight := clienttypes.NewHeight(0, ts.chain.chainLatestHeight)
+	ts.chain.chainTimestamp[chainHeight] = uint64(now.Unix())
+
+	csHeight := clienttypes.NewHeight(0, ts.chain.clientStateLatestHeight)
 
 	// should refresh
-	ts.chain.consensusStateTimestamp[height] = uint64(now.Add(-51 * time.Second).Unix())
+	ts.chain.consensusStateTimestamp[csHeight] = uint64(now.Add(-51 * time.Second).Unix())
 	required, err := ts.prover.CheckRefreshRequired(dst)
 	ts.Require().NoError(err)
 	ts.Require().True(required)
 
 	// needless
-	ts.chain.consensusStateTimestamp[height] = uint64(now.Add(-50 * time.Second).Unix())
+	ts.chain.consensusStateTimestamp[csHeight] = uint64(now.Add(-50 * time.Second).Unix())
 	required, err = ts.prover.CheckRefreshRequired(dst)
 	ts.Require().NoError(err)
 	ts.Require().False(required)
