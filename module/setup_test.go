@@ -40,13 +40,16 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_neighboringEpoch() {
 			CurrentValidators:  [][]byte{{1}},
 			PreviousValidators: [][]byte{{1}},
 		}
-		fn := func(height uint64, _ uint64) (core.Header, error) {
+		neighborFn := func(height uint64, _ uint64) (core.Header, error) {
 			h, e := newETHHeader(&types2.Header{
 				Number: big.NewInt(int64(height)),
 			})
 			return &Header{
 				Headers: []*ETHHeader{h},
 			}, e
+		}
+		nonNeighborFn := func(height uint64, _ uint64, _ uint64) (core.Header, error) {
+			return nil, nil
 		}
 		headerFn := func(_ context.Context, height uint64) (*types2.Header, error) {
 			return &types2.Header{
@@ -55,7 +58,7 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_neighboringEpoch() {
 			}, nil
 		}
 
-		targets, err := setupHeadersForUpdate(fn, nil, headerFn, clientStateLatestHeight, latestFinalizedHeader, clienttypes.NewHeight(0, 100000))
+		targets, err := setupHeadersForUpdate(neighborFn, nonNeighborFn, headerFn, clientStateLatestHeight, latestFinalizedHeader, clienttypes.NewHeight(0, 100000))
 		ts.Require().NoError(err)
 		ts.Require().Len(targets, expected)
 		for i, h := range targets {
@@ -94,7 +97,7 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_neighboringEpoch() {
 
 func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_nonNeighboringEpoch() {
 
-	verify := func(latestHeight, nextHeight uint64, expectedEpochs []int64) {
+	verify := func(latestHeight, nextHeight uint64, expectedEpochs []int64, enableFast bool) {
 		clientStateLatestHeight := clienttypes.NewHeight(0, latestHeight)
 		target, err := newETHHeader(&types2.Header{
 			Number: big.NewInt(int64(nextHeight)),
@@ -108,7 +111,13 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_nonNeighboringEpoch(
 		queryVerifyingNeighboringEpochHeader := func(_ uint64, _ uint64) (core.Header, error) {
 			return nil, nil
 		}
+		t := true
+		canVerify := &enableFast
 		queryVerifyingNonNeighboringEpochHeader := func(height, limit, checkpoint uint64) (core.Header, error) {
+			if !*canVerify {
+				canVerify = &t
+				return nil, nil
+			}
 			hs := make([]*ETHHeader, 0)
 			for i := height; i <= checkpoint+2; i++ {
 				if i > limit {
@@ -147,27 +156,48 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_nonNeighboringEpoch(
 		}
 	}
 
-	verify(0, constant.BlocksPerEpoch-1, []int64{int64(constant.BlocksPerEpoch - 1)})
-	verify(0, constant.BlocksPerEpoch, []int64{})
-	verify(0, constant.BlocksPerEpoch+1, []int64{})
-	verify(0, 10*constant.BlocksPerEpoch-1, []int64{400, 800, 1200, 1600})
-	verify(0, 10*constant.BlocksPerEpoch, []int64{400, 800, 1200, 1600, 2000})
-	verify(0, 10*constant.BlocksPerEpoch+1, []int64{400, 800, 1200, 1600, 2000, 2001})
-	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch-1, []int64{})
-	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch, []int64{})
-	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch+1, []int64{})
-	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch-1, []int64{400, 800, 1200, 1600})
-	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch, []int64{400, 800, 1200, 1600, 2000})
-	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch+1, []int64{400, 800, 1200, 1600, 2000, 2001})
-	verify(constant.BlocksPerEpoch, constant.BlocksPerEpoch, []int64{})
-	verify(constant.BlocksPerEpoch, constant.BlocksPerEpoch+1, []int64{int64(constant.BlocksPerEpoch + 1)})
-	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch-1, []int64{600, 1000, 1400, 1800, 1999})
-	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch, []int64{600, 1000, 1400, 1800})
-	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch+1, []int64{600, 1000, 1400, 1800})
-	verify(constant.BlocksPerEpoch+1, constant.BlocksPerEpoch+1, []int64{})
-	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch-1, []int64{600, 1000, 1400, 1800, 1999})
-	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch, []int64{600, 1000, 1400, 1800})
-	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch+1, []int64{600, 1000, 1400, 1800})
+	verify(0, constant.BlocksPerEpoch-1, []int64{int64(constant.BlocksPerEpoch - 1)}, false)
+	verify(0, constant.BlocksPerEpoch-1, []int64{int64(constant.BlocksPerEpoch - 1)}, true)
+	verify(0, constant.BlocksPerEpoch, []int64{}, false)
+	verify(0, constant.BlocksPerEpoch, []int64{}, true)
+	verify(0, constant.BlocksPerEpoch+1, []int64{}, false)
+	verify(0, constant.BlocksPerEpoch+1, []int64{}, true)
+	verify(0, 10*constant.BlocksPerEpoch-1, []int64{400, 800, 1200, 1600}, false)
+	verify(0, 10*constant.BlocksPerEpoch-1, []int64{1800, 1999}, true)
+	verify(0, 10*constant.BlocksPerEpoch, []int64{400, 800, 1200, 1600, 2000}, false)
+	verify(0, 10*constant.BlocksPerEpoch, []int64{2000}, true)
+	verify(0, 10*constant.BlocksPerEpoch+1, []int64{400, 800, 1200, 1600, 2000, 2001}, false)
+	verify(0, 10*constant.BlocksPerEpoch+1, []int64{2000, 2001}, true)
+	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch-1, []int64{}, false)
+	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch-1, []int64{}, true)
+	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch, []int64{}, false)
+	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch, []int64{}, true)
+	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch+1, []int64{}, false)
+	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch+1, []int64{}, true)
+	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch-1, []int64{400, 800, 1200, 1600}, false)
+	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch-1, []int64{1800, 1999}, true)
+	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch, []int64{400, 800, 1200, 1600, 2000}, false)
+	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch, []int64{2000}, true)
+	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch+1, []int64{400, 800, 1200, 1600, 2000, 2001}, false)
+	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch+1, []int64{2000, 2001}, true)
+	verify(constant.BlocksPerEpoch, constant.BlocksPerEpoch, []int64{}, false)
+	verify(constant.BlocksPerEpoch, constant.BlocksPerEpoch, []int64{}, true)
+	verify(constant.BlocksPerEpoch, constant.BlocksPerEpoch+1, []int64{int64(constant.BlocksPerEpoch + 1)}, false)
+	verify(constant.BlocksPerEpoch, constant.BlocksPerEpoch+1, []int64{int64(constant.BlocksPerEpoch + 1)}, true)
+	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch-1, []int64{600, 1000, 1400, 1800, 1999}, false)
+	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch-1, []int64{1800, 1999}, true)
+	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch, []int64{600, 1000, 1400, 1800}, false)
+	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch, []int64{2000}, true)
+	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch+1, []int64{600, 1000, 1400, 1800}, false)
+	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch+1, []int64{2000, 2001}, true)
+	verify(constant.BlocksPerEpoch+1, constant.BlocksPerEpoch+1, []int64{}, false)
+	verify(constant.BlocksPerEpoch+1, constant.BlocksPerEpoch+1, []int64{}, true)
+	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch-1, []int64{600, 1000, 1400, 1800, 1999}, false)
+	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch-1, []int64{1800, 1999}, true)
+	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch, []int64{600, 1000, 1400, 1800}, false)
+	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch, []int64{2000}, true)
+	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch+1, []int64{600, 1000, 1400, 1800}, false)
+	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch+1, []int64{2000, 2001}, true)
 
 }
 

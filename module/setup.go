@@ -7,6 +7,7 @@ import (
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/hyperledger-labs/yui-relayer/core"
 	"github.com/hyperledger-labs/yui-relayer/log"
+	"golang.org/x/exp/slog"
 )
 
 type queryVerifiableNeighboringEpochHeaderFn = func(uint64, uint64) (core.Header, error)
@@ -33,8 +34,25 @@ func setupHeadersForUpdate(
 		return withTrustedHeight(append(targetHeaders, latestFinalizedHeader), clientStateLatestHeight), nil
 	}
 
-	// Append insufficient epoch blocks
 	trustedEpochHeight := toEpoch(savedLatestHeight)
+	lastUnsavedEpoch := toEpoch(latestFinalizedHeight)
+	// Check if last epoch can be directly verified by trusted height to reduce request for LCP
+	if lastUnsavedEpoch > trustedEpochHeight+constant.BlocksPerEpoch {
+		lastVerifiableEpoch, err := setupNonNeighboringEpochHeader(getHeader, queryVerifiableNonNeighboringEpochHeader, lastUnsavedEpoch, trustedEpochHeight, latestHeight)
+		if err != nil {
+			return nil, err
+		}
+		if lastVerifiableEpoch != nil {
+			slog.Debug("Use direct non-neighboring epoch verification", "trusted", trustedEpochHeight, "latestFinalized", latestFinalizedHeight)
+			if lastUnsavedEpoch == latestFinalizedHeight {
+				return withTrustedHeight(append(targetHeaders, lastVerifiableEpoch), clientStateLatestHeight), nil
+			} else {
+				return withTrustedHeight(append(targetHeaders, lastVerifiableEpoch, latestFinalizedHeader), clientStateLatestHeight), nil
+			}
+		}
+	}
+
+	// Append insufficient epoch blocks
 	for epochHeight := firstUnsavedEpoch; epochHeight <= latestFinalizedHeight; epochHeight += constant.BlocksPerEpoch {
 		if epochHeight == trustedEpochHeight+constant.BlocksPerEpoch {
 			verifiableEpoch, err := setupNeighboringEpochHeader(getHeader, queryVerifiableNeighboringEpochHeader, epochHeight, trustedEpochHeight, latestHeight)
