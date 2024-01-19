@@ -39,10 +39,7 @@ func setupHeadersForUpdate(
 	// Check if last epoch can be directly verified by trusted height to reduce request for LCP
 	if lastUnsavedEpoch > trustedEpochHeight+constant.BlocksPerEpoch {
 		lastVerifiableEpoch, err := setupNonNeighboringEpochHeader(getHeader, queryVerifiableNonNeighboringEpochHeader, lastUnsavedEpoch, trustedEpochHeight, latestHeight)
-		if err != nil {
-			return nil, err
-		}
-		if lastVerifiableEpoch != nil {
+		if err != nil || lastVerifiableEpoch != nil {
 			slog.Debug("Use direct non-neighboring epoch verification", "trusted", trustedEpochHeight, "latestFinalized", latestFinalizedHeight)
 			if lastUnsavedEpoch == latestFinalizedHeight {
 				return withTrustedHeight(append(targetHeaders, lastVerifiableEpoch), clientStateLatestHeight), nil
