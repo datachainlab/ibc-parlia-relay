@@ -7,7 +7,6 @@ import (
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/hyperledger-labs/yui-relayer/core"
 	"github.com/hyperledger-labs/yui-relayer/log"
-	"golang.org/x/exp/slog"
 )
 
 type queryVerifiableNeighboringEpochHeaderFn = func(uint64, uint64) (core.Header, error)
@@ -40,7 +39,7 @@ func setupHeadersForUpdate(
 	if lastUnsavedEpoch > trustedEpochHeight+constant.BlocksPerEpoch {
 		lastVerifiableEpoch, err := setupNonNeighboringEpochHeader(getHeader, queryVerifiableNonNeighboringEpochHeader, lastUnsavedEpoch, trustedEpochHeight, latestHeight)
 		if err != nil || lastVerifiableEpoch != nil {
-			slog.Debug("Use direct non-neighboring epoch verification", "trusted", trustedEpochHeight, "latestFinalized", latestFinalizedHeight)
+			log.GetLogger().Debug("Use direct non-neighboring epoch verification", "trusted", trustedEpochHeight, "latestFinalized", latestFinalizedHeight)
 			if lastUnsavedEpoch == latestFinalizedHeight {
 				return withTrustedHeight(append(targetHeaders, lastVerifiableEpoch), clientStateLatestHeight), nil
 			} else {
