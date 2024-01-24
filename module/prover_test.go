@@ -668,3 +668,21 @@ func (ts *ProverTestSuite) TestError_getLatestFinalizedHeader_NoVote() {
 		verify(uint64(i), common.Hex2Bytes("d88301020b846765746888676f312e32302e35856c696e7578000000b19df4a2f8b5831defffb860a44482b16993815ff4903016ce83ef788b455e2c80ba9976e8e55ac6591b9f9965234a0a2c579269bc5e09577977322d07d17bb8d657ac621a1abfadcb35b9c9d4713dbdd3d47fd3cc6dc2475c989aa224fecd083101049ef1adea2718b00e37f84c8401e5c5cfa0be938dfeafe5b932c2dcef0e2bebb1a05f31104a59b49d78b0b7746a483c14648401e5c5d0a03658f0bb6692995a9dd3b72a69ec6e8e1b9af4361718d8a275c2b92d26eeffc28027cb6d065d5a6d8749ca45a185add61b9ce470136898643170f8072513ca45f35d826f02cb2494f857beebdac9ec04196c8b30a65352ef155a28ac6a0057ff1601"))
 	}
 }
+
+func (ts *ProverTestSuite) TestProveHostConsensusState() {
+	cs := ConsensusState{
+		StateRoot:              common.Hash{}.Bytes(),
+		Timestamp:              1,
+		CurrentValidatorsHash:  common.Hash{}.Bytes(),
+		PreviousValidatorsHash: common.Hash{}.Bytes(),
+	}
+
+	ts.prover.chain.Codec().InterfaceRegistry().RegisterImplementations(
+		(*exported.ConsensusState)(nil),
+		&ConsensusState{},
+	)
+	ctx := core.NewQueryContext(context.TODO(), clienttypes.NewHeight(0, 0))
+	prove, err := ts.prover.ProveHostConsensusState(ctx, clienttypes.NewHeight(0, 0), &cs)
+	ts.Require().NoError(err)
+	ts.Require().Len(prove, 150)
+}
