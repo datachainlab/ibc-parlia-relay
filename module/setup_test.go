@@ -428,7 +428,7 @@ func (ts *SetupTestSuite) TestSuccess_setupNonNeighboringEpochHeader_containTrus
 	ts.Require().NoError(err)
 
 	// checkpoint
-	ts.Require().Equal(21, len(hs.(*Header).TrustedCurrentValidators))
+	ts.Require().Equal(21, len(hs.(*Header).CurrentValidators))
 	ts.Require().Equal(int64(611), target.Number.Int64())
 	// next checkpoint
 	ts.Require().Equal(int64(810), last.Number.Int64())

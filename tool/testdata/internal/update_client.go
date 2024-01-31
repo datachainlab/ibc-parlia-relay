@@ -143,7 +143,8 @@ func (m *updateClientModule) printHeader(prover *module.Prover, chain module.Cha
 	if err != nil {
 		return err
 	}
-	trustedHeight := header.TrustedHeight.GetRevisionHeight()
+
+	trustedHeight := updating[0].(*module.Header).TrustedHeight.GetRevisionHeight()
 	trustedCurrentValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetCurrentEpoch(trustedHeight))
 	if err != nil {
 		return err

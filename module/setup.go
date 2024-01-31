@@ -147,7 +147,7 @@ func setupNonNeighboringEpochHeader(
 	}
 	h, err := queryVerifiableHeader(epochHeight, limit, checkpoint)
 	if h != nil {
-		h.(*Header).TrustedCurrentValidators = trustedValidatorSet
+		h.(*Header).CurrentValidators = trustedValidatorSet
 	}
 	return h, err
 }

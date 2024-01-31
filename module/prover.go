@@ -228,14 +228,12 @@ func (pr *Prover) withProofAndValidators(height uint64, ethHeaders []*ETHHeader)
 	if err != nil {
 		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
 	}
-	// Epoch doesn't need to get validator set because it contains validator set.
-	if !isEpoch(height) {
-		currentEpoch := getCurrentEpoch(height)
-		header.CurrentValidators, err = queryValidatorSet(pr.chain.Header, currentEpoch)
-		if err != nil {
-			return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
-		}
+	currentEpoch := getCurrentEpoch(height)
+	header.CurrentValidators, err = queryValidatorSet(pr.chain.Header, currentEpoch)
+	if err != nil {
+		return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
 	}
+
 	return header, nil
 }
 
