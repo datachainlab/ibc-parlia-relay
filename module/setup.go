@@ -147,6 +147,8 @@ func setupNonNeighboringEpochHeader(
 	}
 	h, err := queryVerifiableHeader(epochHeight, limit, checkpoint)
 	if h != nil {
+		// Override CurrentValidator to trusted validator set
+		// https://github.com/datachainlab/parlia-elc/blob/ce3611c3278508c97d41afed1be38b889602a1b1/light-client/src/header/mod.rs#L132
 		h.(*Header).CurrentValidators = trustedValidatorSet
 	}
 	return h, err
