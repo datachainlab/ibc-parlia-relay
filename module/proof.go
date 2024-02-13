@@ -3,6 +3,8 @@ package module
 import (
 	"bytes"
 	"fmt"
+	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
+	"github.com/hyperledger-labs/yui-relayer/core"
 	"math/big"
 
 	"github.com/cosmos/gogoproto/proto"
@@ -60,6 +62,12 @@ func (pr *Prover) GetStorageRoot(header *types.Header) (common.Hash, error) {
 		return common.Hash{}, err
 	}
 	return stateAccount.Root, nil
+}
+
+// ProveHostConsensusState returns an existence proof of the consensus state at `height`
+// This proof would be ignored in ibc-go, but it is required to `getSelfConsensusState` of ibc-solidity.
+func (pr *Prover) ProveHostConsensusState(ctx core.QueryContext, height exported.Height, consensusState exported.ConsensusState) (proof []byte, err error) {
+	return clienttypes.MarshalConsensusState(pr.chain.Codec(), consensusState)
 }
 
 type proofList struct {

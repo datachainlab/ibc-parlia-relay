@@ -542,3 +542,21 @@ func (ts *ProverTestSuite) TestCheckRefreshRequired() {
 	ts.Require().NoError(err)
 	ts.Require().False(required)
 }
+
+func (ts *ProverTestSuite) TestProveHostConsensusState() {
+	cs := ConsensusState{
+		StateRoot:              common.Hash{}.Bytes(),
+		Timestamp:              1,
+		CurrentValidatorsHash:  common.Hash{}.Bytes(),
+		PreviousValidatorsHash: common.Hash{}.Bytes(),
+	}
+
+	ts.prover.chain.Codec().InterfaceRegistry().RegisterImplementations(
+		(*exported.ConsensusState)(nil),
+		&ConsensusState{},
+	)
+	ctx := core.NewQueryContext(context.TODO(), clienttypes.NewHeight(0, 0))
+	prove, err := ts.prover.ProveHostConsensusState(ctx, clienttypes.NewHeight(0, 0), &cs)
+	ts.Require().NoError(err)
+	ts.Require().Len(prove, 150)
+}
