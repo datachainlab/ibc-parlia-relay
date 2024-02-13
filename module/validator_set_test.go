@@ -72,3 +72,22 @@ func (ts *ValidatorSetTestSuite) TestErrorQueryValidatorSet() {
 	_, err := QueryValidatorSet(fn, 200)
 	ts.Require().Equal(err.Error(), "error")
 }
+
+func (ts *ValidatorSetTestSuite) TestValidator() {
+	trusted := Validators([][]byte{{1}, {2}, {3}, {4}, {5}})
+	ts.Equal(trusted.Checkpoint(5), uint64(8))
+
+	ts.True(trusted.Contains([][]byte{{1}, {2}, {3}, {4}, {5}}))
+	ts.True(trusted.Contains([][]byte{{1}, {2}, {3}, {4}, {5}, {10}, {11}, {12}, {13}, {14}}))
+	ts.True(trusted.Contains([][]byte{{1}, {2}, {3}, {4}}))
+	ts.True(trusted.Contains([][]byte{{1}, {2}, {3}, {4}, {10}, {11}, {12}, {13}, {14}}))
+	ts.True(trusted.Contains([][]byte{{1}, {2}, {3}}))
+	ts.True(trusted.Contains([][]byte{{1}, {2}, {3}, {10}, {11}, {12}, {13}, {14}}))
+	ts.True(trusted.Contains([][]byte{{1}, {2}}))
+	ts.True(trusted.Contains([][]byte{{1}, {2}, {10}, {11}, {12}, {13}, {14}}))
+	ts.False(trusted.Contains([][]byte{{1}}))
+	ts.False(trusted.Contains([][]byte{{1}, {10}, {11}, {12}, {13}, {14}}))
+	ts.False(trusted.Contains([][]byte{}))
+	ts.False(trusted.Contains([][]byte{{10}, {11}, {12}, {13}, {14}}))
+
+}

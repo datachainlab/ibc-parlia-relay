@@ -64,6 +64,17 @@ func (h *Header) Target() (*types.Header, error) {
 	return decodedHeaders[0], nil
 }
 
+func (h *Header) Last() (*types.Header, error) {
+	decodedHeaders, err := h.decodeEthHeaders()
+	if err != nil {
+		return nil, err
+	}
+	if len(decodedHeaders) == 0 {
+		return nil, fmt.Errorf("invalid header length")
+	}
+	return decodedHeaders[len(decodedHeaders)-1], nil
+}
+
 func (h *Header) Account(path common.Address) (*types.StateAccount, error) {
 	target, err := h.Target()
 	if err != nil {

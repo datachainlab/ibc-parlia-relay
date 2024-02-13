@@ -6,7 +6,6 @@ import (
 	"github.com/hyperledger-labs/yui-relayer/log"
 	"time"
 
-	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -54,9 +53,9 @@ func (pr *Prover) CreateInitialLightClientState(height exported.Height) (exporte
 	}
 	var finalizedHeader []*ETHHeader
 	if height == nil {
-		_, finalizedHeader, err = getLatestFinalizedHeader(pr.chain.Header, latestHeight.GetRevisionHeight())
+		_, finalizedHeader, err = queryLatestFinalizedHeader(pr.chain.Header, latestHeight.GetRevisionHeight())
 	} else {
-		finalizedHeader, err = GetFinalizedHeader(pr.chain.Header, height.GetRevisionHeight(), latestHeight.GetRevisionHeight())
+		finalizedHeader, err = queryFinalizedHeader(pr.chain.Header, height.GetRevisionHeight(), latestHeight.GetRevisionHeight())
 	}
 	if err != nil {
 		return nil, nil, err
@@ -86,7 +85,7 @@ func (pr *Prover) GetLatestFinalizedHeader() (out core.Header, err error) {
 
 // GetLatestFinalizedHeaderByLatestHeight returns the latest finalized verifiable header from the chain
 func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint64) (core.Header, error) {
-	height, finalizedHeader, err := getLatestFinalizedHeader(pr.chain.Header, latestBlockNumber)
+	height, finalizedHeader, err := queryLatestFinalizedHeader(pr.chain.Header, latestBlockNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -114,8 +113,8 @@ func (pr *Prover) SetupHeadersForUpdate(counterparty core.FinalityAwareChain, la
 }
 
 func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
-	queryVerifyingHeader := func(height uint64, limitHeight uint64) (core.Header, error) {
-		ethHeaders, err := GetFinalizedHeader(pr.chain.Header, height, limitHeight)
+	queryVerifiableNeighboringEpochHeader := func(height uint64, limitHeight uint64) (core.Header, error) {
+		ethHeaders, err := queryFinalizedHeader(pr.chain.Header, height, limitHeight)
 		if err != nil {
 			return nil, err
 		}
@@ -125,7 +124,28 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight ex
 		}
 		return pr.withProofAndValidators(height, ethHeaders)
 	}
-	return setupHeadersForUpdate(queryVerifyingHeader, clientStateLatestHeight, latestFinalizedHeader)
+	queryVerifiableNonNeighboringEpochHeader := func(height uint64, limitHeight uint64, checkpoint uint64) (core.Header, error) {
+		ethHeaders, err := queryFinalizedHeaderAfterCheckpoint(pr.chain.Header, height, limitHeight, checkpoint)
+		if err != nil {
+			return nil, err
+		}
+		// No finalized header found
+		if ethHeaders == nil {
+			return nil, nil
+		}
+		return pr.withProofAndValidators(height, ethHeaders)
+	}
+	latestHeight, err := pr.chain.LatestHeight()
+	if err != nil {
+		return nil, err
+	}
+	return setupHeadersForUpdate(
+		queryVerifiableNeighboringEpochHeader,
+		queryVerifiableNonNeighboringEpochHeader,
+		pr.chain.Header,
+		clientStateLatestHeight,
+		latestFinalizedHeader,
+		latestHeight)
 }
 
 func (pr *Prover) ProveState(ctx core.QueryContext, path string, value []byte) ([]byte, clienttypes.Height, error) {
@@ -203,101 +223,29 @@ func (pr *Prover) withProofAndValidators(height uint64, ethHeaders []*ETHHeader)
 	}
 
 	// Get validator set for verify headers
-	previousEpoch := GetPreviousEpoch(height)
-	header.PreviousValidators, err = QueryValidatorSet(pr.chain.Header, previousEpoch)
+	previousEpoch := getPreviousEpoch(height)
+	header.PreviousValidators, err = queryValidatorSet(pr.chain.Header, previousEpoch)
 	if err != nil {
 		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
 	}
-	// Epoch doesn't need to get validator set because it contains validator set.
-	if !isEpoch(height) {
-		currentEpoch := GetCurrentEpoch(height)
-		header.CurrentValidators, err = QueryValidatorSet(pr.chain.Header, currentEpoch)
-		if err != nil {
-			return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
-		}
+	currentEpoch := getCurrentEpoch(height)
+	header.CurrentValidators, err = queryValidatorSet(pr.chain.Header, currentEpoch)
+	if err != nil {
+		return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
 	}
+
 	return header, nil
 }
 
-func getLatestFinalizedHeader(getHeader getHeaderFn, latestBlockNumber uint64) (uint64, []*ETHHeader, error) {
-	logger := log.GetLogger()
-	for i := latestBlockNumber; i > 0; i-- {
-		header, err := getHeader(context.Background(), i)
-		if err != nil {
-			return 0, nil, err
-		}
-		vote, err := getVoteAttestationFromHeader(header)
-		if err != nil {
-			return 0, nil, err
-		}
-		if vote == nil {
-			continue
-		}
-		probablyFinalized := vote.Data.SourceNumber
-
-		logger.Debug("Try to seek verifying headers to finalize", "probablyFinalized", probablyFinalized, "latest", latestBlockNumber)
-
-		headers, err := GetFinalizedHeader(getHeader, probablyFinalized, latestBlockNumber)
-		if err != nil {
-			return 0, nil, err
-		}
-		if headers != nil {
-			return probablyFinalized, headers, nil
-		}
-		logger.Debug("Failed to seek verifying headers to finalize. So seek previous finalized header.", "probablyFinalized", probablyFinalized, "latest", latestBlockNumber)
-	}
-	return 0, nil, fmt.Errorf("no finalized header found: %d", latestBlockNumber)
-}
-
-func setupHeadersForUpdate(queryVerifyingHeader func(uint64, uint64) (core.Header, error), clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
-	targetHeaders := make([]core.Header, 0)
-
-	// Needless to update already saved state
-	if clientStateLatestHeight.GetRevisionHeight() == latestFinalizedHeader.GetHeight().GetRevisionHeight() {
-		return targetHeaders, nil
-	}
-	// Append insufficient epoch blocks
-	savedLatestHeight := clientStateLatestHeight.GetRevisionHeight()
-	firstUnsavedEpoch := (savedLatestHeight/constant.BlocksPerEpoch + 1) * constant.BlocksPerEpoch
-	latestFinalizedHeight := latestFinalizedHeader.GetHeight().GetRevisionHeight()
-	if latestFinalizedHeight > firstUnsavedEpoch {
-		for epochHeight := firstUnsavedEpoch; epochHeight < latestFinalizedHeight; epochHeight += constant.BlocksPerEpoch {
-			epoch, err := queryVerifyingHeader(epochHeight, epochHeight+constant.BlocksPerEpoch)
-			if err != nil {
-				return nil, fmt.Errorf("setupHeadersForUpdate failed to get past epochs : height=%d : %+v", epochHeight, err)
-			}
-			if epoch == nil {
-				return nil, fmt.Errorf("setupHeadersForUpdate no finalized header found after epoch: height=%d", epochHeight)
-			}
-			targetHeaders = append(targetHeaders, epoch)
-		}
-	}
-	targetHeaders = append(targetHeaders, latestFinalizedHeader)
-
-	logger := log.GetLogger()
-	for i, h := range targetHeaders {
-		var trustedHeight clienttypes.Height
-		if i == 0 {
-			trustedHeight = toHeight(clientStateLatestHeight)
-		} else {
-			trustedHeight = toHeight(targetHeaders[i-1].GetHeight())
-		}
-		h.(*Header).TrustedHeight = &trustedHeight
-
-		logger.Debug("setupHeadersForUpdate", "target", h.GetHeight(), "trusted", trustedHeight, "headerSize", len(h.(*Header).Headers))
-	}
-	return targetHeaders, nil
-}
-
 func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState, exported.ConsensusState, error) {
-	currentEpoch := GetCurrentEpoch(dstHeader.GetHeight().GetRevisionHeight())
-	currentValidators, err := QueryValidatorSet(pr.chain.Header, currentEpoch)
+	currentEpoch := getCurrentEpoch(dstHeader.GetHeight().GetRevisionHeight())
+	currentValidators, err := queryValidatorSet(pr.chain.Header, currentEpoch)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	previousEpoch := GetPreviousEpoch(dstHeader.GetHeight().GetRevisionHeight())
-	previousValidators, err := QueryValidatorSet(pr.chain.Header, previousEpoch)
+	previousEpoch := getPreviousEpoch(dstHeader.GetHeight().GetRevisionHeight())
+	previousValidators, err := queryValidatorSet(pr.chain.Header, previousEpoch)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -334,25 +282,4 @@ func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState
 		StateRoot:              stateRoot.Bytes(),
 	}
 	return &clientState, &consensusState, nil
-}
-
-func GetPreviousEpoch(v uint64) uint64 {
-	epochCount := v / constant.BlocksPerEpoch
-	if epochCount == 0 {
-		return 0
-	}
-	return (epochCount - 1) * constant.BlocksPerEpoch
-}
-
-func isEpoch(v uint64) bool {
-	return v%constant.BlocksPerEpoch == 0
-}
-
-func GetCurrentEpoch(v uint64) uint64 {
-	epochCount := v / constant.BlocksPerEpoch
-	return epochCount * constant.BlocksPerEpoch
-}
-
-func toHeight(height exported.Height) clienttypes.Height {
-	return clienttypes.NewHeight(height.GetRevisionNumber(), height.GetRevisionHeight())
 }
