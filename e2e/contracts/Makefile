@@ -1,8 +1,6 @@
 .PHONY:deploy
 deploy:
 	npm i
-	cp truffle-config.js node_modules/@hyperledger-labs/yui-ibc-solidity
-	cd node_modules/@hyperledger-labs/yui-ibc-solidity && npx truffle compile
 	npx truffle migrate --network bsc_local2 --reset
 	npx truffle migrate --network bsc_local --reset
 

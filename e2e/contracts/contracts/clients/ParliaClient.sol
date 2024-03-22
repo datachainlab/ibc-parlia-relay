@@ -47,44 +47,31 @@ contract ParliaClient is ILightClient {
     }
 
     /**
-     * @dev createClient creates a new client with the given state
+     * @dev initializeClient creates a new client with the given state
      */
-    function createClient(string calldata clientId, bytes calldata clientStateBytes, bytes calldata consensusStateBytes)
-    external
-    override
-    onlyIBC
-    returns (bytes32 clientStateCommitment, ConsensusStateUpdate memory update, bool ok) {
+    function initializeClient(string calldata clientId, bytes calldata clientStateBytes, bytes calldata consensusStateBytes)
+    external virtual override onlyIBC
+    returns (Height.Data memory height) {
         ClientState.Data memory clientState;
         ConsensusState.Data memory consensusState;
+        bool ok;
 
         (clientState, ok) = unmarshalClientState(clientStateBytes);
         if (!ok) {
-            return (clientStateCommitment, update, false);
+            revert("invalid client state");
         }
         (consensusState, ok) = unmarshalConsensusState(consensusStateBytes);
         if (!ok) {
-            return (clientStateCommitment, update, false);
+            revert("invalid cons state");
         }
-        /* can be genesis block
-        if (
-            clientState.latest_height.revision_height == 0 || consensusState.timestamp == 0
-        ) {
-            return (clientStateCommitment, update, false);
-        }
-        */
 
-        Height.Data memory height;
         height.revision_height = clientState.latest_height.revision_height;
         height.revision_number = clientState.latest_height.revision_number;
 
         clientStates[clientId] = clientState;
         consensusStates[clientId][height.toUint128()] = consensusState;
         statuses[clientId] = ClientStatus.Active;
-        return (
-        keccak256(clientStateBytes),
-        ConsensusStateUpdate({consensusStateCommitment: keccak256(consensusStateBytes), height: height}),
-        true
-        );
+        return Height.Data({revision_number: 0, revision_height: clientState.latest_height.revision_height});
     }
 
     /**
@@ -94,18 +81,29 @@ contract ParliaClient is ILightClient {
     external
     view
     override
-    returns (uint64, bool)
+    returns (uint64)
     {
         ConsensusState.Data storage consensusState = consensusStates[clientId][height.toUint128()];
-        return (consensusState.timestamp, consensusState.timestamp != 0);
+        return consensusState.timestamp;
     }
 
     /**
      * @dev getLatestHeight returns the latest height of the client state corresponding to `clientId`.
      */
-    function getLatestHeight(string calldata clientId) external view override returns (Height.Data memory, bool) {
+    function getLatestHeight(string calldata clientId) external view virtual override returns (Height.Data memory) {
         ClientState.Data storage clientState = clientStates[clientId];
-        return (Height.Data({revision_number: 0, revision_height: clientState.latest_height.revision_height}), clientState.latest_height.revision_height != 0);
+        return Height.Data({revision_number: 0, revision_height: clientState.latest_height.revision_height});
+    }
+
+    /**
+    * @dev routeUpdateClient returns the calldata to the receiving function of the client message.
+     *      The light client encodes a client message as ethereum ABI.
+     */
+    function routeUpdateClient(string calldata clientId, bytes calldata protoClientMessage) external pure virtual override returns (bytes4, bytes memory)
+    {
+        Any.Data memory any = Any.decode(protoClientMessage);
+        Header.Data memory header = Header.decode(any.value);
+        return (this.updateClient.selector, abi.encode(clientId, header));
     }
 
     /**
@@ -116,41 +114,27 @@ contract ParliaClient is ILightClient {
      * 4. update state(s) with the client message
      * 5. persist the state(s) on the host
      */
-    function updateClient(string calldata clientId, bytes calldata clientMessageBytes)
-    external
-    onlyIBC
-    override
-    returns (bytes32 clientStateCommitment, ConsensusStateUpdate[] memory updates, bool ok)
+    function updateClient(string calldata clientId, Header.Data calldata header)
+    public
+    returns (Height.Data[] memory heights)
     {
-        Height.Data memory height;
-        uint64 timestamp;
-        bytes32 stateRoot;
-        bytes memory accountProof;
-        Any.Data memory anyClientState;
-        Any.Data memory anyConsensusState;
-
-        (height, stateRoot, timestamp, accountProof) = parseHeader(clientMessageBytes);
-
-        ClientState.Data storage clientState = clientStates[clientId];
-        clientState.latest_height.revision_number = height.revision_number;
-        clientState.latest_height.revision_height = height.revision_height;
-        anyClientState.type_url = CLIENT_STATE_TYPE_URL;
-        anyClientState.value = ClientState.encode(clientState);
+        bytes memory rlpEthHeader  = header.headers[0].header;
+        RLPReader.RLPItem[] memory items = rlpEthHeader.toRlpItem().toList();
+        Height.Data memory height = Height.Data({revision_number: 0, revision_height: uint64(items[8].toUint())});
+        uint64 timestamp = uint64(items[11].toUint());
+        bytes32 stateRoot = bytes32(items[3].toBytes());
 
         //TODO verify header
 
-        ConsensusState.Data storage consensusState = consensusStates[clientId][height.toUint128()];
-        consensusState.timestamp = timestamp;
-        consensusState.state_root = abi.encodePacked(
-            verifyStorageProof(address(bytes20(clientState.ibc_store_address)), stateRoot, accountProof));
+        clientStates[clientId].latest_height.revision_number = height.revision_number;
+        clientStates[clientId].latest_height.revision_height = height.revision_height;
+        consensusStates[clientId][height.toUint128()].timestamp = timestamp;
+        consensusStates[clientId][height.toUint128()].state_root = abi.encodePacked(
+            verifyStorageProof(address(bytes20(clientStates[clientId].ibc_store_address)), stateRoot, header.account_proof));
 
-        anyConsensusState.type_url = CONSENSUS_STATE_TYPE_URL;
-        anyConsensusState.value = ConsensusState.encode(consensusState);
-
-        updates = new ConsensusStateUpdate[](1);
-        updates[0] =
-        ConsensusStateUpdate({consensusStateCommitment: keccak256(Any.encode(anyConsensusState)), height: height});
-        return (keccak256(Any.encode(anyClientState)), updates, true);
+        heights = new Height.Data[](1);
+        heights[0] = height;
+        return heights;
     }
 
     /**
@@ -247,19 +231,6 @@ contract ParliaClient is ILightClient {
     }
 
     /* Internal functions */
-
-    function parseHeader(bytes memory bz) internal pure returns (Height.Data memory, bytes32, uint64, bytes memory) {
-        Any.Data memory any = Any.decode(bz);
-        require(keccak256(abi.encodePacked(any.type_url)) == HEADER_TYPE_URL_HASH, "invalid header type");
-        Header.Data memory header = Header.decode(any.value);
-        bytes memory rlpEthHeader  = header.headers[0].header;
-
-        RLPReader.RLPItem[] memory items = rlpEthHeader.toRlpItem().toList();
-        Height.Data memory height = Height.Data({revision_number: 0, revision_height: uint64(items[8].toUint())});
-        uint64 timestamp = uint64(items[11].toUint());
-        bytes32 stateRoot = bytes32(items[3].toBytes());
-        return (height,stateRoot, timestamp, header.account_proof);
-    }
 
     function unmarshalClientState(bytes calldata bz)
     internal
