@@ -24,12 +24,10 @@ function init_validator() {
   validatorAddr=0x$(cat ${workspace}/storage/${node_id}/keystore/${node_id} | jq .address | sed 's/"//g')
 	echo ${validatorAddr} >${workspace}/storage/${node_id}/address
 
-  # import BLS vote address
-	echo password01 > ${workspace}/storage/${node_id}/blspassword.txt
+  # create new BLS vote address
 	expect ${workspace}/scripts/create_bls_key.sh ${workspace}/storage/${node_id}
-	#geth --datadir ${workspace}/storage/${node_id} bls account import ${workspace}/validators/bls/${node_id} --blspassword ${workspace}/storage/${node_id}/blspassword.txt --blsaccountpassword ${workspace}/storage/${node_id}/blspassword.txt
-	#geth --datadir ${workspace}/storage/${node_id} bls account list --blspassword ${workspace}/storage/${node_id}/blspassword.txt
-  voteAddr=0x$(cat ${workspace}/validators/bls/${node_id} | jq .pubkey | sed 's/"//g')
+  voteAddr=0x$(cat ${workspace}/storage/${node_id}/bls/keystore/*json| jq .pubkey | sed 's/"//g')
+	echo $voteAddr
 
 	echo "${validatorAddr},${validatorAddr},${validatorAddr},0x0000000010000000,${voteAddr}" >>${workspace}/genesis/validators.conf
 }
@@ -63,7 +61,6 @@ prepare
 # First, generate config for each validator
 for ((i = 1; i <= ${NUMS_OF_VALIDATOR}; i++)); do
 	init_validator "bsc-validator${i}"
-  generate_validator_conf "bsc-validator${i}"
 done
 
 # Then, use validator configs to generate genesis file

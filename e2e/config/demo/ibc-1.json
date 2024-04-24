@@ -19,7 +19,7 @@
       "numerator": 1,
       "denominator": 1
     },
-    "tx_type": "legacy",
+    "tx_type": "auto",
     "max_gas_limit": 6000000
   },
   "prover": {
