@@ -14,7 +14,13 @@
     "initial_recv_checkpoint": 0,
     "enable_debug_trace": false,
     "average_block_time_msec": 3000,
-    "max_retry_for_inclusion": 5
+    "max_retry_for_inclusion": 5,
+    "gas_estimate_rate" : {
+      "numerator": 1,
+      "denominator": 1
+    },
+    "tx_type": "auto",
+    "max_gas_limit": 6000000
   },
   "prover": {
     "@type": "/relayer.provers.parlia.config.ProverConfig",
