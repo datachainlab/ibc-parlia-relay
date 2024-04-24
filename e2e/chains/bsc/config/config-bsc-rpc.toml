@@ -7,27 +7,15 @@ EnablePreimageRecording = false
 [Eth.Miner]
 GasFloor = 30000000
 GasCeil = 40000000
-GasPrice = 5000000000
+GasPrice = 3000000000
 Recommit = 10000000000
-Noverify = false
-
-[Eth.Ethash]
-CacheDir = ""
-CachesInMem = 0
-CachesOnDisk = 0
-CachesLockMmap = false
-DatasetDir = ""
-DatasetsInMem = 0
-DatasetsOnDisk = 0
-DatasetsLockMmap = false
-PowMode = 0
 
 [Eth.TxPool]
 Locals = []
 NoLocals = true
 Journal = "transactions.rlp"
 Rejournal = 3600000000000
-PriceLimit = 5000000000
+PriceLimit = 3000000000
 PriceBump = 10
 AccountSlots = 128
 GlobalSlots = 10000

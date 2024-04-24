@@ -11,9 +11,9 @@ echo "validator id: ${HOST_IP}"
 
 ETHSTATS=""
 geth --config ${DATA_DIR}/config.toml --datadir ${DATA_DIR} --netrestrict ${CLUSTER_CIDR} \
-	--verbosity ${VERBOSE} --nousb ${ETHSTATS} \
+	--verbosity ${VERBOSE} --nousb ${ETHSTATS} --state.scheme=hash --db.engine=leveldb \
 	--bootnodes enode://${BOOTSTRAP_PUB_KEY}@${BOOTSTRAP_IP}:${BOOTSTRAP_TCP_PORT} \
-	--mine -unlock ${VALIDATOR_ADDR} --password /dev/null \
+	--mine --miner.etherbase=${VALIDATOR_ADDR} -unlock ${VALIDATOR_ADDR} --password /dev/null --blspassword /scripts/wallet_password.txt \
 	--light.serve 50 --pprof.addr 0.0.0.0 --metrics \
-	--rpc.allow-unprotected-txs --txlookuplimit 15768000 \
+	--rpc.allow-unprotected-txs  --history.transactions 15768000 \
 	--pprof --ipcpath /gethipc --vote

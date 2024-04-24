@@ -26,8 +26,9 @@ function init_validator() {
 
   # import BLS vote address
 	echo password01 > ${workspace}/storage/${node_id}/blspassword.txt
-	geth --datadir ${workspace}/storage/${node_id} bls account import ${workspace}/validators/bls/${node_id} --blspassword ${workspace}/storage/${node_id}/blspassword.txt --blsaccountpassword ${workspace}/storage/${node_id}/blspassword.txt
-	geth --datadir ${workspace}/storage/${node_id} bls account list --blspassword ${workspace}/storage/${node_id}/blspassword.txt
+	expect ${workspace}/scripts/create_bls_key.sh ${workspace}/storage/${node_id}
+	#geth --datadir ${workspace}/storage/${node_id} bls account import ${workspace}/validators/bls/${node_id} --blspassword ${workspace}/storage/${node_id}/blspassword.txt --blsaccountpassword ${workspace}/storage/${node_id}/blspassword.txt
+	#geth --datadir ${workspace}/storage/${node_id} bls account list --blspassword ${workspace}/storage/${node_id}/blspassword.txt
   voteAddr=0x$(cat ${workspace}/validators/bls/${node_id} | jq .pubkey | sed 's/"//g')
 
 	echo "${validatorAddr},${validatorAddr},${validatorAddr},0x0000000010000000,${voteAddr}" >>${workspace}/genesis/validators.conf
@@ -47,7 +48,7 @@ function generate_genesis() {
 function init_genesis_data() {
 	node_type=$1
 	node_id=$2
-	geth --datadir ${workspace}/storage/${node_id} init ${workspace}/genesis/genesis.json
+	geth --datadir ${workspace}/storage/${node_id} init --state.scheme hash --db.engine=leveldb ${workspace}/genesis/genesis.json
 	cp ${workspace}/config/config-${node_type}.toml ${workspace}/storage/${node_id}/config.toml
 	sed -i -e "s/{{NetworkId}}/${BSC_CHAIN_ID}/g" ${workspace}/storage/${node_id}/config.toml
 	if [ "${node_id}" == "bsc-rpc" ]; then
