@@ -6,6 +6,8 @@ module.exports = {
   networks: {
     bsc_local: {
       network_id: '*', // Any network (default: none)
+      maxFeePerGas: 3000000000,
+      maxPriorityFeePerGas: 3000000000,
       provider: () =>
         new HDWalletProvider({
           mnemonic: {
@@ -18,15 +20,17 @@ module.exports = {
     },
     bsc_local2: {
       network_id: '*', // Any network (default: none)
+      maxFeePerGas: 3000000000,
+      maxPriorityFeePerGas: 3000000000,
       provider: () =>
-          new HDWalletProvider({
-              mnemonic: {
-                  phrase: mnemonic,
-              },
-              providerOrUrl: 'http://127.0.0.1:8645',
-              addressIndex: 0,
-              numberOfAddresses: 5,
-          }),
+        new HDWalletProvider({
+          mnemonic: {
+              phrase: mnemonic,
+          },
+          providerOrUrl: 'http://127.0.0.1:8645',
+          addressIndex: 0,
+          numberOfAddresses: 5,
+        }),
     },
     eth_local: {
       host: '127.0.0.1',
@@ -50,7 +54,7 @@ module.exports = {
 
   compilers: {
     solc: {
-      version: "0.8.12", // Fetch exact version from solc-bin (default: truffle's version)
+      version: "0.8.20", // Fetch exact version from solc-bin (default: truffle's version)
       // docker: true,        // Use "0.5.1" you've installed locally with docker (default: false)
       settings: {
         // See the solidity docs for advice about optimization and evmVersion
