@@ -24,7 +24,8 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           version: v1.53
-          args: --timeout=5m0s
+          # still using the deprecated types in ibc-go v8
+          args: --timeout=5m0s --disable staticcheck
       - name: test
         run: go test -v ./...
   e2e:
