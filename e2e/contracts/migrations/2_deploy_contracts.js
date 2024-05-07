@@ -1,14 +1,14 @@
-const IBCClient = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCClient");
-const IBCConnection = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCConnectionSelfStateNoValidation");
-const IBCChannelHandshake = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCChannelHandshake");
-const IBCChannelPacketSendRecv = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCChannelPacketSendRecv");
-const IBCChannelPacketTimeout = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCChannelPacketTimeout");
-const IBCChannelUpgradeInitTryAck = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCChannelUpgradeInitTryAck");
-const IBCChannelUpgradeConfirmTimeoutCancel = artifacts.require("@hyperledger-labs/yui-ibc-solidity/IBCChannelUpgradeConfirmTimeoutCancel");
-const IBCHandler = artifacts.require("@hyperledger-labs/yui-ibc-solidity/OwnableIBCHandler");
-const ERC20Token = artifacts.require("@hyperledger-labs/yui-ibc-solidity/ERC20Token");
-const ICS20TransferBank = artifacts.require("@hyperledger-labs/yui-ibc-solidity/ICS20TransferBank");
-const ICS20Bank = artifacts.require("@hyperledger-labs/yui-ibc-solidity/ICS20Bank");
+const IBCClient = artifacts.require("IBCClient");
+const IBCConnection = artifacts.require("IBCConnectionSelfStateNoValidation");
+const IBCChannelHandshake = artifacts.require("IBCChannelHandshake");
+const IBCChannelPacketSendRecv = artifacts.require("IBCChannelPacketSendRecv");
+const IBCChannelPacketTimeout = artifacts.require("IBCChannelPacketTimeout");
+const IBCChannelUpgradeInitTryAck = artifacts.require("IBCChannelUpgradeInitTryAck");
+const IBCChannelUpgradeConfirmTimeoutCancel = artifacts.require("IBCChannelUpgradeConfirmTimeoutCancel");
+const IBCHandler = artifacts.require("OwnableIBCHandler");
+const ERC20Token = artifacts.require("ERC20Token");
+const ICS20TransferBank = artifacts.require("ICS20TransferBank");
+const ICS20Bank = artifacts.require("ICS20Bank");
 const ParliaClient = artifacts.require("ParliaClient");
 
 module.exports = async function (deployer) {
