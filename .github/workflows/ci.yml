@@ -23,7 +23,7 @@ jobs:
       - name: lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.53
+          version: v1.58
           # still using the deprecated types in ibc-go v8
           args: --timeout=5m0s --disable staticcheck
       - name: test
