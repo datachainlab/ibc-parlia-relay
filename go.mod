@@ -228,7 +228,7 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
-// pebble version mismatch
+// avoid go-ethereum@v1.13.15/ethdb/pebble/pebble.go:592:21: assignment mismatch: 4 variables but reader.Next returns 5 values
 // https://github.com/ethereum/go-ethereum/blob/v1.13.15/go.mod#L16
-// https://github.com/datachainlab/ethereum-ibc-relay-chain/blob/main/go.mod#L56
+// https://github.com/cosmos/cosmos-db/blob/v1.0.2/go.mod#L6
 replace github.com/cockroachdb/pebble => github.com/cockroachdb/pebble v0.0.0-20230928194634-aa077af62593
