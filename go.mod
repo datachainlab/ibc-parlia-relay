@@ -229,6 +229,6 @@ require (
 )
 
 // pebble version mismatch
-// https://github.com/ethereum/go-ethereum/blob/c5ba367eb6232e3eddd7d6226bfd374449c63164/go.mod#L16C2-L16C66
-// https://github.com/datachainlab/ethereum-ibc-relay-chain/blob/4a1e88adc1dc54c107728f84db8a85dc6e6101fa/go.mod#L56
+// https://github.com/ethereum/go-ethereum/blob/v1.13.15/go.mod#L16
+// https://github.com/datachainlab/ethereum-ibc-relay-chain/blob/main/go.mod#L56
 replace github.com/cockroachdb/pebble => github.com/cockroachdb/pebble v0.0.0-20230928194634-aa077af62593
