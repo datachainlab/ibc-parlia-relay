@@ -3,7 +3,7 @@ BSC_IBC_PROTO ?= ../parlia-elc/proto/definitions
 
 DOCKER := $(shell which docker)
 
-protoVer=0.13.1
+protoVer=0.14.0
 protoImageName=ghcr.io/cosmos/proto-builder:$(protoVer)
 protoImage=$(DOCKER) run --user 0 --rm -v $(CURDIR):/workspace --workdir /workspace $(protoImageName)
 

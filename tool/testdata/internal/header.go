@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
+	"github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"

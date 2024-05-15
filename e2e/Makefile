@@ -1,7 +1,8 @@
 .PHONY:chain
 chain:
-	make -C chains build
-	make -C chains network
+	# For Apple Silicon explicit declaration 'linux/amd64' is required
+	DOCKER_DEFAULT_PLATFORM=linux/amd64 make -C chains build
+	DOCKER_DEFAULT_PLATFORM=linux/amd64 make -C chains network
 	# Wait for one epoch to use BEP-126 validator
 	sleep 60
 

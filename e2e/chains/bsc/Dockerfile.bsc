@@ -1,9 +1,9 @@
-FROM golang:1.19-alpine
+FROM golang:1.21-alpine
 
 ARG GIT_SOURCE
 ARG GIT_CHECKOUT_BRANCH
 
-RUN apk add --no-cache make cmake gcc musl-dev linux-headers git bash build-base libc-dev
+RUN apk add --no-cache make cmake gcc musl-dev linux-headers git bash build-base libc-dev jq
 
 ENV CGO_CFLAGS="-O -D__BLST_PORTABLE__"
 ENV CGO_CFLAGS_ALLOW="-O -D__BLST_PORTABLE__"

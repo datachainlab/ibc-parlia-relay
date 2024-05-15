@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   bsc-geth:
     build:
@@ -7,5 +5,5 @@ services:
       dockerfile: Dockerfile.bsc
       args:
         GIT_SOURCE: https://github.com/binance-chain/bsc.git
-        GIT_CHECKOUT_BRANCH: v1.2.10
+        GIT_CHECKOUT_BRANCH: v1.4.5
     image: bsc-geth:docker-local

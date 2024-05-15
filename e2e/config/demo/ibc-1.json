@@ -9,12 +9,19 @@
       "mnemonic": "math razor capable expose worth grape metal sunset metal sudden usage scheme",
       "path": "m/44'/60'/0'/0/0"
     },
-    "ibc_address": "0xaa43d337145E8930d01cb4E60Abf6595C692921E",
+    "ibc_address": "0x2F5703804E29F4252FA9405B8D357220d11b3bd9",
     "initial_send_checkpoint": 0,
     "initial_recv_checkpoint": 0,
     "enable_debug_trace": false,
     "average_block_time_msec": 3000,
-    "max_retry_for_inclusion": 5
+    "max_retry_for_inclusion": 5,
+    "gas_estimate_rate": {
+      "numerator": 3,
+      "denominator": 2
+    },
+    "max_gas_limit": 10000000,
+    "tx_type": "auto",
+    "blocks_per_event_query": 1000
   },
   "prover": {
     "@type": "/relayer.provers.parlia.config.ProverConfig",

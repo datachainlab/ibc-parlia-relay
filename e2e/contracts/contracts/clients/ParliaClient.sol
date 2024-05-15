@@ -42,6 +42,16 @@ contract ParliaClient is ILightClient {
         ibcHandler = ibcHandler_;
     }
 
+    function getLatestInfo(string calldata clientId)
+    public
+    view
+    returns (Height.Data memory latestHeight, uint64 latestTimestamp, ClientStatus status)
+    {
+        latestHeight = getLatestHeight(clientId);
+        latestTimestamp = consensusStates[clientId][latestHeight.toUint128()].timestamp;
+        status = statuses[clientId];
+    }
+
     function getStatus(string calldata clientId) external view virtual override returns (ClientStatus) {
         return statuses[clientId];
     }
@@ -90,7 +100,7 @@ contract ParliaClient is ILightClient {
     /**
      * @dev getLatestHeight returns the latest height of the client state corresponding to `clientId`.
      */
-    function getLatestHeight(string calldata clientId) external view virtual override returns (Height.Data memory) {
+    function getLatestHeight(string calldata clientId) public view virtual override returns (Height.Data memory) {
         ClientState.Data storage clientState = clientStates[clientId];
         return Height.Data({revision_number: 0, revision_height: clientState.latest_height.revision_height});
     }

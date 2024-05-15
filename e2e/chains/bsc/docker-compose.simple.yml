@@ -1,5 +1,3 @@
-version: "3.8"
-
 volumes:
   bsc-rpc:
   bsc-validator1-1:
@@ -34,7 +32,6 @@ services:
       - ./scripts:/root/scripts
       - ./config:/root/config
       - ./init-holders:/root/init-holders
-      - ./validators/bls:/root/validators/bls
       - ./validators/keystore:/root/validators/keystore
     command: /root/scripts/bootstrap.sh
 
@@ -57,7 +54,6 @@ services:
       - ./scripts:/root/scripts
       - ./config:/root/config
       - ./init-holders:/root/init-holders
-      - ./validators/bls:/root/validators/bls
       - ./validators/keystore:/root/validators/keystore
     command: /root/scripts/bootstrap.sh
 
