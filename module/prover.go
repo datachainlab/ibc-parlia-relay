@@ -124,24 +124,12 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight ex
 		}
 		return pr.withProofAndValidators(height, ethHeaders)
 	}
-	queryVerifiableNonNeighboringEpochHeader := func(height uint64, limitHeight uint64, checkpoint uint64) (core.Header, error) {
-		ethHeaders, err := queryFinalizedHeaderAfterCheckpoint(pr.chain.Header, height, limitHeight, checkpoint)
-		if err != nil {
-			return nil, err
-		}
-		// No finalized header found
-		if ethHeaders == nil {
-			return nil, nil
-		}
-		return pr.withProofAndValidators(height, ethHeaders)
-	}
 	latestHeight, err := pr.chain.LatestHeight()
 	if err != nil {
 		return nil, err
 	}
 	return setupHeadersForUpdate(
 		queryVerifiableNeighboringEpochHeader,
-		queryVerifiableNonNeighboringEpochHeader,
 		pr.chain.Header,
 		clientStateLatestHeight,
 		latestFinalizedHeader,

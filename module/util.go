@@ -14,10 +14,6 @@ func getPreviousEpoch(v uint64) uint64 {
 	return (epochCount - 1) * constant.BlocksPerEpoch
 }
 
-func isEpoch(v uint64) bool {
-	return v%constant.BlocksPerEpoch == 0
-}
-
 func getCurrentEpoch(v uint64) uint64 {
 	return toEpoch(v)
 }
