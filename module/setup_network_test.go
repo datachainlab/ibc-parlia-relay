@@ -30,7 +30,12 @@ func (ts *SetupNetworkTestSuite) SetupTest() {
 	err := log.InitLogger("DEBUG", "text", "stdout")
 	ts.Require().NoError(err)
 
-	client, err := ethclient.Dial(os.Getenv("BSC_RPC_NODE"))
+	rpcNode := os.Getenv("BSC_RPC_NODE")
+	if rpcNode == "" {
+		// https://docs.bscscan.com/misc-tools-and-utilities/public-rpc-nodes
+		rpcNode = "https://data-seed-prebsc-1-s1.binance.org:8545"
+	}
+	client, err := ethclient.Dial(rpcNode)
 	ts.Require().NoError(err)
 
 	ts.client = client
@@ -60,30 +65,55 @@ func (ts *SetupNetworkTestSuite) TestSuccess_setupHeadersForUpdate_epoch() {
 	verifiableLatestFinalizeHeader, err := withProofAndValidators(ts.headerFn, ts.accountProofFn, finalizedHeight, latestFinalizedHeader)
 	ts.Require().NoError(err)
 
-	verify := func(trustedHeight uint64, expected int) {
-		clientStateLatestHeight := clienttypes.NewHeight(0, trustedHeight)
-		neighborFn := func(height uint64, _ uint64) (core.Header, error) {
-			h, e := newETHHeader(&types2.Header{
-				Number: big.NewInt(int64(height)),
-			})
-			return &Header{
-				Headers: []*ETHHeader{h},
-			}, e
-		}
-		targets, err := setupHeadersForUpdate(neighborFn, ts.headerFn, clientStateLatestHeight, verifiableLatestFinalizeHeader.(*Header), clienttypes.NewHeight(0, latestBlockNumber))
-		ts.Require().NoError(err)
-		ts.Require().Len(targets, expected)
-		for i, h := range targets {
-			trusted := h.(*Header).TrustedHeight
-			if i == 0 {
-				ts.Require().Equal(trusted.RevisionHeight, trustedHeight)
-			} else {
-				ts.Require().Equal(*trusted, targets[i-1].GetHeight())
-			}
-		}
+	ts.verify(verifiableLatestFinalizeHeader, latestBlockNumber, finalizedHeight, 0)
+	ts.verify(verifiableLatestFinalizeHeader, latestBlockNumber, finalizedHeight-constant.BlocksPerEpoch*5, 5)
+
+}
+
+func (ts *SetupNetworkTestSuite) TestSuccess_setupHeadersForUpdate_notEpoch() {
+
+	latestBlockNumber, err := ts.client.BlockNumber(context.Background())
+	ts.Require().NoError(err)
+
+	finalizedHeight, latestFinalizedHeader, err := queryLatestFinalizedHeader(ts.headerFn, latestBlockNumber)
+	ts.Require().NoError(err)
+
+	// force epoch - 1
+	if finalizedHeight%constant.BlocksPerEpoch == 0 {
+		finalizedHeight = finalizedHeight - 1
+		latestFinalizedHeader, err = queryFinalizedHeader(ts.headerFn, finalizedHeight, latestBlockNumber)
 	}
 
-	verify(finalizedHeight, 0)
-	verify(finalizedHeight-constant.BlocksPerEpoch*5, 5)
+	verifiableLatestFinalizeHeader, err := withProofAndValidators(ts.headerFn, ts.accountProofFn, finalizedHeight, latestFinalizedHeader)
+	ts.Require().NoError(err)
 
+	ts.verify(verifiableLatestFinalizeHeader, latestBlockNumber, finalizedHeight, 0)
+	ts.verify(verifiableLatestFinalizeHeader, latestBlockNumber, finalizedHeight-constant.BlocksPerEpoch*5, 6)
+
+}
+
+func (ts *SetupNetworkTestSuite) verify(verifiableLatestFinalizeHeader core.Header, latestBlockNumber, trustedHeight uint64, expected int) {
+	clientStateLatestHeight := clienttypes.NewHeight(0, trustedHeight)
+	queryVerifiableNeighboringEpochHeader := func(height uint64, limitHeight uint64) (core.Header, error) {
+		ethHeaders, err := queryFinalizedHeader(ts.headerFn, height, limitHeight)
+		if err != nil {
+			return nil, err
+		}
+		// No finalized header found
+		if ethHeaders == nil {
+			return nil, nil
+		}
+		return withProofAndValidators(ts.headerFn, ts.accountProofFn, height, ethHeaders)
+	}
+	targets, err := setupHeadersForUpdate(queryVerifiableNeighboringEpochHeader, ts.headerFn, clientStateLatestHeight, verifiableLatestFinalizeHeader.(*Header), clienttypes.NewHeight(0, latestBlockNumber))
+	ts.Require().NoError(err)
+	ts.Require().Len(targets, expected)
+	for i, h := range targets {
+		trusted := h.(*Header).TrustedHeight
+		if i == 0 {
+			ts.Require().Equal(trusted.RevisionHeight, trustedHeight)
+		} else {
+			ts.Require().Equal(*trusted, targets[i-1].GetHeight())
+		}
+	}
 }
