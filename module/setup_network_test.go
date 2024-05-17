@@ -49,28 +49,51 @@ func (ts *SetupNetworkTestSuite) SetupTest() {
 }
 
 func (ts *SetupNetworkTestSuite) TestSuccess_setupHeadersForUpdate_epoch() {
-
-	latestBlockNumber, err := ts.client.BlockNumber(context.Background())
-	ts.Require().NoError(err)
-
-	finalizedHeight, latestFinalizedHeader, err := queryLatestFinalizedHeader(ts.headerFn, latestBlockNumber)
-	ts.Require().NoError(err)
-
-	// force epoch
-	if finalizedHeight%constant.BlocksPerEpoch != 0 {
-		finalizedHeight = toEpoch(finalizedHeight)
-		latestFinalizedHeader, err = queryFinalizedHeader(ts.headerFn, finalizedHeight, latestBlockNumber)
+	fn := func(h uint64) uint64 {
+		if h%constant.BlocksPerEpoch != 0 {
+			return toEpoch(h)
+		}
+		return h
 	}
-
-	verifiableLatestFinalizeHeader, err := withProofAndValidators(ts.headerFn, ts.accountProofFn, finalizedHeight, latestFinalizedHeader)
-	ts.Require().NoError(err)
-
-	ts.verify(verifiableLatestFinalizeHeader, latestBlockNumber, finalizedHeight, 0)
-	ts.verify(verifiableLatestFinalizeHeader, latestBlockNumber, finalizedHeight-constant.BlocksPerEpoch*5, 5)
-
+	ts.verifySetupHeadersForUpdate(fn, 5)
 }
 
-func (ts *SetupNetworkTestSuite) TestSuccess_setupHeadersForUpdate_notEpoch() {
+func (ts *SetupNetworkTestSuite) TestSuccess_setupHeadersForUpdate_beforeEpoch() {
+
+	fn := func(h uint64) uint64 {
+		if h%constant.BlocksPerEpoch == 0 {
+			return h - 1
+		}
+		return h
+	}
+	ts.verifySetupHeadersForUpdate(fn, 6)
+}
+
+func (ts *SetupNetworkTestSuite) TestSuccess_setupHeadersForUpdate_afterEpoch() {
+	fn := func(h uint64) uint64 {
+		if h%constant.BlocksPerEpoch == 0 {
+			return h + 1
+		}
+		return h
+	}
+	ts.verifySetupHeadersForUpdate(fn, 6)
+}
+
+func (ts *SetupNetworkTestSuite) TestSuccess_setupHeadersForUpdate_checkpoint() {
+	fn := func(h uint64) uint64 {
+		return ts.finalizedCheckpoint(h)
+	}
+	ts.verifySetupHeadersForUpdate(fn, 6)
+}
+
+func (ts *SetupNetworkTestSuite) TestSuccess_setupHeadersForUpdate_beforeCheckpoint() {
+	fn := func(h uint64) uint64 {
+		return ts.finalizedCheckpoint(h) - 1
+	}
+	ts.verifySetupHeadersForUpdate(fn, 6)
+}
+
+func (ts *SetupNetworkTestSuite) verifySetupHeadersForUpdate(editFinalizedHeight func(h uint64) uint64, expected int) {
 
 	latestBlockNumber, err := ts.client.BlockNumber(context.Background())
 	ts.Require().NoError(err)
@@ -78,17 +101,18 @@ func (ts *SetupNetworkTestSuite) TestSuccess_setupHeadersForUpdate_notEpoch() {
 	finalizedHeight, latestFinalizedHeader, err := queryLatestFinalizedHeader(ts.headerFn, latestBlockNumber)
 	ts.Require().NoError(err)
 
-	// force epoch - 1
-	if finalizedHeight%constant.BlocksPerEpoch == 0 {
-		finalizedHeight = finalizedHeight - 1
+	finalizedHeightAfter := editFinalizedHeight(finalizedHeight)
+	if finalizedHeightAfter != finalizedHeight {
+		finalizedHeight = finalizedHeightAfter
 		latestFinalizedHeader, err = queryFinalizedHeader(ts.headerFn, finalizedHeight, latestBlockNumber)
+		ts.Require().NoError(err)
 	}
 
 	verifiableLatestFinalizeHeader, err := withProofAndValidators(ts.headerFn, ts.accountProofFn, finalizedHeight, latestFinalizedHeader)
 	ts.Require().NoError(err)
 
 	ts.verify(verifiableLatestFinalizeHeader, latestBlockNumber, finalizedHeight, 0)
-	ts.verify(verifiableLatestFinalizeHeader, latestBlockNumber, finalizedHeight-constant.BlocksPerEpoch*5, 6)
+	ts.verify(verifiableLatestFinalizeHeader, latestBlockNumber, finalizedHeight-constant.BlocksPerEpoch*5, expected)
 
 }
 
@@ -116,4 +140,14 @@ func (ts *SetupNetworkTestSuite) verify(verifiableLatestFinalizeHeader core.Head
 			ts.Require().Equal(*trusted, targets[i-1].GetHeight())
 		}
 	}
+}
+
+func (ts *SetupNetworkTestSuite) finalizedCheckpoint(h uint64) uint64 {
+	prevEpoch := toEpoch(h) - constant.BlocksPerEpoch
+	beforePrevEpoch := prevEpoch - constant.BlocksPerEpoch
+	beforePrevValidatorSet, err := queryValidatorSet(ts.headerFn, beforePrevEpoch)
+	ts.Require().NoError(err)
+	log.GetLogger().Info("validator set", "len", len(beforePrevValidatorSet), "checkpoint", beforePrevValidatorSet.CheckpointValue())
+	checkpoint := beforePrevValidatorSet.Checkpoint(prevEpoch)
+	return checkpoint
 }
