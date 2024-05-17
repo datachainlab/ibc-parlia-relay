@@ -198,31 +198,7 @@ func (pr *Prover) CheckRefreshRequired(counterparty core.ChainInfoICS02Querier) 
 }
 
 func (pr *Prover) withProofAndValidators(height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
-
-	// get RLP-encoded account proof
-	rlpAccountProof, _, err := pr.getAccountProof(int64(height))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get account proof : height = %d, %+v", height, err)
-	}
-
-	header := &Header{
-		AccountProof: rlpAccountProof,
-		Headers:      ethHeaders,
-	}
-
-	// Get validator set for verify headers
-	previousEpoch := getPreviousEpoch(height)
-	header.PreviousValidators, err = queryValidatorSet(pr.chain.Header, previousEpoch)
-	if err != nil {
-		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
-	}
-	currentEpoch := getCurrentEpoch(height)
-	header.CurrentValidators, err = queryValidatorSet(pr.chain.Header, currentEpoch)
-	if err != nil {
-		return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
-	}
-
-	return header, nil
+	return withProofAndValidators(pr.chain.Header, pr.getAccountProof, height, ethHeaders)
 }
 
 func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState, exported.ConsensusState, error) {
