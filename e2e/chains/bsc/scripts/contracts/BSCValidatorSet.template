@@ -44,8 +44,8 @@ contract BSCValidatorSet is IBSCValidatorSet, System, IParamSubscriber, IApplica
   uint32 public constant ERROR_LEN_OF_VAL_MISMATCH = 103;
   uint32 public constant ERROR_RELAYFEE_TOO_LARGE = 104;
 
-  uint256 public constant INIT_NUM_OF_CABINETS = 21;
-  uint256 public constant EPOCH = 200;
+  uint256 public constant INIT_NUM_OF_CABINETS = {{INIT_NUM_OF_CABINETS}};
+  uint256 public constant EPOCH = {{BLOCKS_PER_EPOCH}};
 
   /*********************** state of the contract **************************/
   Validator[] public currentValidatorSet;
@@ -485,9 +485,18 @@ contract BSCValidatorSet is IBSCValidatorSet, System, IParamSubscriber, IApplica
     }
     address[] memory miningValidators = new address[](_numOfCabinets);
     bytes[] memory miningVoteAddrs = new bytes[](_numOfCabinets);
+
+    // 強制ローテーション
+    uint256 epochNumber = block.number / EPOCH;
+    uint256 start = epochNumber % validators.length;
+    uint256 target = start;
     for (uint i; i<_numOfCabinets; ++i) {
-      miningValidators[i] = validators[i];
-      miningVoteAddrs[i] = voteAddrs[i];
+      target += i;
+      if (target >= validators.length){
+        target = 0;
+      }
+      miningValidators[i] = validators[target];
+      miningVoteAddrs[i] = voteAddrs[target];
     }
     return (miningValidators, miningVoteAddrs);
   }
