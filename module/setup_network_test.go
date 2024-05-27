@@ -145,9 +145,10 @@ func (ts *SetupNetworkTestSuite) verify(verifiableLatestFinalizeHeader core.Head
 func (ts *SetupNetworkTestSuite) finalizedCheckpoint(h uint64) uint64 {
 	prevEpoch := toEpoch(h) - constant.BlocksPerEpoch
 	beforePrevEpoch := prevEpoch - constant.BlocksPerEpoch
-	beforePrevValidatorSet, err := queryValidatorSet(ts.headerFn, beforePrevEpoch)
+	beforePrevValidatorSet, beforePrevTurnTerm, err := queryValidatorSetAndTurnTerm(ts.headerFn, beforePrevEpoch)
 	ts.Require().NoError(err)
-	log.GetLogger().Info("validator set", "len", len(beforePrevValidatorSet), "checkpoint", beforePrevValidatorSet.CheckpointValue())
-	checkpoint := beforePrevValidatorSet.Checkpoint(prevEpoch)
+	checkpointValue := beforePrevValidatorSet.Checkpoint(beforePrevTurnTerm)
+	log.GetLogger().Info("validator set", "len", len(beforePrevValidatorSet), "checkpoint", checkpointValue)
+	checkpoint := checkpointValue + prevEpoch
 	return checkpoint
 }

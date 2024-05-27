@@ -397,10 +397,10 @@ func (ts *ProverTestSuite) TestSuccessCreateInitialLightClientState() {
 		stateRoot, err := ts.prover.GetStorageRoot(target)
 		ts.Require().NoError(err)
 		previousEpoch := GetPreviousEpoch(finalizedHeader.GetHeight().GetRevisionHeight())
-		previousValidatorSet, err := QueryValidatorSet(ts.prover.chain.Header, previousEpoch)
+		previousValidatorSet, previousTurnTerm, err := QueryValidatorSetAndTurnTerm(ts.prover.chain.Header, previousEpoch)
 		ts.Require().NoError(err)
 		currentEpoch := GetCurrentEpoch(finalizedHeader.GetHeight().GetRevisionHeight())
-		currentValidatorSet, err := QueryValidatorSet(ts.prover.chain.Header, currentEpoch)
+		currentValidatorSet, currentTurnTerm, err := QueryValidatorSetAndTurnTerm(ts.prover.chain.Header, currentEpoch)
 		ts.Require().NoError(err)
 
 		s1, s2, err := ts.prover.CreateInitialLightClientState(height)
@@ -416,8 +416,8 @@ func (ts *ProverTestSuite) TestSuccessCreateInitialLightClientState() {
 		ts.Require().Equal(cs.GetLatestHeight(), finalizedHeader.GetHeight())
 
 		consState := s2.(*ConsensusState)
-		ts.Require().Equal(consState.CurrentValidatorsHash, crypto.Keccak256(currentValidatorSet...))
-		ts.Require().Equal(consState.PreviousValidatorsHash, crypto.Keccak256(previousValidatorSet...))
+		ts.Require().Equal(consState.CurrentValidatorsHash, ts.prover.makeEpochHash(currentValidatorSet, currentTurnTerm))
+		ts.Require().Equal(consState.PreviousValidatorsHash, ts.prover.makeEpochHash(previousValidatorSet, previousTurnTerm))
 		ts.Require().Equal(consState.Timestamp, target.Time)
 		ts.Require().Equal(common.BytesToHash(consState.StateRoot), stateRoot)
 	}
