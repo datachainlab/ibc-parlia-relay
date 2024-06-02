@@ -486,7 +486,7 @@ contract BSCValidatorSet is IBSCValidatorSet, System, IParamSubscriber, IApplica
     address[] memory miningValidators = new address[](_numOfCabinets);
     bytes[] memory miningVoteAddrs = new bytes[](_numOfCabinets);
 
-    // 強制ローテーション
+    // force rotation
     uint256 epochNumber = block.number / EPOCH;
     uint256 start = epochNumber % validators.length;
     uint256 target = start;
