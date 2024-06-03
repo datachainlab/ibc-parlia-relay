@@ -75,10 +75,30 @@ func (ts *ValidatorSetTestSuite) TestErrorQueryValidatorSet() {
 	ts.Require().Equal(err.Error(), "error")
 }
 
+func (ts *ValidatorSetTestSuite) TestCheckpoint() {
+	validator := Validators(make([][]byte, 1))
+	ts.Equal(int(validator.Checkpoint(1)), 1)
+	ts.Equal(int(validator.Checkpoint(3)), 1)
+	ts.Equal(int(validator.Checkpoint(9)), 1)
+
+	validator = make([][]byte, 5)
+	ts.Equal(int(validator.Checkpoint(1)), 3)
+	ts.Equal(int(validator.Checkpoint(3)), 7)
+	ts.Equal(int(validator.Checkpoint(9)), 19)
+
+	validator = make([][]byte, 8)
+	ts.Equal(int(validator.Checkpoint(1)), 5)
+	ts.Equal(int(validator.Checkpoint(3)), 13)
+	ts.Equal(int(validator.Checkpoint(9)), 37)
+
+	validator = make([][]byte, 21)
+	ts.Equal(int(validator.Checkpoint(1)), 11)
+	ts.Equal(int(validator.Checkpoint(3)), 31)
+	ts.Equal(int(validator.Checkpoint(9)), 91)
+}
+
 func (ts *ValidatorSetTestSuite) TestValidator() {
 	trusted := Validators([][]byte{{1}, {2}, {3}, {4}, {5}})
-	ts.Equal(trusted.Checkpoint(1)+5, uint64(8))
-
 	ts.True(trusted.Contains([][]byte{{1}, {2}, {3}, {4}, {5}}))
 	ts.True(trusted.Contains([][]byte{{1}, {2}, {3}, {4}, {5}, {10}, {11}, {12}, {13}, {14}}))
 	ts.True(trusted.Contains([][]byte{{1}, {2}, {3}, {4}}))
