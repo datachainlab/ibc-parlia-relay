@@ -23,3 +23,7 @@ func QueryValidatorSetAndTurnTerm(fn getHeaderFn, height uint64) (Validators, ui
 func ExtractValidatorSetAndTurnTerm(h *types.Header) (Validators, uint8, error) {
 	return extractValidatorSetAndTurnTerm(h)
 }
+
+func MakeEpochHash(validators Validators, turnTerm uint8) []byte {
+	return makeEpochHash(validators, turnTerm)
+}

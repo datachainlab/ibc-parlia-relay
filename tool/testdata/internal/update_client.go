@@ -1,12 +1,10 @@
 package internal
 
 import (
-	"fmt"
 	"github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
 	"log"
@@ -88,21 +86,21 @@ func (m *updateClientModule) error() *cobra.Command {
 				return err
 			}
 			trustedHeight := header.(*module.Header).TrustedHeight.GetRevisionHeight()
-			trustedCurrentValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetCurrentEpoch(trustedHeight))
+			currentValidatorSetOfTrustedHeight, currentTurnTermOfTrustedHeight, err := module.QueryValidatorSetAndTurnTerm(chain.Header, module.GetCurrentEpoch(trustedHeight))
 			if err != nil {
 				return err
 			}
-			trustedPreviousValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetPreviousEpoch(trustedHeight))
+			previousValidatorSetOfTrustedHeight, previousTurnTermOfTrustedHeight, err := module.QueryValidatorSetAndTurnTerm(chain.Header, module.GetPreviousEpoch(trustedHeight))
 			if err != nil {
 				return err
 			}
 			log.Println("header", common.Bytes2Hex(marshal))
 			log.Println("height", header.GetHeight().GetRevisionHeight())
 			log.Println("trustedHeight", trustedHeight)
-			log.Println("trustedCurrentValidatorHash", common.Bytes2Hex(crypto.Keccak256(trustedCurrentValidatorSet...)))
-			log.Println("trustedPreviousValidatorHash", common.Bytes2Hex(crypto.Keccak256(trustedPreviousValidatorSet...)))
-			log.Println("newCurrentValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.(*module.Header).CurrentValidators...)))
-			log.Println("newPreviousValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.(*module.Header).PreviousValidators...)))
+			log.Println("currentEpochHashOfTrustedHeight", module.MakeEpochHash(currentValidatorSetOfTrustedHeight, currentTurnTermOfTrustedHeight))
+			log.Println("previousEpochHashOfTrustedHeight", module.MakeEpochHash(previousValidatorSetOfTrustedHeight, previousTurnTermOfTrustedHeight))
+			log.Println("newCurrentEpochHash", module.MakeEpochHash(header.(*module.Header).CurrentValidators, uint8(header.(*module.Header).CurrentTurnTerm)))
+			log.Println("newPreviousEpochHash", module.MakeEpochHash(header.(*module.Header).PreviousValidators, uint8(header.(*module.Header).PreviousTurnTerm)))
 			return nil
 		},
 	}
@@ -145,11 +143,11 @@ func (m *updateClientModule) printHeader(prover *module.Prover, chain module.Cha
 	}
 
 	trustedHeight := updating[0].(*module.Header).TrustedHeight.GetRevisionHeight()
-	trustedCurrentValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetCurrentEpoch(trustedHeight))
+	currentValidatorSetOfTrustedHeight, currentTurnTermOfTrustedHeight, err := module.QueryValidatorSetAndTurnTerm(chain.Header, module.GetCurrentEpoch(trustedHeight))
 	if err != nil {
 		return err
 	}
-	trustedPreviousValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetPreviousEpoch(trustedHeight))
+	previousValidatorSetOfTrustedHeight, previousTurnTermOfTrustedHeight, err := module.QueryValidatorSetAndTurnTerm(chain.Header, module.GetPreviousEpoch(trustedHeight))
 	if err != nil {
 		return err
 	}
@@ -157,21 +155,18 @@ func (m *updateClientModule) printHeader(prover *module.Prover, chain module.Cha
 	log.Println("stateRoot", account.Root)
 	log.Println("height", header.GetHeight().GetRevisionHeight())
 	log.Println("trustedHeight", trustedHeight)
-	log.Println("trustedCurrentValidatorHash", common.Bytes2Hex(crypto.Keccak256(trustedCurrentValidatorSet...)))
-	log.Println("trustedPreviousValidatorHash", common.Bytes2Hex(crypto.Keccak256(trustedPreviousValidatorSet...)))
+	log.Println("currentEpochHashOfTrustedHeight", module.MakeEpochHash(currentValidatorSetOfTrustedHeight, currentTurnTermOfTrustedHeight))
+	log.Println("previousEpochHashOfTrustedHeight", module.MakeEpochHash(previousValidatorSetOfTrustedHeight, previousTurnTermOfTrustedHeight))
 	if target.Number.Uint64()%constant.BlocksPerEpoch == 0 {
-		newValidators, err := module.ExtractValidatorSet(target)
+		newValidators, newTurnTerm, err := module.ExtractValidatorSetAndTurnTerm(target)
 		if err != nil {
 			return err
 		}
-		if len(newValidators) != mainNetValidatorSize {
-			return fmt.Errorf("invalid validator size for test")
-		}
-		log.Println("newCurrentValidatorHash", common.Bytes2Hex(crypto.Keccak256(newValidators...)))
+		log.Println("newCurrentEpochHash", module.MakeEpochHash(newValidators, newTurnTerm))
 	} else {
-		log.Println("newCurrentValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.CurrentValidators...)))
+		log.Println("newCurrentEpochHash", module.MakeEpochHash(header.CurrentValidators, uint8(header.CurrentTurnTerm)))
 	}
-	log.Println("newPreviousValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.PreviousValidators...)))
+	log.Println("newPreviousEpochHash", module.MakeEpochHash(header.PreviousValidators, uint8(header.PreviousTurnTerm)))
 	return nil
 }
 
