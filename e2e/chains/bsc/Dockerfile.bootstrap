@@ -1,4 +1,4 @@
-FROM ghcr.io/foundry-rs/foundry
+FROM docker pull ghcr.io/foundry-rs/foundry:nightly-462b2ac6c038dc24b8f38b0c59b664d0740604c2
 
 RUN apk add --d --no-cache ca-certificates npm nodejs bash alpine-sdk expect jq curl bash python3
 RUN curl -sSL https://install.python-poetry.org | python3 -
@@ -9,15 +9,9 @@ RUN git clone https://github.com/binance-chain/bsc-genesis-contract.git -b v1.2.
 RUN cd /root/genesis && /root/.local/bin/poetry install
 RUN cd /root/genesis && forge install --no-git --no-commit foundry-rs/forge-std@v1.7.3
 
-COPY scripts/contracts/SystemReward.sol /root/genesis/contracts/SystemReward.sol
-# COPY scripts/contracts/BSCValidatorSet.sol /root/genesis/contracts/BSCValidatorSet.sol
-
-COPY scripts/generate.py /root/genesis/scripts/generate.py
-COPY scripts/generate-validator.js /root/genesis/scripts/generate-validator.js
-COPY scripts/init_holders.template /root/genesis/scripts/init_holders.template
-
-COPY scripts/genesis-template.template /root/genesis/genesis-template.template
+# override resources
+COPY genesis/ /root/genesis/
 
 COPY --from=bsc-geth:docker-local /usr/local/bin/geth /usr/local/bin/geth
 
-# ENTRYPOINT [ "/bin/bash" ]
+ENTRYPOINT [ "/bin/bash" ]
