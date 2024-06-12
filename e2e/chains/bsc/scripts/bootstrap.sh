@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-ls -ltr /root/genesis
-ls -ltr /root/genesis/scripts
-
 workspace=$(
   cd $(dirname $0)
   pwd
@@ -58,7 +55,6 @@ function generate_genesis() {
 }
 
 function init_genesis_data() {
-  echo "start to initialize genesis data"
   node_type=$1
   node_id=$2
   geth --datadir ${workspace}/storage/${node_id} init --state.scheme hash --db.engine=leveldb ${workspace}/genesis/genesis.json
