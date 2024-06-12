@@ -50,15 +50,16 @@ function generate_genesis() {
   sed "s/{{BLOCKS_PER_EPOCH}}/${BLOCKS_PER_EPOCH}/g" ${workspace}/genesis/scripts/generate.py >${workspace}/genesis/scripts/generate.py.out
   sed "s/{{BSC_CHAIN_ID}}/${BSC_CHAIN_ID}/g" ${workspace}/genesis/scripts/generate.py.out >${workspace}/genesis/scripts/generate.py
 
-  echo "replace BSCValidatorSet"
-  sed "s/{{INIT_NUM_OF_CABINETS}}/${INIT_NUM_OF_CABINETS}/g" ${workspace}/genesis/contracts/BSCValidatorSet.sol >${workspace}/genesis/contracts/BSCValidatorSet.sol.out
-  mv ${workspace}/genesis/contracts/BSCValidatorSet.sol.out ${workspace}/genesis/contracts/BSCValidatorSet.sol
+  #echo "replace BSCValidatorSet"
+  #sed "s/{{INIT_NUM_OF_CABINETS}}/${INIT_NUM_OF_CABINETS}/g" ${workspace}/genesis/contracts/BSCValidatorSet.sol >${workspace}/genesis/contracts/BSCValidatorSet.sol.out
+  #mv ${workspace}/genesis/contracts/BSCValidatorSet.sol.out ${workspace}/genesis/contracts/BSCValidatorSet.sol
 
   node scripts/generate-validator.js
-  chainIDHex=$(printf '%04x\n' ${BSC_CHAIN_ID})
+  cat  ${workspace}/genesis/scripts/validator.js
 
   echo "start generate process"
   /root/.local/bin/poetry run python3 scripts/generate.py dev
+  cat ${workspace}/genesis/contracts/BSCValidatorSet.sol
   #node scripts/generate-genesis.js --chainId ${BSC_CHAIN_ID}
 }
 

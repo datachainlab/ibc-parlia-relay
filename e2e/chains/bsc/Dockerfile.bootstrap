@@ -10,7 +10,7 @@ RUN cd /root/genesis && /root/.local/bin/poetry install
 RUN cd /root/genesis && forge install --no-git --no-commit foundry-rs/forge-std@v1.7.3
 
 COPY scripts/contracts/SystemReward.sol /root/genesis/contracts/SystemReward.sol
-COPY scripts/contracts/BSCValidatorSet.sol /root/genesis/contracts/BSCValidatorSet.sol
+# COPY scripts/contracts/BSCValidatorSet.sol /root/genesis/contracts/BSCValidatorSet.sol
 
 COPY scripts/generate.py /root/genesis/scripts/generate.py
 COPY scripts/generate-validator.js /root/genesis/scripts/generate-validator.js
