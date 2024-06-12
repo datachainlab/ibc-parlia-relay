@@ -1,6 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2020 All BNB Chain Developers
-// Modified by Datachain, Inc. on 2023
 pragma solidity 0.6.4;
 
 import "./System.sol";
@@ -9,7 +6,7 @@ import "./interface/IParamSubscriber.sol";
 import "./interface/ISystemReward.sol";
 
 contract SystemReward is System, IParamSubscriber, ISystemReward {
-  uint256 public constant MAX_REWARDS = 1e18;
+  uint256 public constant MAX_REWARDS = 5e18;
 
   uint public numOperator;
   mapping(address => bool) operators;
@@ -25,9 +22,9 @@ contract SystemReward is System, IParamSubscriber, ISystemReward {
   }
 
   modifier onlyOperator() {
-// start mod
-    // require(operators[msg.sender],"only operator is allowed to call the method");
-// end mod
+  // --- start mode
+   // require(operators[msg.sender],"only operator is allowed to call the method");
+  // --- end mode
     _;
   }
 
