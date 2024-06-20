@@ -22,6 +22,7 @@ services:
       BLOCKS_PER_EPOCH: 20
       INIT_HOLDER_BALANCE: "500000000000000000000"
       NUMS_OF_VALIDATOR: 3
+      INIT_NUM_OF_CABINETS: 2
     volumes:
       - bsc-rpc:/root/storage/bsc-rpc
       - bsc-validator1-1:/root/storage/bsc-validator1
@@ -44,6 +45,7 @@ services:
       BLOCKS_PER_EPOCH: 20
       INIT_HOLDER_BALANCE: "500000000000000000000"
       NUMS_OF_VALIDATOR: 3
+      INIT_NUM_OF_CABINETS: 2
     volumes:
       - bsc-rpc2:/root/storage/bsc-rpc
       - bsc-validator2-1:/root/storage/bsc-validator1

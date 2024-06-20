@@ -29,18 +29,29 @@ function init_validator() {
   voteAddr=0x$(cat ${workspace}/storage/${node_id}/bls/keystore/*json| jq .pubkey | sed 's/"//g')
   echo $voteAddr
 
-  echo "${validatorAddr},${validatorAddr},${validatorAddr},0x0000000010000000,${voteAddr}" >>${workspace}/genesis/validators.conf
+  echo "${validatorAddr},${validatorAddr},${validatorAddr},0x0000000010000000,${voteAddr}" >>scripts/validators.conf
 }
 
 function generate_genesis() {
   INIT_HOLDER_ADDRESSES=$(ls ${workspace}/init-holders | tr '\n' ',')
   INIT_HOLDER_ADDRESSES=${INIT_HOLDER_ADDRESSES/%,/}
   echo "blocks per epoch = ${BLOCKS_PER_EPOCH}"
-  sed "s/{{BLOCKS_PER_EPOCH}}/${BLOCKS_PER_EPOCH}/g" ${workspace}/genesis/genesis-template.template >${workspace}/genesis/genesis-template.json
-  sed "s/{{INIT_HOLDER_ADDRESSES}}/${INIT_HOLDER_ADDRESSES}/g" ${workspace}/genesis/init_holders.template | sed "s/{{INIT_HOLDER_BALANCE}}/${INIT_HOLDER_BALANCE}/g" >${workspace}/genesis/init_holders.js
-  node generate-validator.js
-  chainIDHex=$(printf '%04x\n' ${BSC_CHAIN_ID})
-  node generate-genesis.js --chainid ${BSC_CHAIN_ID} --bscChainId ${chainIDHex}
+
+  echo "replace genesis-template.template"
+  sed "s/{{BLOCKS_PER_EPOCH}}/${BLOCKS_PER_EPOCH}/g" genesis-template.template >genesis-template.json
+
+  echo "replace init_holders.template"
+  sed "s/{{INIT_HOLDER_ADDRESSES}}/${INIT_HOLDER_ADDRESSES}/g" scripts/init_holders.template | sed "s/{{INIT_HOLDER_BALANCE}}/${INIT_HOLDER_BALANCE}/g" >scripts/init_holders.js
+
+  echo "replace generate.py"
+  sed "s/{{BLOCKS_PER_EPOCH}}/${BLOCKS_PER_EPOCH}/g" scripts/generate.py >scripts/generate.py.out
+  sed "s/{{BSC_CHAIN_ID}}/${BSC_CHAIN_ID}/g" scripts/generate.py.out >scripts/generate.py
+
+  echo "start generate validators"
+  node scripts/generate-validator.js
+
+  echo "start generate process"
+  /root/.local/bin/poetry run python3 scripts/generate.py dev
 }
 
 function init_genesis_data() {
