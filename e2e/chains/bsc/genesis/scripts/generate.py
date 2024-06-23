@@ -253,7 +253,7 @@ def generate_validator_set(init_validatorset_bytes, init_burn_ratio, epoch):
     replace_parameter(contract, "uint256 public constant EPOCH", f"{epoch}")
 
     # force rotation
-    #replace_parameter(contract, "uint256 public constant INIT_NUM_OF_CABINETS", f"{num_cabinets}")
+    replace_parameter(contract, "uint256 public constant INIT_NUM_OF_CABINETS", f"{{{INIT_NUM_OF_CABINETS}}}")
 
     if network == "dev":
         insert(
