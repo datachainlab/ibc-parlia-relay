@@ -10,13 +10,14 @@ import (
 )
 
 const (
-	BLSPublicKeyLength  = 48
-	BLSSignatureLength  = 96
+	blsPublicKeyLength  = 48
+	blsSignatureLength  = 96
 	validatorNumberSize = 1
+	turnTermLength      = 1
 )
 
-type BLSPublicKey [BLSPublicKeyLength]byte
-type BLSSignature [BLSSignatureLength]byte
+type BLSPublicKey [blsPublicKeyLength]byte
+type BLSSignature [blsSignatureLength]byte
 type ValidatorsBitSet uint64
 
 type VoteAttestation struct {
@@ -48,6 +49,7 @@ func getVoteAttestationFromHeader(header *types.Header) (*VoteAttestation, error
 			return nil, nil
 		}
 		start := extraVanity + validatorNumberSize + num*validatorBytesLength
+		start += turnTermLength
 		end := len(header.Extra) - extraSeal
 		attestationBytes = header.Extra[start:end]
 	}
