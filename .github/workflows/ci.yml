@@ -50,5 +50,8 @@ jobs:
         run: |
           make chain
           make contracts
+          # TODO modify init extra data
+          # wait for epoch including turn term 
+          sleep 60
           make relayer
           make test
