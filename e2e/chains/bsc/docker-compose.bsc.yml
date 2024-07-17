@@ -4,6 +4,6 @@ services:
       context: .
       dockerfile: Dockerfile.bsc
       args:
-        GIT_SOURCE: https://github.com/binance-chain/bsc.git
-        GIT_CHECKOUT_BRANCH: v1.4.8
+        GIT_SOURCE: https://github.com/NathanBSC/bsc
+        GIT_CHECKOUT_BRANCH: BEP-341-produce-consecutive-blocks
     image: bsc-geth:docker-local
