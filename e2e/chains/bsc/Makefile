@@ -1,7 +1,7 @@
 .PHONY:build
 build:
 	docker compose -f docker-compose.bsc.yml build
-	docker compose -f docker-compose.simple.yml build --progress=plain --no-cache
+	docker compose -f docker-compose.simple.yml build --progress=plain
 
 .PHONY:bootstrap
 bootstrap:

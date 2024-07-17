@@ -18,5 +18,7 @@ func init() {
 		panic(err)
 	}
 	BlocksPerEpoch = uint64(iBlocksPerEpoch)
-	log.Printf("blocks per epoch = %d", BlocksPerEpoch)
+	if BlocksPerEpoch != 200 {
+		log.Printf("blocks per epoch = %d", BlocksPerEpoch)
+	}
 }
