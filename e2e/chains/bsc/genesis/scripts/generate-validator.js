@@ -25,7 +25,6 @@ async function processValidatorConf() {
 }
 
 processValidatorConf().then(function (validators) {
-    console.log("start generate validator ")
     console.log(validators)
     const data = {
         validators: validators,
