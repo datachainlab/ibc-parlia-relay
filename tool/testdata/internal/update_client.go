@@ -6,8 +6,10 @@ import (
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"log"
+	"os"
 )
 
 type updateClientModule struct {
@@ -24,11 +26,11 @@ func (m *updateClientModule) success() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			prover, chain, err := createProver()
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
 			latest, err := chain.LatestHeight()
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
 			return m.printHeader(prover, chain, latest.GetRevisionHeight())
 		},
@@ -97,10 +99,10 @@ func (m *updateClientModule) error() *cobra.Command {
 			log.Println("header", common.Bytes2Hex(marshal))
 			log.Println("height", header.GetHeight().GetRevisionHeight())
 			log.Println("trustedHeight", trustedHeight)
-			log.Println("currentEpochHashOfTrustedHeight", module.MakeEpochHash(currentValidatorSetOfTrustedHeight, currentTurnTermOfTrustedHeight))
-			log.Println("previousEpochHashOfTrustedHeight", module.MakeEpochHash(previousValidatorSetOfTrustedHeight, previousTurnTermOfTrustedHeight))
-			log.Println("newCurrentEpochHash", module.MakeEpochHash(header.(*module.Header).CurrentValidators, uint8(header.(*module.Header).CurrentTurnTerm)))
-			log.Println("newPreviousEpochHash", module.MakeEpochHash(header.(*module.Header).PreviousValidators, uint8(header.(*module.Header).PreviousTurnTerm)))
+			log.Println("currentEpochHashOfTrustedHeight", common.Bytes2Hex(module.MakeEpochHash(currentValidatorSetOfTrustedHeight, currentTurnTermOfTrustedHeight)))
+			log.Println("previousEpochHashOfTrustedHeight", common.Bytes2Hex(module.MakeEpochHash(previousValidatorSetOfTrustedHeight, previousTurnTermOfTrustedHeight)))
+			log.Println("newCurrentEpochHash", common.Bytes2Hex(module.MakeEpochHash(header.(*module.Header).CurrentValidators, uint8(header.(*module.Header).CurrentTurnTerm))))
+			log.Println("newPreviousEpochHash", common.Bytes2Hex(module.MakeEpochHash(header.(*module.Header).PreviousValidators, uint8(header.(*module.Header).PreviousTurnTerm))))
 			return nil
 		},
 	}
@@ -110,20 +112,20 @@ func (m *updateClientModule) printHeader(prover *module.Prover, chain module.Cha
 	log.Println("printHeader latest=", height)
 	iHeader, err := prover.GetLatestFinalizedHeaderByLatestHeight(height)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	if err = iHeader.ValidateBasic(); err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	header := iHeader.(*module.Header)
 	target, err := header.Target()
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
-	account, err := header.Account(common.HexToAddress(mainAndTestNetIbcAddress))
+	account, err := header.Account(common.HexToAddress(os.Getenv("BSC_IBC_ADDR")))
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	// setup
@@ -155,18 +157,18 @@ func (m *updateClientModule) printHeader(prover *module.Prover, chain module.Cha
 	log.Println("stateRoot", account.Root)
 	log.Println("height", header.GetHeight().GetRevisionHeight())
 	log.Println("trustedHeight", trustedHeight)
-	log.Println("currentEpochHashOfTrustedHeight", module.MakeEpochHash(currentValidatorSetOfTrustedHeight, currentTurnTermOfTrustedHeight))
-	log.Println("previousEpochHashOfTrustedHeight", module.MakeEpochHash(previousValidatorSetOfTrustedHeight, previousTurnTermOfTrustedHeight))
+	log.Println("currentEpochHashOfTrustedHeight", common.Bytes2Hex(module.MakeEpochHash(currentValidatorSetOfTrustedHeight, currentTurnTermOfTrustedHeight)))
+	log.Println("previousEpochHashOfTrustedHeight", common.Bytes2Hex(module.MakeEpochHash(previousValidatorSetOfTrustedHeight, previousTurnTermOfTrustedHeight)))
 	if target.Number.Uint64()%constant.BlocksPerEpoch == 0 {
 		newValidators, newTurnTerm, err := module.ExtractValidatorSetAndTurnTerm(target)
 		if err != nil {
 			return err
 		}
-		log.Println("newCurrentEpochHash", module.MakeEpochHash(newValidators, newTurnTerm))
+		log.Println("newCurrentEpochHash", common.Bytes2Hex(module.MakeEpochHash(newValidators, newTurnTerm)))
 	} else {
-		log.Println("newCurrentEpochHash", module.MakeEpochHash(header.CurrentValidators, uint8(header.CurrentTurnTerm)))
+		log.Println("newCurrentEpochHash", common.Bytes2Hex(module.MakeEpochHash(header.CurrentValidators, uint8(header.CurrentTurnTerm))))
 	}
-	log.Println("newPreviousEpochHash", module.MakeEpochHash(header.PreviousValidators, uint8(header.PreviousTurnTerm)))
+	log.Println("newPreviousEpochHash", common.Bytes2Hex(module.MakeEpochHash(header.PreviousValidators, uint8(header.PreviousTurnTerm))))
 	return nil
 }
 

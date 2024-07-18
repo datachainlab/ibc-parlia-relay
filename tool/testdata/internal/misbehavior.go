@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
 	"log"
+	"os"
 )
 
 type misbehaviorModule struct {
@@ -116,7 +117,7 @@ func (m *misbehaviorModule) getLocalHeader(chainID uint64, port int64, targetHei
 		EthChainId: chainID,
 		RpcAddr:    fmt.Sprintf("http://localhost:%d", port),
 		Signer:     CreateSignerConfig(),
-		IbcAddress: ibcAddress,
+		IbcAddress: os.Getenv("BSC_IBC_ADDR"),
 	})
 	if err != nil {
 		return targetHeight, nil, err
