@@ -1,9 +1,12 @@
 package internal
 
 import (
-	"github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
+	"context"
 	"github.com/datachainlab/ibc-parlia-relay/module"
+	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"log"
 )
@@ -47,29 +50,28 @@ func (m *headerModule) success() *cobra.Command {
 }
 
 func (m *headerModule) printHeader(chain module.Chain, height uint64) error {
-	log.Println("printHeader latest=", height)
-	headers, err := module.QueryFinalizedHeader(chain.Header, height, height+10)
+	log.Println("printHeader height=", height)
+	header, err := chain.Header(context.Background(), height)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
-	header := module.Header{
-		Headers: headers,
-		TrustedHeight: &types.Height{
-			RevisionNumber: 0,
-			RevisionHeight: 0,
-		},
-		PreviousValidators: [][]byte{common.Address{}.Bytes()},
-		CurrentValidators:  [][]byte{common.Address{}.Bytes()},
+	if height%constant.BlocksPerEpoch == 0 {
+		vals, turnTerm, err := module.ExtractValidatorSetAndTurnTerm(header)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		log.Println("validators = ")
+		for _, val := range vals {
+			log.Println(common.Bytes2Hex(val))
+		}
+		log.Println("turnTerm = ", turnTerm)
 	}
 
-	pack, err := types.PackClientMessage(&header)
+	rlpHeader, err := rlp.EncodeToBytes(header)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
-	marshal, err := pack.Marshal()
-
-	log.Println("header", common.Bytes2Hex(marshal))
-	log.Println(header.GetHeight(), len(header.Headers))
+	log.Println("ETHHeader.header=", common.Bytes2Hex(rlpHeader))
 	return nil
 }
 
