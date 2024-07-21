@@ -38,6 +38,8 @@ func epochHeaderPlus3() *types.Header {
 
 func headerByHeight(height int64) *types.Header {
 	switch height {
+	case 200:
+		return previousEpochHeader()
 	case 400:
 		return epochHeader()
 	case 401:
