@@ -416,8 +416,8 @@ func (ts *ProverTestSuite) TestSuccessCreateInitialLightClientState() {
 		ts.Require().Equal(cs.GetLatestHeight(), finalizedHeader.GetHeight())
 
 		consState := s2.(*ConsensusState)
-		ts.Require().Equal(consState.CurrentValidatorsHash, ts.prover.makeEpochHash(currentValidatorSet, currentTurnTerm))
-		ts.Require().Equal(consState.PreviousValidatorsHash, ts.prover.makeEpochHash(previousValidatorSet, previousTurnTerm))
+		ts.Require().Equal(consState.CurrentValidatorsHash, makeEpochHash(currentValidatorSet, currentTurnTerm))
+		ts.Require().Equal(consState.PreviousValidatorsHash, makeEpochHash(previousValidatorSet, previousTurnTerm))
 		ts.Require().Equal(consState.Timestamp, target.Time)
 		ts.Require().Equal(common.BytesToHash(consState.StateRoot), stateRoot)
 	}
