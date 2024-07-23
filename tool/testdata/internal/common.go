@@ -42,7 +42,7 @@ func createProver() (*module.Prover, module.Chain, error) {
 		return nil, nil, err
 	}
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
-		EthChainId: 56,
+		EthChainId: 9999,
 		RpcAddr:    rpcAddr,
 		Signer:     CreateSignerConfig(),
 		IbcAddress: os.Getenv("BSC_IBC_ADDR"),

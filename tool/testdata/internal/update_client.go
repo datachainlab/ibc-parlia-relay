@@ -51,6 +51,47 @@ func (m *updateClientModule) success() *cobra.Command {
 			return m.printHeader(prover, chain, epochCount*constant.BlocksPerEpoch+2)
 		},
 	})
+	var num uint64
+	var diff int64
+	specified := &cobra.Command{
+		Use: "specified",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			prover, chain, err := createProver()
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			epoch := module.GetCurrentEpoch(num)
+			validator, turnLength, err := module.QueryValidatorSetAndTurnLength(chain.Header, epoch)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			checkpoint := epoch + validator.Checkpoint(turnLength)
+			log.Println("checkpoint", checkpoint, "turnLength", turnLength)
+			target, err := prover.GetLatestFinalizedHeaderByLatestHeight(uint64(int64(checkpoint) + 2 + diff))
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			headers, err := prover.SetupHeadersForUpdateByLatestHeight(types.NewHeight(0, epoch-constant.BlocksPerEpoch), target.(*module.Header))
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			for _, header := range headers {
+				pack, err := types.PackClientMessage(header)
+				if err != nil {
+					return errors.WithStack(err)
+				}
+				marshal, err := pack.Marshal()
+				if err != nil {
+					return err
+				}
+				log.Println(common.Bytes2Hex(marshal))
+			}
+			return nil
+		},
+	}
+	specified.Flags().Uint64Var(&num, "num", num, "--num")
+	specified.Flags().Int64Var(&diff, "diff", diff, "--diff")
+	cmd.AddCommand(specified)
 	return cmd
 }
 

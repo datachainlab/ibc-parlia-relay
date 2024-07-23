@@ -56,8 +56,8 @@ func (ts *ProverNetworkTestSuite) TestQueryLatestFinalizedHeader() {
 	ts.Require().True(len(h.PreviousValidators) >= 1)
 	ts.Require().True(len(h.CurrentValidators) >= 1)
 	ts.Require().True(len(h.AccountProof) >= 1)
-	ts.Require().True(h.CurrentTurnTerm >= 1 && h.CurrentTurnTerm <= 9)
-	ts.Require().True(h.PreviousTurnTerm >= 1 && h.PreviousTurnTerm <= 9)
+	ts.Require().True(h.CurrentTurnLength >= 1 && h.CurrentTurnLength <= 9)
+	ts.Require().True(h.PreviousTurnLength >= 1 && h.PreviousTurnLength <= 9)
 }
 
 func (ts *ProverNetworkTestSuite) TestSetupHeadersForUpdate() {
@@ -91,9 +91,9 @@ func (ts *ProverNetworkTestSuite) TestSuccessCreateInitialLightClientState() {
 	ts.Require().NoError(err)
 	ts.Require().Equal(cs.GetLatestHeight().GetRevisionHeight(), header.Number.Uint64())
 
-	cVal, cTurn, err := module.QueryValidatorSetAndTurnTerm(ts.chain.Header, module.GetCurrentEpoch(header.Number.Uint64()))
+	cVal, cTurn, err := module.QueryValidatorSetAndTurnLength(ts.chain.Header, module.GetCurrentEpoch(header.Number.Uint64()))
 	ts.Require().NoError(err)
-	pVal, pTurn, err := module.QueryValidatorSetAndTurnTerm(ts.chain.Header, module.GetPreviousEpoch(header.Number.Uint64()))
+	pVal, pTurn, err := module.QueryValidatorSetAndTurnLength(ts.chain.Header, module.GetPreviousEpoch(header.Number.Uint64()))
 	ts.Require().NoError(err)
 	consState := s2.(*module.ConsensusState)
 	ts.Require().Equal(consState.CurrentValidatorsHash, module.MakeEpochHash(cVal, cTurn))

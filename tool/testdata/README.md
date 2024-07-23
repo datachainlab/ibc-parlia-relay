@@ -27,6 +27,8 @@ go run main.go update success epoch
 # src/client.rs test_success_update_client_non_epoch
 go run main.go update success latest
 
+go run main.go update success specified --num 1000 --diff 0
+
 # src/client.rs test_error_update_client
 go run main.go update error 
 
