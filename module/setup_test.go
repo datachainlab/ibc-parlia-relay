@@ -157,11 +157,11 @@ func (ts *SetupTestSuite) TestSuccess_setupNeighboringEpochHeader_notContainTrus
 		h := headerByHeight(int64(height))
 		const validatorCount = 4
 		const indexOfValidatorCount = extraVanity
-		const indexOfTurnTerm = extraVanity + validatorNumberSize + validatorCount*validatorBytesLength
+		const indexOfTurnLength = extraVanity + validatorNumberSize + validatorCount*validatorBytesLength
 		if h.Number.Uint64() == trustedEpochHeight {
 			// set invalid validator
 			for i := range h.Extra {
-				if i != indexOfValidatorCount && i != indexOfTurnTerm {
+				if i != indexOfValidatorCount && i != indexOfTurnLength {
 					h.Extra[i] = 0
 				}
 			}

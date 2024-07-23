@@ -32,16 +32,16 @@ func (ts *ValidatorSetTestSuite) fromRlp(hex string) *types.Header {
 func (ts *ValidatorSetTestSuite) TestSuccessExtractValidatorSet() {
 
 	block := previousEpochHeader()
-	validators, turnTerm, err := extractValidatorSetAndTurnTerm(block)
+	validators, turnLength, err := extractValidatorSetAndTurnLength(block)
 	ts.Require().NoError(err)
 	ts.Require().Len(validators, 4)
-	ts.Require().Equal(turnTerm, uint8(1))
+	ts.Require().Equal(turnLength, uint8(1))
 
 	block = epochHeader()
-	validators, turnTerm, err = extractValidatorSetAndTurnTerm(block)
+	validators, turnLength, err = extractValidatorSetAndTurnLength(block)
 	ts.Require().NoError(err)
 	ts.Require().Len(validators, 4)
-	ts.Require().Equal(turnTerm, uint8(1))
+	ts.Require().Equal(turnLength, uint8(1))
 
 }
 
@@ -50,11 +50,11 @@ func (ts *ValidatorSetTestSuite) TestErrorExtractValidatorSet() {
 		Number: big.NewInt(0),
 		Extra:  []byte{},
 	}
-	_, _, err := ExtractValidatorSetAndTurnTerm(testnetHeader)
+	_, _, err := ExtractValidatorSetAndTurnLength(testnetHeader)
 	ts.Require().Equal(err.Error(), "invalid extra length : 0")
 
 	testnetHeader.Extra = make([]byte, extraSeal+extraVanity)
-	_, _, err = ExtractValidatorSetAndTurnTerm(testnetHeader)
+	_, _, err = ExtractValidatorSetAndTurnLength(testnetHeader)
 	ts.Require().Equal(err.Error(), "invalid validator bytes length: 0")
 }
 
@@ -63,17 +63,17 @@ func (ts *ValidatorSetTestSuite) TestSuccessQueryValidatorSet() {
 	fn := func(ctx context.Context, height uint64) (*types.Header, error) {
 		return epochHeader(), nil
 	}
-	validators, turnTerm, err := QueryValidatorSetAndTurnTerm(fn, 400)
+	validators, turnLength, err := QueryValidatorSetAndTurnLength(fn, 400)
 	ts.Require().NoError(err)
 	ts.Require().Len(validators, 4)
-	ts.Require().Equal(turnTerm, uint8(1))
+	ts.Require().Equal(turnLength, uint8(1))
 }
 
 func (ts *ValidatorSetTestSuite) TestErrorQueryValidatorSet() {
 	fn := func(ctx context.Context, height uint64) (*types.Header, error) {
 		return nil, errors.New("error")
 	}
-	_, _, err := QueryValidatorSetAndTurnTerm(fn, 200)
+	_, _, err := QueryValidatorSetAndTurnLength(fn, 200)
 	ts.Require().Equal(err.Error(), "error")
 }
 

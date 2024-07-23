@@ -56,7 +56,7 @@ func (m *headerModule) printHeader(chain module.Chain, height uint64) error {
 		return errors.WithStack(err)
 	}
 	if height%constant.BlocksPerEpoch == 0 {
-		vals, turnTerm, err := module.ExtractValidatorSetAndTurnTerm(header)
+		vals, turnLength, err := module.ExtractValidatorSetAndTurnLength(header)
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -64,7 +64,7 @@ func (m *headerModule) printHeader(chain module.Chain, height uint64) error {
 		for _, val := range vals {
 			log.Println(common.Bytes2Hex(val))
 		}
-		log.Println("turnTerm = ", turnTerm)
+		log.Println("turnLength = ", turnLength)
 	}
 
 	rlpHeader, err := rlp.EncodeToBytes(header)

@@ -16,14 +16,14 @@ func QueryFinalizedHeader(fn getHeaderFn, height uint64, limitHeight uint64) ([]
 	return queryFinalizedHeader(fn, height, limitHeight)
 }
 
-func QueryValidatorSetAndTurnTerm(fn getHeaderFn, height uint64) (Validators, uint8, error) {
-	return queryValidatorSetAndTurnTerm(fn, height)
+func QueryValidatorSetAndTurnLength(fn getHeaderFn, height uint64) (Validators, uint8, error) {
+	return queryValidatorSetAndTurnLength(fn, height)
 }
 
-func ExtractValidatorSetAndTurnTerm(h *types.Header) (Validators, uint8, error) {
-	return extractValidatorSetAndTurnTerm(h)
+func ExtractValidatorSetAndTurnLength(h *types.Header) (Validators, uint8, error) {
+	return extractValidatorSetAndTurnLength(h)
 }
 
-func MakeEpochHash(validators Validators, turnTerm uint8) []byte {
-	return makeEpochHash(validators, turnTerm)
+func MakeEpochHash(validators Validators, turnLength uint8) []byte {
+	return makeEpochHash(validators, turnLength)
 }

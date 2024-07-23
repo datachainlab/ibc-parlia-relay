@@ -41,11 +41,11 @@ func (m *createClientModule) createClientSuccessCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			currentValidatorSet, currentTurnTerm, err := module.QueryValidatorSetAndTurnTerm(chain.Header, module.GetCurrentEpoch(cs.GetLatestHeight().GetRevisionHeight()))
+			currentValidatorSet, currentTurnLength, err := module.QueryValidatorSetAndTurnLength(chain.Header, module.GetCurrentEpoch(cs.GetLatestHeight().GetRevisionHeight()))
 			if err != nil {
 				return err
 			}
-			previousValidatorSet, previousTurnTerm, err := module.QueryValidatorSetAndTurnTerm(chain.Header, module.GetPreviousEpoch(cs.GetLatestHeight().GetRevisionHeight()))
+			previousValidatorSet, previousTurnLength, err := module.QueryValidatorSetAndTurnLength(chain.Header, module.GetPreviousEpoch(cs.GetLatestHeight().GetRevisionHeight()))
 			if err != nil {
 				return err
 			}
@@ -53,8 +53,8 @@ func (m *createClientModule) createClientSuccessCmd() *cobra.Command {
 			log.Println("consensusState", common.Bytes2Hex(anyConsState))
 			log.Println("height", cs.GetLatestHeight().GetRevisionHeight())
 			log.Println("time", consState.GetTimestamp())
-			log.Println("currentEpochHash", module.MakeEpochHash(currentValidatorSet, currentTurnTerm))
-			log.Println("previousEpochHash", module.MakeEpochHash(previousValidatorSet, previousTurnTerm))
+			log.Println("currentEpochHash", module.MakeEpochHash(currentValidatorSet, currentTurnLength))
+			log.Println("previousEpochHash", module.MakeEpochHash(previousValidatorSet, previousTurnLength))
 			log.Println("storageRoot", consState.(*module.ConsensusState).StateRoot)
 
 			return nil

@@ -187,16 +187,16 @@ func withProofAndValidators(headerFn getHeaderFn, accountProofFn getAccountProof
 
 	// Get validator set for verify headers
 	previousEpoch := getPreviousEpoch(height)
-	var previousTurnTerm uint8
-	header.PreviousValidators, previousTurnTerm, err = queryValidatorSetAndTurnTerm(headerFn, previousEpoch)
-	header.PreviousTurnTerm = uint32(previousTurnTerm)
+	var previousTurnLength uint8
+	header.PreviousValidators, previousTurnLength, err = queryValidatorSetAndTurnLength(headerFn, previousEpoch)
+	header.PreviousTurnLength = uint32(previousTurnLength)
 	if err != nil {
 		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
 	}
 	currentEpoch := getCurrentEpoch(height)
-	var currentTurnTerm uint8
-	header.CurrentValidators, currentTurnTerm, err = queryValidatorSetAndTurnTerm(headerFn, currentEpoch)
-	header.CurrentTurnTerm = uint32(currentTurnTerm)
+	var currentTurnLength uint8
+	header.CurrentValidators, currentTurnLength, err = queryValidatorSetAndTurnLength(headerFn, currentEpoch)
+	header.CurrentTurnLength = uint32(currentTurnLength)
 	if err != nil {
 		return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
 	}

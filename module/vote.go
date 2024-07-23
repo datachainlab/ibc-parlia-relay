@@ -13,7 +13,7 @@ const (
 	blsPublicKeyLength  = 48
 	blsSignatureLength  = 96
 	validatorNumberSize = 1
-	turnTermLength      = 1
+	turnLengthLength    = 1
 )
 
 type BLSPublicKey [blsPublicKeyLength]byte
@@ -48,7 +48,7 @@ func getVoteAttestationFromHeader(header *types.Header) (*VoteAttestation, error
 			return nil, nil
 		}
 		start := extraVanity + validatorNumberSize + num*validatorBytesLength
-		start += turnTermLength
+		start += turnLengthLength
 		end := len(header.Extra) - extraSeal
 		attestationBytes = header.Extra[start:end]
 	}
