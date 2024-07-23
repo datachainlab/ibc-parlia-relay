@@ -60,18 +60,19 @@ func (m *updateClientModule) success() *cobra.Command {
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			epoch := module.GetCurrentEpoch(num)
-			validator, turnLength, err := module.QueryValidatorSetAndTurnLength(chain.Header, epoch)
+			currentEpoch := module.GetCurrentEpoch(num)
+			previousEpoch := module.GetPreviousEpoch(num)
+			validator, turnLength, err := module.QueryValidatorSetAndTurnLength(chain.Header, previousEpoch)
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			checkpoint := epoch + validator.Checkpoint(turnLength)
-			log.Println("checkpoint", checkpoint, "turnLength", turnLength)
-			target, err := prover.GetLatestFinalizedHeaderByLatestHeight(uint64(int64(checkpoint) + 2 + diff))
+			checkpoint := currentEpoch + validator.Checkpoint(turnLength)
+			target, err := prover.GetLatestFinalizedHeaderByLatestHeight(uint64(int64(num) + 2 + diff))
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			headers, err := prover.SetupHeadersForUpdateByLatestHeight(types.NewHeight(0, epoch-constant.BlocksPerEpoch), target.(*module.Header))
+			log.Println("checkpoint", checkpoint, "turnLength", turnLength, "target", target.GetHeight())
+			headers, err := prover.SetupHeadersForUpdateByLatestHeight(types.NewHeight(0, previousEpoch), target.(*module.Header))
 			if err != nil {
 				return errors.WithStack(err)
 			}

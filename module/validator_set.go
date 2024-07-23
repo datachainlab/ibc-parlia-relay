@@ -10,7 +10,7 @@ import (
 type Validators [][]byte
 
 func (v Validators) Checkpoint(turnLength uint8) uint64 {
-	return uint64(len(v)/2*int(turnLength) + 1)
+	return uint64(len(v)/2+1) * uint64(turnLength)
 }
 
 func (v Validators) Contains(other Validators) bool {

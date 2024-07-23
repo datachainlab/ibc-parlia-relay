@@ -80,23 +80,23 @@ func (ts *ValidatorSetTestSuite) TestErrorQueryValidatorSet() {
 func (ts *ValidatorSetTestSuite) TestCheckpoint() {
 	validator := Validators(make([][]byte, 1))
 	ts.Equal(int(validator.Checkpoint(1)), 1)
-	ts.Equal(int(validator.Checkpoint(3)), 1)
-	ts.Equal(int(validator.Checkpoint(9)), 1)
+	ts.Equal(int(validator.Checkpoint(3)), 3)
+	ts.Equal(int(validator.Checkpoint(9)), 9)
 
 	validator = make([][]byte, 5)
 	ts.Equal(int(validator.Checkpoint(1)), 3)
-	ts.Equal(int(validator.Checkpoint(3)), 7)
-	ts.Equal(int(validator.Checkpoint(9)), 19)
+	ts.Equal(int(validator.Checkpoint(3)), 9)
+	ts.Equal(int(validator.Checkpoint(9)), 27)
 
 	validator = make([][]byte, 8)
 	ts.Equal(int(validator.Checkpoint(1)), 5)
-	ts.Equal(int(validator.Checkpoint(3)), 13)
-	ts.Equal(int(validator.Checkpoint(9)), 37)
+	ts.Equal(int(validator.Checkpoint(3)), 15)
+	ts.Equal(int(validator.Checkpoint(9)), 45)
 
 	validator = make([][]byte, 21)
 	ts.Equal(int(validator.Checkpoint(1)), 11)
-	ts.Equal(int(validator.Checkpoint(3)), 31)
-	ts.Equal(int(validator.Checkpoint(9)), 91)
+	ts.Equal(int(validator.Checkpoint(3)), 33)
+	ts.Equal(int(validator.Checkpoint(9)), 99)
 }
 
 func (ts *ValidatorSetTestSuite) TestValidator() {
