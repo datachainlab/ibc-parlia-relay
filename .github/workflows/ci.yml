@@ -30,7 +30,7 @@ jobs:
           # still using the deprecated types in ibc-go v8
           args: --timeout=5m0s --disable staticcheck
       - name: test
-        run: go test -v ./...
+        run: go test -v ./module
   e2e:
     name: e2e
     timeout-minutes: 45
@@ -50,8 +50,9 @@ jobs:
         run: |
           make chain
           make contracts
-          # TODO modify init extra data
           # wait for epoch including turn term 
           sleep 60
           make relayer
           make test
+      - name: integration-test
+        run: go test -v ./tests -tags dev -ldflags="-X github.com/datachainlab/ibc-parlia-relay/module/constant.blocksPerEpoch=20"

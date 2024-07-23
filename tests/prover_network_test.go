@@ -1,14 +1,16 @@
-package it
+package tests
 
 import (
+	"context"
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum/signers/hd"
 	"github.com/datachainlab/ibc-parlia-relay/module"
+	"github.com/hyperledger-labs/yui-relayer/config"
 	"github.com/hyperledger-labs/yui-relayer/log"
+	"strings"
 	"testing"
 	"time"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/hyperledger-labs/yui-relayer/core"
@@ -37,16 +39,7 @@ func (ts *ProverNetworkTestSuite) SetupTest() {
 	err := log.InitLogger("DEBUG", "text", "stdout")
 	ts.Require().NoError(err)
 
-	chain := ts.makeChain("http://localhost8545")
-
-	err = chain.SetRelayInfo(&core.PathEnd{
-		ClientID:     "xx-parlia-1",
-		ConnectionID: "connection-0",
-		ChannelID:    "channel-0",
-		PortID:       "transfer",
-		Order:        "UNORDERED",
-	}, nil, nil)
-	ts.Require().NoError(err)
+	chain := ts.makeChain("http://localhost:8545", "ibc1")
 
 	ts.chain = chain
 	ts.prover = ts.makeProver(ts.chain)
@@ -69,7 +62,7 @@ func (ts *ProverNetworkTestSuite) TestQueryLatestFinalizedHeader() {
 
 func (ts *ProverNetworkTestSuite) TestSetupHeadersForUpdate() {
 	dst := dstChain{
-		Chain: ts.makeChain("http://localhost:8645"),
+		Chain: ts.makeChain("http://localhost:8645", "ibc0"),
 	}
 	header, err := ts.prover.GetLatestFinalizedHeader()
 	ts.Require().NoError(err)
@@ -82,11 +75,7 @@ func (ts *ProverNetworkTestSuite) TestSetupHeadersForUpdate() {
 }
 
 func (ts *ProverNetworkTestSuite) TestSuccessCreateInitialLightClientState() {
-	header, err := ts.prover.GetLatestFinalizedHeader()
-	ts.Require().NoError(err)
-	target, err := header.(*module.Header).Target()
-	ts.Require().NoError(err)
-	s1, s2, err := ts.prover.CreateInitialLightClientState(header.GetHeight())
+	s1, s2, err := ts.prover.CreateInitialLightClientState(nil)
 	ts.Require().NoError(err)
 
 	cs := s1.(*module.ClientState)
@@ -94,29 +83,28 @@ func (ts *ProverNetworkTestSuite) TestSuccessCreateInitialLightClientState() {
 	ts.Require().Equal(cs.TrustingPeriod, 86400*time.Second)
 	ts.Require().Equal(cs.MaxClockDrift, 1*time.Second)
 	ts.Require().False(cs.Frozen)
-	ts.Require().Equal(common.Bytes2Hex(cs.IbcStoreAddress), ts.chain.IBCAddress())
+	ts.Require().Equal(common.Bytes2Hex(cs.IbcStoreAddress), strings.ToLower(ts.chain.IBCAddress().String()[2:]))
 	var commitment [32]byte
 	ts.Require().Equal(common.Bytes2Hex(cs.IbcCommitmentsSlot), common.Bytes2Hex(commitment[:]))
-	ts.Require().Equal(cs.GetLatestHeight(), header.GetHeight())
 
-	cVal, cTurn, err := module.QueryValidatorSetAndTurnTerm(ts.chain.Header, module.GetCurrentEpoch(target.Number.Uint64()))
+	header, err := ts.chain.Header(context.Background(), cs.GetLatestHeight().GetRevisionHeight())
 	ts.Require().NoError(err)
-	pVal, pTurn, err := module.QueryValidatorSetAndTurnTerm(ts.chain.Header, module.GetPreviousEpoch(target.Number.Uint64()))
+	ts.Require().Equal(cs.GetLatestHeight().GetRevisionHeight(), header.Number.Uint64())
+
+	cVal, cTurn, err := module.QueryValidatorSetAndTurnTerm(ts.chain.Header, module.GetCurrentEpoch(header.Number.Uint64()))
+	ts.Require().NoError(err)
+	pVal, pTurn, err := module.QueryValidatorSetAndTurnTerm(ts.chain.Header, module.GetPreviousEpoch(header.Number.Uint64()))
 	ts.Require().NoError(err)
 	consState := s2.(*module.ConsensusState)
 	ts.Require().Equal(consState.CurrentValidatorsHash, module.MakeEpochHash(cVal, cTurn))
 	ts.Require().Equal(consState.PreviousValidatorsHash, module.MakeEpochHash(pVal, pTurn))
-	ts.Require().Equal(consState.Timestamp, target.Time)
-	ts.Require().Equal(common.BytesToHash(consState.StateRoot), target.Root)
+	ts.Require().Equal(consState.Timestamp, header.Time)
+	storageRoot, err := ts.prover.GetStorageRoot(header)
+	ts.Require().NoError(err)
+	ts.Require().Equal(common.BytesToHash(consState.StateRoot), storageRoot)
 }
 
-func (ts *ProverNetworkTestSuite) TestErrorCreateInitialLightClientState() {
-	// No finalized header found
-	_, _, err := ts.prover.CreateInitialLightClientState(clienttypes.NewHeight(0, 0))
-	ts.Require().Equal(err.Error(), "no finalized headers were found up to 0")
-}
-
-func (ts *ProverNetworkTestSuite) makeChain(rpcAddr string) module.Chain {
+func (ts *ProverNetworkTestSuite) makeChain(rpcAddr string, ibcChainID string) module.Chain {
 	signerConfig := &hd.SignerConfig{
 		Mnemonic: "math razor capable expose worth grape metal sunset metal sudden usage scheme",
 		Path:     "m/44'/60'/0'/0/0",
@@ -131,7 +119,20 @@ func (ts *ProverNetworkTestSuite) makeChain(rpcAddr string) module.Chain {
 	})
 	ts.Require().NoError(err)
 	codec := core.MakeCodec()
+	modules := []config.ModuleI{ethereum.Module{}, module.Module{}, hd.Module{}}
+	for _, m := range modules {
+		m.RegisterInterfaces(codec.InterfaceRegistry())
+	}
 	err = chain.Init("", 0, codec, false)
+	ts.Require().NoError(err)
+	err = chain.SetRelayInfo(&core.PathEnd{
+		ChainID:      ibcChainID,
+		ClientID:     "xx-parlia-0",
+		ConnectionID: "connection-0",
+		ChannelID:    "channel-0",
+		PortID:       "transfer",
+		Order:        "UNORDERED",
+	}, nil, nil)
 	ts.Require().NoError(err)
 	return module.NewChain(chain)
 }

@@ -96,18 +96,15 @@ func TestProverTestSuite(t *testing.T) {
 }
 
 func (ts *ProverTestSuite) SetupTest() {
-	const hdwMnemonic = "math razor capable expose worth grape metal sunset metal sudden usage scheme"
-	const hdwPath = "m/44'/60'/0'/0/0"
-	const ibcHandlerAddress = "aa43d337145e8930d01cb4e60abf6595c692921e"
 	signerConfig := &hd.SignerConfig{
-		Mnemonic: hdwMnemonic,
-		Path:     hdwPath,
+		Mnemonic: "math razor capable expose worth grape metal sunset metal sudden usage scheme",
+		Path:     "m/44'/60'/0'/0/0",
 	}
 	anySignerConfig, err := codectypes.NewAnyWithValue(signerConfig)
 	ts.Require().NoError(err)
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
 		EthChainId: 9999,
-		IbcAddress: ibcHandlerAddress,
+		IbcAddress: common.Address{}.String(),
 		Signer:     anySignerConfig,
 	})
 	ts.Require().NoError(err)

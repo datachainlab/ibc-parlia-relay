@@ -203,7 +203,7 @@ func (pr *Prover) withProofAndValidators(height uint64, ethHeaders []*ETHHeader)
 
 func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState, exported.ConsensusState, error) {
 	currentEpoch := getCurrentEpoch(dstHeader.GetHeight().GetRevisionHeight())
-	currentValidators, currrentTurnTerm, err := queryValidatorSetAndTurnTerm(pr.chain.Header, currentEpoch)
+	currentValidators, currentTurnTerm, err := queryValidatorSetAndTurnTerm(pr.chain.Header, currentEpoch)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -242,7 +242,7 @@ func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState
 	consensusState := ConsensusState{
 		Timestamp:              header.Time,
 		PreviousValidatorsHash: makeEpochHash(previousValidators, previousTurnTerm),
-		CurrentValidatorsHash:  makeEpochHash(currentValidators, currrentTurnTerm),
+		CurrentValidatorsHash:  makeEpochHash(currentValidators, currentTurnTerm),
 		StateRoot:              stateRoot.Bytes(),
 	}
 	return &clientState, &consensusState, nil
