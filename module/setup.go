@@ -40,8 +40,9 @@ func setupHeadersForUpdate(
 			return nil, err
 		}
 		if verifiableEpoch == nil {
-			log.GetLogger().Warn("Insufficient vote attestation. Prover will stops.", "epoch", epochHeight, "trustedEpoch", trustedEpochHeight, "latest", latestHeight)
-			return withTrustedHeight(targetHeaders, clientStateLatestHeight), nil
+			err = fmt.Errorf("insufficient vote attestation: epochHeight=%d, trustedEpochHeight=%d", epochHeight, trustedEpochHeight)
+			log.GetLogger().Error("[FastFinalityError]", err)
+			return withTrustedHeight(targetHeaders, clientStateLatestHeight), err
 		}
 		targetHeaders = append(targetHeaders, verifiableEpoch)
 		trustedEpochHeight = epochHeight
