@@ -29,9 +29,6 @@ go run main.go update success latest
 
 go run main.go update success specified --num 1000 --diff 0
 
-# src/client.rs test_error_update_client
+# src/client.rs test_error_update_state_non_neighboring_epoch
 go run main.go update error 
-
-# src/header/eth_headers.rs test_success_verify_finalized_including_not_finalized_block
-go run main.go header success specified --num 31894081
 ```

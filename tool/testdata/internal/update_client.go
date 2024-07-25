@@ -5,7 +5,6 @@ import (
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"log"
@@ -103,48 +102,34 @@ func (m *updateClientModule) error() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			prover, chain, err := createProver()
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
 			latest, err := chain.LatestHeight()
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
-			header, err := prover.GetLatestFinalizedHeaderByLatestHeight(latest.GetRevisionHeight())
+			epoch := module.GetCurrentEpoch(latest.GetRevisionHeight())
+			header, err := prover.GetLatestFinalizedHeaderByLatestHeight(epoch + 2)
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
-			target, err := header.(*module.Header).Target()
+			updating, err := prover.SetupHeadersForUpdateByLatestHeight(types.NewHeight(0, header.GetHeight().GetRevisionNumber()-constant.BlocksPerEpoch), header.(*module.Header))
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
-			updating, _ := prover.SetupHeadersForUpdateByLatestHeight(types.NewHeight(header.GetHeight().GetRevisionNumber(), target.Number.Uint64()-1), header.(*module.Header))
-			target.Root = common.Hash{}
-			rlpTarget, err := rlp.EncodeToBytes(target)
-			updating[0].(*module.Header).Headers[0] = &module.ETHHeader{Header: rlpTarget}
+
+			// non neighboring epoch
+			newTrustedHeight := types.NewHeight(0, header.GetHeight().GetRevisionHeight()-2*constant.BlocksPerEpoch)
+			updating[0].(*module.Header).TrustedHeight = &newTrustedHeight
 			pack, err := types.PackClientMessage(updating[0])
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
 			marshal, err := pack.Marshal()
 			if err != nil {
-				return err
-			}
-			trustedHeight := header.(*module.Header).TrustedHeight.GetRevisionHeight()
-			currentValidatorSetOfTrustedHeight, currentTurnLengthOfTrustedHeight, err := module.QueryValidatorSetAndTurnLength(chain.Header, module.GetCurrentEpoch(trustedHeight))
-			if err != nil {
-				return err
-			}
-			previousValidatorSetOfTrustedHeight, previousTurnLengthOfTrustedHeight, err := module.QueryValidatorSetAndTurnLength(chain.Header, module.GetPreviousEpoch(trustedHeight))
-			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
 			log.Println("header", common.Bytes2Hex(marshal))
-			log.Println("height", header.GetHeight().GetRevisionHeight())
-			log.Println("trustedHeight", trustedHeight)
-			log.Println("currentEpochHashOfTrustedHeight", common.Bytes2Hex(module.MakeEpochHash(currentValidatorSetOfTrustedHeight, currentTurnLengthOfTrustedHeight)))
-			log.Println("previousEpochHashOfTrustedHeight", common.Bytes2Hex(module.MakeEpochHash(previousValidatorSetOfTrustedHeight, previousTurnLengthOfTrustedHeight)))
-			log.Println("newCurrentEpochHash", common.Bytes2Hex(module.MakeEpochHash(header.(*module.Header).CurrentValidators, uint8(header.(*module.Header).CurrentTurnLength))))
-			log.Println("newPreviousEpochHash", common.Bytes2Hex(module.MakeEpochHash(header.(*module.Header).PreviousValidators, uint8(header.(*module.Header).PreviousTurnLength))))
 			return nil
 		},
 	}
