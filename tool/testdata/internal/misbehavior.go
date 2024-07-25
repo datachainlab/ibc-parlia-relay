@@ -7,7 +7,6 @@ import (
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
 	"log"
@@ -22,11 +21,11 @@ func (m *misbehaviorModule) success() *cobra.Command {
 		Use: "success",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			chainID := uint64(9999)
-			targetHeight, header1, err := m.getLocalHeader(chainID, 8645, 0)
+			targetHeight, header1, err := m.getLocalHeader(chainID, 8645, 0, 1)
 			if err != nil {
 				log.Panic(err)
 			}
-			_, header2, err := m.getLocalHeader(chainID, 8545, targetHeight)
+			_, header2, err := m.getLocalHeader(chainID, 8545, targetHeight, 2)
 			if err != nil {
 				log.Panic(err)
 			}
@@ -41,11 +40,10 @@ func (m *misbehaviorModule) success() *cobra.Command {
 			pack, _ := types.PackClientMessage(&misbehavior)
 			marshal, _ := pack.Marshal()
 			log.Println("misbehavior", common.Bytes2Hex(marshal))
-			log.Println("trustedHeight", header1.TrustedHeight)
-			log.Println("currentValidatorHash", common.Bytes2Hex(crypto.Keccak256(header1.CurrentValidators...)))
-			log.Println("previousValidatorHash", common.Bytes2Hex(crypto.Keccak256(header1.PreviousValidators...)))
-			epochCount := header1.GetHeight().GetRevisionHeight() / constant.BlocksPerEpoch
-			log.Println("currentEpoch", epochCount*constant.BlocksPerEpoch)
+			log.Println("h1_height", header1.GetHeight())
+			log.Println("h1_trustedHeight", header1.TrustedHeight)
+			log.Println("h2_height", header2.GetHeight())
+			log.Println("h2_trustedHeight", header2.TrustedHeight)
 			return nil
 		},
 	}
@@ -112,7 +110,7 @@ func (m *misbehaviorModule) error() *cobra.Command {
 	}
 }
 
-func (m *misbehaviorModule) getLocalHeader(chainID uint64, port int64, targetHeight uint64) (uint64, *module.Header, error) {
+func (m *misbehaviorModule) getLocalHeader(chainID uint64, port int64, targetHeight uint64, trustedDiff uint64) (uint64, *module.Header, error) {
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
 		EthChainId: chainID,
 		RpcAddr:    fmt.Sprintf("http://localhost:%d", port),
@@ -144,7 +142,7 @@ func (m *misbehaviorModule) getLocalHeader(chainID uint64, port int64, targetHei
 	if err != nil {
 		return latest, nil, err
 	}
-	trustedHeight := types.NewHeight(0, target.Number.Uint64()-5)
+	trustedHeight := types.NewHeight(0, target.Number.Uint64()-trustedDiff)
 	header.TrustedHeight = &trustedHeight
 	return latest, header, nil
 }
