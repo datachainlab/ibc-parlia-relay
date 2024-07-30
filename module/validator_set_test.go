@@ -3,9 +3,7 @@ package module
 import (
 	"context"
 	"errors"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/suite"
 	"math/big"
 	"testing"
@@ -20,13 +18,6 @@ func TestValidatorSetTestSuite(t *testing.T) {
 }
 
 func (ts *ValidatorSetTestSuite) SetupTest() {
-}
-
-func (ts *ValidatorSetTestSuite) fromRlp(hex string) *types.Header {
-	var h types.Header
-	err := rlp.DecodeBytes(common.Hex2Bytes(hex), &h)
-	ts.Require().NoError(err)
-	return &h
 }
 
 func (ts *ValidatorSetTestSuite) TestSuccessExtractValidatorSet() {
