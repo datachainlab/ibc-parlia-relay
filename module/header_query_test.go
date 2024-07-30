@@ -45,7 +45,7 @@ func (ts *HeaderQueryTestSuite) TestErrorQueryFinalizedHeader() {
 		return &types.Header{Number: big.NewInt(int64(height))}, nil
 	}
 
-	headers, err = queryFinalizedHeader(fn, 360, 401)
+	headers, err = queryFinalizedHeader(fn, 360, 400)
 	ts.Require().NoError(err)
 	ts.Require().Nil(headers)
 }
