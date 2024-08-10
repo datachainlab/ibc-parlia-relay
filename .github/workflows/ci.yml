@@ -6,6 +6,9 @@ on:
       - main
   pull_request:
     types:
+      - opened
+      - reopened
+      - synchronize
       - ready_for_review
 
 jobs:
@@ -50,8 +53,7 @@ jobs:
         run: |
           make chain
           make contracts
-          # wait for epoch including turn term 
-          sleep 60
+          sleep 20
           make relayer
           make test
       - name: integration-test

@@ -3,7 +3,6 @@ package module
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/suite"
 	"testing"
 )
@@ -17,13 +16,6 @@ func TestVoteTestSuite(t *testing.T) {
 }
 
 func (ts *VoteTestSuite) SetupTest() {
-}
-
-func (ts *VoteTestSuite) fromRlp(hex string) *types.Header {
-	var h types.Header
-	err := rlp.DecodeBytes(common.Hex2Bytes(hex), &h)
-	ts.Require().NoError(err)
-	return &h
 }
 
 func (ts *VoteTestSuite) TestSuccessGetVoteAttestationFromHeaderEpoch() {
