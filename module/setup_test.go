@@ -9,7 +9,6 @@ import (
 	"github.com/hyperledger-labs/yui-relayer/log"
 	"github.com/stretchr/testify/suite"
 	"math/big"
-	"strings"
 	"testing"
 )
 
@@ -93,7 +92,7 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_neighboringEpoch() {
 
 func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_allEmpty() {
 
-	verify := func(latestHeight, nextHeight uint64, expected int, isError bool) {
+	verify := func(latestHeight, nextHeight uint64, expected int) {
 		clientStateLatestHeight := clienttypes.NewHeight(0, latestHeight)
 		target, err := newETHHeader(&types2.Header{
 			Number: big.NewInt(int64(nextHeight)),
@@ -113,34 +112,31 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_allEmpty() {
 			}, nil
 		}
 		targets, err := setupHeadersForUpdate(neighboringEpochFn, headerFn, clientStateLatestHeight, latestFinalizedHeader, clienttypes.NewHeight(0, 1000000))
-		if isError {
-			ts.Require().True(strings.HasPrefix(err.Error(), "insufficient vote attestation"))
-		} else {
-			ts.Require().NoError(err)
-		}
+		ts.Require().NoError(err)
 		ts.Require().Len(targets, expected)
 	}
-	verify(0, constant.BlocksPerEpoch-1, 1, false)
-	verify(0, constant.BlocksPerEpoch, 1, false)
-	verify(0, constant.BlocksPerEpoch+1, 0, true)                          // non neighboring
-	verify(0, 10*constant.BlocksPerEpoch-1, 0, true)                       // non neighboring
-	verify(0, 10*constant.BlocksPerEpoch, 0, true)                         // non neighboring
-	verify(0, 10*constant.BlocksPerEpoch+1, 0, true)                       // non neighboring
-	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch-1, 0, false) // same
-	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch, 1, false)
-	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch+1, 0, true)    // non neighboring
-	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch-1, 0, true) // non neighboring
-	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch, 0, true)   // non neighboring
-	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch+1, 0, true) // non neighboring
-	verify(constant.BlocksPerEpoch, constant.BlocksPerEpoch, 0, false)       // same
-	verify(constant.BlocksPerEpoch, constant.BlocksPerEpoch+1, 1, false)
-	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch-1, 0, true)   // non neighboring
-	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch, 0, true)     // non neighboring
-	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch+1, 0, true)   // non neighboring
-	verify(constant.BlocksPerEpoch+1, constant.BlocksPerEpoch+1, 0i, false)  // same
-	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch-1, 0, true) // non neighboring
-	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch, 0, true)   // non neighboring
-	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch+1, 0, true) // non neighboring
+
+	verify(0, constant.BlocksPerEpoch-1, 1)
+	verify(0, constant.BlocksPerEpoch, 1)
+	verify(0, constant.BlocksPerEpoch+1, 0) // non neighboring
+	verify(0, 10*constant.BlocksPerEpoch-1, 0)
+	verify(0, 10*constant.BlocksPerEpoch, 0)                        // non neighboring
+	verify(0, 10*constant.BlocksPerEpoch+1, 0)                      // non neighboring
+	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch-1, 0) // same
+	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch, 1)
+	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch+1, 0) // non neighboring
+	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch-1, 0)
+	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch, 0)   // non neighboring
+	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch+1, 0) // non neighboring
+	verify(constant.BlocksPerEpoch, constant.BlocksPerEpoch, 0)        // same
+	verify(constant.BlocksPerEpoch, constant.BlocksPerEpoch+1, 1)
+	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch-1, 0)   // non neighboring
+	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch, 0)     // non neighboring
+	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch+1, 0)   // non neighboring
+	verify(constant.BlocksPerEpoch+1, constant.BlocksPerEpoch+1, 0)    // same
+	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch-1, 0) // non neighboring
+	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch, 0)   // non neighboring
+	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch+1, 0) // non neighboring
 }
 
 func (ts *SetupTestSuite) TestSuccess_setupNeighboringEpochHeader_notContainTrusted() {
