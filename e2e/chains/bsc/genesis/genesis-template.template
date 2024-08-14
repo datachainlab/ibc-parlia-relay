@@ -28,6 +28,11 @@
     "shanghaiTime": 0,
     "keplerTime": 0,
     "feynmanTime": 0,
+    "feynmanFixTime": 0,
+    "cancunTime": 0,
+    "haberTime": 0,
+    "haberFixTime": 0,
+    "bohrTime": 0,
     "parlia": {
       "period": 3,
       "epoch": {{BLOCKS_PER_EPOCH}}

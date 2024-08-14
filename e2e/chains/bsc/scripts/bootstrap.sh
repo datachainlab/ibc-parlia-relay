@@ -43,16 +43,20 @@ function generate_genesis() {
   echo "replace init_holders.template"
   sed "s/{{INIT_HOLDER_ADDRESSES}}/${INIT_HOLDER_ADDRESSES}/g" scripts/init_holders.template | sed "s/{{INIT_HOLDER_BALANCE}}/${INIT_HOLDER_BALANCE}/g" >scripts/init_holders.js
 
+  echo "replace BSCValidatorSet.sol"
+  sed "s/INIT_NUM_OF_CABINETS = 21/INIT_NUM_OF_CABINETS = ${INIT_NUM_OF_CABINETS}/g" contracts/BSCValidatorSet.sol >contracts/BSCValidatorSet.sol.out
+  mv contracts/BSCValidatorSet.sol.out contracts/BSCValidatorSet.sol
+
   echo "replace generate.py"
-  sed "s/{{BLOCKS_PER_EPOCH}}/${BLOCKS_PER_EPOCH}/g" scripts/generate.py >scripts/generate.py.out1
-  sed "s/{{INIT_NUM_OF_CABINETS}}/${INIT_NUM_OF_CABINETS}/g" scripts/generate.py.out1 >scripts/generate.py.out2
-  sed "s/{{BSC_CHAIN_ID}}/${BSC_CHAIN_ID}/g" scripts/generate.py.out2 >scripts/generate.py
+  sed "s/dev_chain_id: int = 714/dev_chain_id: int = ${BSC_CHAIN_ID}/g" scripts/generate.py > scripts/generate.py.out
+  sed "s/epoch: str = \"200\"/epoch: str = \"${BLOCKS_PER_EPOCH}\"/g" scripts/generate.py.out > scripts/generate.py
 
   echo "start generate validators"
   node scripts/generate-validator.js
 
   echo "start generate process"
   /root/.local/bin/poetry run python3 scripts/generate.py dev
+
 }
 
 function init_genesis_data() {

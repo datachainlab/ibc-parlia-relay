@@ -5,7 +5,6 @@ import (
 	"github.com/cosmos/gogoproto/proto"
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/spf13/cobra"
 	"log"
 )
@@ -42,11 +41,11 @@ func (m *createClientModule) createClientSuccessCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			currentValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetCurrentEpoch(cs.GetLatestHeight().GetRevisionHeight()))
+			currentValidatorSet, currentTurnLength, err := module.QueryValidatorSetAndTurnLength(chain.Header, module.GetCurrentEpoch(cs.GetLatestHeight().GetRevisionHeight()))
 			if err != nil {
 				return err
 			}
-			previousValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetPreviousEpoch(cs.GetLatestHeight().GetRevisionHeight()))
+			previousValidatorSet, previousTurnLength, err := module.QueryValidatorSetAndTurnLength(chain.Header, module.GetPreviousEpoch(cs.GetLatestHeight().GetRevisionHeight()))
 			if err != nil {
 				return err
 			}
@@ -54,8 +53,8 @@ func (m *createClientModule) createClientSuccessCmd() *cobra.Command {
 			log.Println("consensusState", common.Bytes2Hex(anyConsState))
 			log.Println("height", cs.GetLatestHeight().GetRevisionHeight())
 			log.Println("time", consState.GetTimestamp())
-			log.Println("currentValidatorSet", common.BytesToHash(crypto.Keccak256(currentValidatorSet...)))
-			log.Println("previousValidatorSet", common.Bytes2Hex(crypto.Keccak256(previousValidatorSet...)))
+			log.Println("currentEpochHash", module.MakeEpochHash(currentValidatorSet, currentTurnLength))
+			log.Println("previousEpochHash", module.MakeEpochHash(previousValidatorSet, previousTurnLength))
 			log.Println("storageRoot", consState.(*module.ConsensusState).StateRoot)
 
 			return nil

@@ -16,4 +16,4 @@ geth --config ${DATA_DIR}/config.toml --datadir ${DATA_DIR} --netrestrict ${CLUS
 	--mine --miner.etherbase=${VALIDATOR_ADDR} -unlock ${VALIDATOR_ADDR} --password /dev/null --blspassword /scripts/wallet_password.txt \
 	--light.serve 50 --pprof.addr 0.0.0.0 --metrics \
 	--rpc.allow-unprotected-txs  --history.transactions 15768000 \
-	--pprof --ipcpath /gethipc --vote
+	--pprof --ipcpath /gethipc --vote --override.fixedturnlength 2

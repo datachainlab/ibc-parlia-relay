@@ -40,9 +40,8 @@ func setupHeadersForUpdate(
 			return nil, err
 		}
 		if verifiableEpoch == nil {
-			err = fmt.Errorf("insufficient vote attestation: epochHeight=%d, trustedEpochHeight=%d", epochHeight, trustedEpochHeight)
-			log.GetLogger().Error("[FastFinalityError]", err)
-			return withTrustedHeight(targetHeaders, clientStateLatestHeight), err
+			log.GetLogger().Error("[FastFinalityError]", fmt.Errorf("insufficient vote attestation: epochHeight=%d, trustedEpochHeight=%d", epochHeight, trustedEpochHeight))
+			return withTrustedHeight(targetHeaders, clientStateLatestHeight), nil
 		}
 		targetHeaders = append(targetHeaders, verifiableEpoch)
 		trustedEpochHeight = epochHeight
@@ -58,22 +57,22 @@ func setupNeighboringEpochHeader(
 	latestHeight exported.Height,
 ) (core.Header, error) {
 	// neighboring epoch needs block before checkpoint
-	currentValidatorSet, err := queryValidatorSet(getHeader, epochHeight)
+	currentValidatorSet, currentTurnLength, err := queryValidatorSetAndTurnLength(getHeader, epochHeight)
 	if err != nil {
 		return nil, fmt.Errorf("setupNeighboringEpochHeader: failed to get current validator set: epochHeight=%d : %+v", epochHeight, err)
 	}
-	trustedValidatorSet, err := queryValidatorSet(getHeader, trustedEpochHeight)
+	trustedValidatorSet, trustedTurnLength, err := queryValidatorSetAndTurnLength(getHeader, trustedEpochHeight)
 	if err != nil {
 		return nil, fmt.Errorf("setupNeighboringEpochHeader: failed to get trusted validator set: trustedEpochHeight=%d : %+v", trustedEpochHeight, err)
 	}
 	if trustedValidatorSet.Contains(currentValidatorSet) {
 		// ex) trusted(prevSaved = 200), epochHeight = 400 must be finalized by min(610,latest)
-		nextCheckpoint := currentValidatorSet.Checkpoint(epochHeight + constant.BlocksPerEpoch)
+		nextCheckpoint := currentValidatorSet.Checkpoint(currentTurnLength) + (epochHeight + constant.BlocksPerEpoch)
 		limit := minUint64(nextCheckpoint-1, latestHeight.GetRevisionHeight())
 		return queryVerifiableHeader(epochHeight, limit)
 	} else {
 		// ex) trusted(prevSaved = 200), epochHeight = 400 must be finalized by min(410,latest)
-		checkpoint := trustedValidatorSet.Checkpoint(epochHeight)
+		checkpoint := trustedValidatorSet.Checkpoint(trustedTurnLength) + epochHeight
 		limit := minUint64(checkpoint-1, latestHeight.GetRevisionHeight())
 		return queryVerifiableHeader(epochHeight, limit)
 	}

@@ -203,13 +203,13 @@ func (pr *Prover) withProofAndValidators(height uint64, ethHeaders []*ETHHeader)
 
 func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState, exported.ConsensusState, error) {
 	currentEpoch := getCurrentEpoch(dstHeader.GetHeight().GetRevisionHeight())
-	currentValidators, err := queryValidatorSet(pr.chain.Header, currentEpoch)
+	currentValidators, currentTurnLength, err := queryValidatorSetAndTurnLength(pr.chain.Header, currentEpoch)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	previousEpoch := getPreviousEpoch(dstHeader.GetHeight().GetRevisionHeight())
-	previousValidators, err := queryValidatorSet(pr.chain.Header, previousEpoch)
+	previousValidators, previousTurnLength, err := queryValidatorSetAndTurnLength(pr.chain.Header, previousEpoch)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -241,9 +241,14 @@ func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState
 	}
 	consensusState := ConsensusState{
 		Timestamp:              header.Time,
-		PreviousValidatorsHash: crypto.Keccak256(previousValidators...),
-		CurrentValidatorsHash:  crypto.Keccak256(currentValidators...),
+		PreviousValidatorsHash: makeEpochHash(previousValidators, previousTurnLength),
+		CurrentValidatorsHash:  makeEpochHash(currentValidators, currentTurnLength),
 		StateRoot:              stateRoot.Bytes(),
 	}
 	return &clientState, &consensusState, nil
+}
+
+func makeEpochHash(validators Validators, turnLength uint8) []byte {
+	validatorsHash := crypto.Keccak256(validators...)
+	return crypto.Keccak256(append([]byte{turnLength}, validatorsHash...))
 }
