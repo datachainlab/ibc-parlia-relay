@@ -124,24 +124,12 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight ex
 		}
 		return pr.withProofAndValidators(height, ethHeaders)
 	}
-	queryVerifiableNonNeighboringEpochHeader := func(height uint64, limitHeight uint64, checkpoint uint64) (core.Header, error) {
-		ethHeaders, err := queryFinalizedHeaderAfterCheckpoint(pr.chain.Header, height, limitHeight, checkpoint)
-		if err != nil {
-			return nil, err
-		}
-		// No finalized header found
-		if ethHeaders == nil {
-			return nil, nil
-		}
-		return pr.withProofAndValidators(height, ethHeaders)
-	}
 	latestHeight, err := pr.chain.LatestHeight()
 	if err != nil {
 		return nil, err
 	}
 	return setupHeadersForUpdate(
 		queryVerifiableNeighboringEpochHeader,
-		queryVerifiableNonNeighboringEpochHeader,
 		pr.chain.Header,
 		clientStateLatestHeight,
 		latestFinalizedHeader,
@@ -210,31 +198,7 @@ func (pr *Prover) CheckRefreshRequired(counterparty core.ChainInfoICS02Querier) 
 }
 
 func (pr *Prover) withProofAndValidators(height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
-
-	// get RLP-encoded account proof
-	rlpAccountProof, _, err := pr.getAccountProof(int64(height))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get account proof : height = %d, %+v", height, err)
-	}
-
-	header := &Header{
-		AccountProof: rlpAccountProof,
-		Headers:      ethHeaders,
-	}
-
-	// Get validator set for verify headers
-	previousEpoch := getPreviousEpoch(height)
-	header.PreviousValidators, err = queryValidatorSet(pr.chain.Header, previousEpoch)
-	if err != nil {
-		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
-	}
-	currentEpoch := getCurrentEpoch(height)
-	header.CurrentValidators, err = queryValidatorSet(pr.chain.Header, currentEpoch)
-	if err != nil {
-		return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
-	}
-
-	return header, nil
+	return withProofAndValidators(pr.chain.Header, pr.getAccountProof, height, ethHeaders)
 }
 
 func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState, exported.ConsensusState, error) {

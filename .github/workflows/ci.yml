@@ -4,13 +4,20 @@ on:
   push:
     branches:
       - main
+      - develop
   pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
 
 jobs:
   unit-test:
     name: unit-test
     timeout-minutes: 10
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -32,6 +39,7 @@ jobs:
     name: e2e
     timeout-minutes: 45
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
     steps:
       - name: checkout
         uses: actions/checkout@v4
