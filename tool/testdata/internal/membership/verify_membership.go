@@ -18,9 +18,7 @@ import (
 )
 
 const (
-	hdwMnemonic = "math razor capable expose worth grape metal sunset metal sudden usage scheme"
-	hdwPath     = "m/44'/60'/0'/0/0"
-	ibcAddress  = "0x702E40245797c5a2108A566b3CE2Bf14Bc6aF841"
+	ibcAddress = "0x702E40245797c5a2108A566b3CE2Bf14Bc6aF841"
 )
 
 type verifyMembershipModule struct {

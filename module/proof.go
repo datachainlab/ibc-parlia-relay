@@ -169,3 +169,37 @@ func verifyAccount(target *types.Header, accountProof []byte, path common.Addres
 	}
 	return &account, nil
 }
+
+type getAccountProof = func(height int64) ([]byte, common.Hash, error)
+
+func withProofAndValidators(headerFn getHeaderFn, accountProofFn getAccountProof, height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
+
+	// get RLP-encoded account proof
+	rlpAccountProof, _, err := accountProofFn(int64(height))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get account proof : height = %d, %+v", height, err)
+	}
+
+	header := &Header{
+		AccountProof: rlpAccountProof,
+		Headers:      ethHeaders,
+	}
+
+	// Get validator set for verify headers
+	previousEpoch := getPreviousEpoch(height)
+	var previousTurnLength uint8
+	header.PreviousValidators, previousTurnLength, err = queryValidatorSetAndTurnLength(headerFn, previousEpoch)
+	header.PreviousTurnLength = uint32(previousTurnLength)
+	if err != nil {
+		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
+	}
+	currentEpoch := getCurrentEpoch(height)
+	var currentTurnLength uint8
+	header.CurrentValidators, currentTurnLength, err = queryValidatorSetAndTurnLength(headerFn, currentEpoch)
+	header.CurrentTurnLength = uint32(currentTurnLength)
+	if err != nil {
+		return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
+	}
+
+	return header, nil
+}

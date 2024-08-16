@@ -21,8 +21,8 @@ services:
     environment:
       BLOCKS_PER_EPOCH: 20
       INIT_HOLDER_BALANCE: "500000000000000000000"
-      NUMS_OF_VALIDATOR: 3
-      INIT_NUM_OF_CABINETS: 2
+      NUMS_OF_VALIDATOR: 5
+      INIT_NUM_OF_CABINETS: 4
     volumes:
       - bsc-rpc:/root/storage/bsc-rpc
       - bsc-validator1-1:/root/storage/bsc-validator1

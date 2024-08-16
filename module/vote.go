@@ -10,13 +10,14 @@ import (
 )
 
 const (
-	BLSPublicKeyLength  = 48
-	BLSSignatureLength  = 96
+	blsPublicKeyLength  = 48
+	blsSignatureLength  = 96
 	validatorNumberSize = 1
+	turnLengthLength    = 1
 )
 
-type BLSPublicKey [BLSPublicKeyLength]byte
-type BLSSignature [BLSSignatureLength]byte
+type BLSPublicKey [blsPublicKeyLength]byte
+type BLSSignature [blsSignatureLength]byte
 type ValidatorsBitSet uint64
 
 type VoteAttestation struct {
@@ -33,7 +34,6 @@ type VoteData struct {
 	TargetHash   common.Hash
 }
 
-// https://github.com/bnb-chain/bsc/blob/bb6bdc055d1a7f1f049c924028ad8aaf04291b3b/consensus/parlia/parlia.go#L370
 func getVoteAttestationFromHeader(header *types.Header) (*VoteAttestation, error) {
 	if len(header.Extra) <= extraVanity+extraSeal {
 		return nil, nil
@@ -48,6 +48,7 @@ func getVoteAttestationFromHeader(header *types.Header) (*VoteAttestation, error
 			return nil, nil
 		}
 		start := extraVanity + validatorNumberSize + num*validatorBytesLength
+		start += turnLengthLength
 		end := len(header.Extra) - extraSeal
 		attestationBytes = header.Extra[start:end]
 	}

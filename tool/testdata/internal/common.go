@@ -7,16 +7,13 @@ import (
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum/signers/hd"
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/spf13/viper"
+	"os"
 	"time"
 )
 
 const (
-	hdwMnemonic              = "math razor capable expose worth grape metal sunset metal sudden usage scheme"
-	hdwPath                  = "m/44'/60'/0'/0/0"
-	ibcAddress               = "0x702E40245797c5a2108A566b3CE2Bf14Bc6aF841"
-	localNetValidatorSize    = 3
-	mainNetValidatorSize     = 21
-	mainAndTestNetIbcAddress = "0x151f3951FA218cac426edFe078fA9e5C6dceA500"
+	hdwMnemonic = "math razor capable expose worth grape metal sunset metal sudden usage scheme"
+	hdwPath     = "m/44'/60'/0'/0/0"
 )
 
 func createRPCAddr() (string, error) {
@@ -45,10 +42,10 @@ func createProver() (*module.Prover, module.Chain, error) {
 		return nil, nil, err
 	}
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
-		EthChainId: 56,
+		EthChainId: 9999,
 		RpcAddr:    rpcAddr,
 		Signer:     CreateSignerConfig(),
-		IbcAddress: mainAndTestNetIbcAddress,
+		IbcAddress: os.Getenv("BSC_IBC_ADDR"),
 	})
 	if err != nil {
 		return nil, nil, err

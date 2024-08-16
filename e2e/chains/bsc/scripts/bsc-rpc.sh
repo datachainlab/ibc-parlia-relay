@@ -15,4 +15,4 @@ done
 ETHSTATS=""
 geth --config ${DATA_DIR}/config.toml --datadir ${DATA_DIR} --netrestrict ${CLUSTER_CIDR} \
 	--state.scheme=hash --db.engine=leveldb --verbosity ${VERBOSE} --nousb ${ETHSTATS} \
-	--unlock ${unlock_sequences} --password /dev/null --ipcpath /gethipc
+	--unlock ${unlock_sequences} --password /dev/null --ipcpath /gethipc --override.fixedturnlength 2

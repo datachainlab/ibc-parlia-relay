@@ -1,15 +1,14 @@
 package internal
 
 import (
-	"fmt"
 	"github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"log"
+	"os"
 )
 
 type updateClientModule struct {
@@ -26,11 +25,11 @@ func (m *updateClientModule) success() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			prover, chain, err := createProver()
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
 			latest, err := chain.LatestHeight()
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
 			return m.printHeader(prover, chain, latest.GetRevisionHeight())
 		},
@@ -51,6 +50,48 @@ func (m *updateClientModule) success() *cobra.Command {
 			return m.printHeader(prover, chain, epochCount*constant.BlocksPerEpoch+2)
 		},
 	})
+	var num uint64
+	var diff int64
+	specified := &cobra.Command{
+		Use: "specified",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			prover, chain, err := createProver()
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			currentEpoch := module.GetCurrentEpoch(num)
+			previousEpoch := module.GetPreviousEpoch(num)
+			validator, turnLength, err := module.QueryValidatorSetAndTurnLength(chain.Header, previousEpoch)
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			checkpoint := currentEpoch + validator.Checkpoint(turnLength)
+			target, err := prover.GetLatestFinalizedHeaderByLatestHeight(uint64(int64(num) + 2 + diff))
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			log.Println("checkpoint", checkpoint, "turnLength", turnLength, "target", target.GetHeight())
+			headers, err := prover.SetupHeadersForUpdateByLatestHeight(types.NewHeight(0, previousEpoch), target.(*module.Header))
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			for _, header := range headers {
+				pack, err := types.PackClientMessage(header)
+				if err != nil {
+					return errors.WithStack(err)
+				}
+				marshal, err := pack.Marshal()
+				if err != nil {
+					return err
+				}
+				log.Println(common.Bytes2Hex(marshal))
+			}
+			return nil
+		},
+	}
+	specified.Flags().Uint64Var(&num, "num", num, "--num")
+	specified.Flags().Int64Var(&diff, "diff", diff, "--diff")
+	cmd.AddCommand(specified)
 	return cmd
 }
 
@@ -61,48 +102,34 @@ func (m *updateClientModule) error() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			prover, chain, err := createProver()
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
 			latest, err := chain.LatestHeight()
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
-			header, err := prover.GetLatestFinalizedHeaderByLatestHeight(latest.GetRevisionHeight())
+			epoch := module.GetCurrentEpoch(latest.GetRevisionHeight())
+			header, err := prover.GetLatestFinalizedHeaderByLatestHeight(epoch + 2)
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
-			target, err := header.(*module.Header).Target()
+			updating, err := prover.SetupHeadersForUpdateByLatestHeight(types.NewHeight(0, header.GetHeight().GetRevisionNumber()-constant.BlocksPerEpoch), header.(*module.Header))
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
-			updating, _ := prover.SetupHeadersForUpdateByLatestHeight(types.NewHeight(header.GetHeight().GetRevisionNumber(), target.Number.Uint64()-1), header.(*module.Header))
-			target.Root = common.Hash{}
-			rlpTarget, err := rlp.EncodeToBytes(target)
-			updating[0].(*module.Header).Headers[0] = &module.ETHHeader{Header: rlpTarget}
+
+			// non neighboring epoch
+			newTrustedHeight := types.NewHeight(0, header.GetHeight().GetRevisionHeight()-2*constant.BlocksPerEpoch)
+			updating[0].(*module.Header).TrustedHeight = &newTrustedHeight
 			pack, err := types.PackClientMessage(updating[0])
 			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
 			marshal, err := pack.Marshal()
 			if err != nil {
-				return err
-			}
-			trustedHeight := header.(*module.Header).TrustedHeight.GetRevisionHeight()
-			trustedCurrentValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetCurrentEpoch(trustedHeight))
-			if err != nil {
-				return err
-			}
-			trustedPreviousValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetPreviousEpoch(trustedHeight))
-			if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
 			log.Println("header", common.Bytes2Hex(marshal))
-			log.Println("height", header.GetHeight().GetRevisionHeight())
-			log.Println("trustedHeight", trustedHeight)
-			log.Println("trustedCurrentValidatorHash", common.Bytes2Hex(crypto.Keccak256(trustedCurrentValidatorSet...)))
-			log.Println("trustedPreviousValidatorHash", common.Bytes2Hex(crypto.Keccak256(trustedPreviousValidatorSet...)))
-			log.Println("newCurrentValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.(*module.Header).CurrentValidators...)))
-			log.Println("newPreviousValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.(*module.Header).PreviousValidators...)))
 			return nil
 		},
 	}
@@ -112,20 +139,20 @@ func (m *updateClientModule) printHeader(prover *module.Prover, chain module.Cha
 	log.Println("printHeader latest=", height)
 	iHeader, err := prover.GetLatestFinalizedHeaderByLatestHeight(height)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	if err = iHeader.ValidateBasic(); err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	header := iHeader.(*module.Header)
 	target, err := header.Target()
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
-	account, err := header.Account(common.HexToAddress(mainAndTestNetIbcAddress))
+	account, err := header.Account(common.HexToAddress(os.Getenv("BSC_IBC_ADDR")))
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	// setup
@@ -145,11 +172,11 @@ func (m *updateClientModule) printHeader(prover *module.Prover, chain module.Cha
 	}
 
 	trustedHeight := updating[0].(*module.Header).TrustedHeight.GetRevisionHeight()
-	trustedCurrentValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetCurrentEpoch(trustedHeight))
+	currentValidatorSetOfTrustedHeight, currentTurnLengthOfTrustedHeight, err := module.QueryValidatorSetAndTurnLength(chain.Header, module.GetCurrentEpoch(trustedHeight))
 	if err != nil {
 		return err
 	}
-	trustedPreviousValidatorSet, err := module.QueryValidatorSet(chain.Header, module.GetPreviousEpoch(trustedHeight))
+	previousValidatorSetOfTrustedHeight, previousTurnLengthOfTrustedHeight, err := module.QueryValidatorSetAndTurnLength(chain.Header, module.GetPreviousEpoch(trustedHeight))
 	if err != nil {
 		return err
 	}
@@ -157,21 +184,18 @@ func (m *updateClientModule) printHeader(prover *module.Prover, chain module.Cha
 	log.Println("stateRoot", account.Root)
 	log.Println("height", header.GetHeight().GetRevisionHeight())
 	log.Println("trustedHeight", trustedHeight)
-	log.Println("trustedCurrentValidatorHash", common.Bytes2Hex(crypto.Keccak256(trustedCurrentValidatorSet...)))
-	log.Println("trustedPreviousValidatorHash", common.Bytes2Hex(crypto.Keccak256(trustedPreviousValidatorSet...)))
+	log.Println("currentEpochHashOfTrustedHeight", common.Bytes2Hex(module.MakeEpochHash(currentValidatorSetOfTrustedHeight, currentTurnLengthOfTrustedHeight)))
+	log.Println("previousEpochHashOfTrustedHeight", common.Bytes2Hex(module.MakeEpochHash(previousValidatorSetOfTrustedHeight, previousTurnLengthOfTrustedHeight)))
 	if target.Number.Uint64()%constant.BlocksPerEpoch == 0 {
-		newValidators, err := module.ExtractValidatorSet(target)
+		newValidators, newTurnLength, err := module.ExtractValidatorSetAndTurnLength(target)
 		if err != nil {
 			return err
 		}
-		if len(newValidators) != mainNetValidatorSize {
-			return fmt.Errorf("invalid validator size for test")
-		}
-		log.Println("newCurrentValidatorHash", common.Bytes2Hex(crypto.Keccak256(newValidators...)))
+		log.Println("newCurrentEpochHash", common.Bytes2Hex(module.MakeEpochHash(newValidators, newTurnLength)))
 	} else {
-		log.Println("newCurrentValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.CurrentValidators...)))
+		log.Println("newCurrentEpochHash", common.Bytes2Hex(module.MakeEpochHash(header.CurrentValidators, uint8(header.CurrentTurnLength))))
 	}
-	log.Println("newPreviousValidatorHash", common.Bytes2Hex(crypto.Keccak256(header.PreviousValidators...)))
+	log.Println("newPreviousEpochHash", common.Bytes2Hex(module.MakeEpochHash(header.PreviousValidators, uint8(header.PreviousTurnLength))))
 	return nil
 }
 

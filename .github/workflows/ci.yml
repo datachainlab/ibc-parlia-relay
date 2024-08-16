@@ -4,13 +4,20 @@ on:
   push:
     branches:
       - main
+      - develop
   pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
 
 jobs:
   unit-test:
     name: unit-test
     timeout-minutes: 10
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -27,11 +34,12 @@ jobs:
           # still using the deprecated types in ibc-go v8
           args: --timeout=5m0s --disable staticcheck
       - name: test
-        run: go test -v ./...
+        run: go test -v ./module
   e2e:
     name: e2e
     timeout-minutes: 45
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -46,5 +54,8 @@ jobs:
         run: |
           make chain
           make contracts
+          sleep 20
           make relayer
           make test
+      - name: integration-test
+        run: go test -v ./tests -tags dev -ldflags="-X github.com/datachainlab/ibc-parlia-relay/module/constant.blocksPerEpoch=20"

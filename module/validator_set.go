@@ -9,12 +9,8 @@ import (
 
 type Validators [][]byte
 
-func (v Validators) CheckpointValue() uint64 {
-	return uint64(len(v)/2 + 1)
-}
-
-func (v Validators) Checkpoint(epoch uint64) uint64 {
-	return epoch + v.CheckpointValue()
+func (v Validators) Checkpoint(turnLength uint8) uint64 {
+	return uint64(len(v)/2+1) * uint64(turnLength)
 }
 
 func (v Validators) Contains(other Validators) bool {
@@ -38,22 +34,23 @@ func ceilDiv(x, y int) int {
 	return (x + y - 1) / y
 }
 
-func queryValidatorSet(fn getHeaderFn, epochBlockNumber uint64) (Validators, error) {
+func queryValidatorSetAndTurnLength(fn getHeaderFn, epochBlockNumber uint64) (Validators, uint8, error) {
 	header, err := fn(context.TODO(), epochBlockNumber)
 	if err != nil {
-		return nil, err
+		return nil, 1, err
 	}
-	return extractValidatorSet(header)
+	return extractValidatorSetAndTurnLength(header)
 }
 
-func extractValidatorSet(h *types.Header) (Validators, error) {
+func extractValidatorSetAndTurnLength(h *types.Header) (Validators, uint8, error) {
+	const turnLengthLength = 1
 	extra := h.Extra
 	if len(extra) < extraVanity+extraSeal {
-		return nil, fmt.Errorf("invalid extra length : %d", h.Number.Uint64())
+		return nil, 1, fmt.Errorf("invalid extra length : %d", h.Number.Uint64())
 	}
 	num := int(extra[extraVanity])
-	if num == 0 || len(extra) <= extraVanity+extraSeal+num*validatorBytesLength {
-		return nil, fmt.Errorf("invalid validator bytes length: %d", h.Number.Uint64())
+	if num == 0 || len(extra) <= extraVanity+extraSeal+num*validatorBytesLength+turnLengthLength {
+		return nil, 1, fmt.Errorf("invalid validator bytes length: %d", h.Number.Uint64())
 	}
 	start := extraVanity + validatorNumberSize
 	end := start + num*validatorBytesLength
@@ -66,6 +63,6 @@ func extractValidatorSet(h *types.Header) (Validators, error) {
 		validatorWithBLS := validators[s:e]
 		validatorSet = append(validatorSet, validatorWithBLS)
 	}
-
-	return validatorSet, nil
+	turnLength := extra[end]
+	return validatorSet, turnLength, nil
 }
