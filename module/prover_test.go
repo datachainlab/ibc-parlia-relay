@@ -243,13 +243,13 @@ func (ts *ProverTestSuite) TestCheckRefreshRequired() {
 	ts.chain.chainTimestamp[chainHeight] = uint64(now.Unix())
 
 	// should refresh
-	ts.chain.consensusStateTimestamp[csHeight] = uint64(now.Add(-51 * time.Second).Unix())
+	ts.chain.consensusStateTimestamp[csHeight] = uint64(now.Add(-51 * time.Second).UnixNano())
 	required, err := ts.prover.CheckRefreshRequired(dst)
 	ts.Require().NoError(err)
 	ts.Require().True(required)
 
 	// needless
-	ts.chain.consensusStateTimestamp[csHeight] = uint64(now.Add(-50 * time.Second).Unix())
+	ts.chain.consensusStateTimestamp[csHeight] = uint64(now.Add(-50 * time.Second).UnixNano())
 	required, err = ts.prover.CheckRefreshRequired(dst)
 	ts.Require().NoError(err)
 	ts.Require().False(required)
