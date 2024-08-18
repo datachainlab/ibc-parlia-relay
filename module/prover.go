@@ -180,9 +180,7 @@ func (pr *Prover) CheckRefreshRequired(counterparty core.ChainInfoICS02Querier) 
 	if err = pr.chain.Codec().UnpackAny(resCons.ConsensusState, &cons); err != nil {
 		return false, fmt.Errorf("failed to unpack Any into tendermint consensus state: %+v", err)
 	}
-
-	// cons.GetTimestamp() returns not nsec but sec
-	lcLastTimestamp := time.Unix(int64(cons.GetTimestamp()), 0)
+	lcLastTimestamp := time.Unix(0, int64(cons.GetTimestamp()))
 
 	selfQueryHeight, err := pr.chain.LatestHeight()
 	if err != nil {
