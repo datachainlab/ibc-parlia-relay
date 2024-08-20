@@ -1,4 +1,4 @@
-# TODO should be shared?
+# git clone https://github.com/datachainlab/parlia-elc ../parlia-elc
 BSC_IBC_PROTO ?= ../parlia-elc/proto/definitions
 
 DOCKER := $(shell which docker)

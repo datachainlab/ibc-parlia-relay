@@ -2,6 +2,10 @@
 
 ![CI](https://github.com/datachainlab/ibc-parlia-relay/workflows/CI/badge.svg?branch=main)
 
+## Supported Versions
+- [yui-relayer v0.5.3](https://github.com/hyperledger-labs/yui-relayer/releases/tag/v0.5.3)
+- [ethereum-ibc-relay-chain v0.3.4](https://github.com/datachainlab/ethereum-ibc-relay-chain/releases/tag/v0.3.4)
+
 ## Setup Relayer
 
 Add this module to [yui-relayer](https://github.com/hyperledger-labs/yui-relayer) and activate it.
