@@ -44,12 +44,11 @@ func getVoteAttestationFromHeader(header *types.Header) (*VoteAttestation, error
 		attestationBytes = header.Extra[extraVanity : len(header.Extra)-extraSeal]
 	} else {
 		num := int(header.Extra[extraVanity])
-		if len(header.Extra) <= extraVanity+extraSeal+validatorNumberSize+num*validatorBytesLength {
+		start := extraVanity + validatorNumberSize + num*validatorBytesLength + turnLengthLength
+		end := len(header.Extra) - extraSeal
+		if end <= start {
 			return nil, nil
 		}
-		start := extraVanity + validatorNumberSize + num*validatorBytesLength
-		start += turnLengthLength
-		end := len(header.Extra) - extraSeal
 		attestationBytes = header.Extra[start:end]
 	}
 
