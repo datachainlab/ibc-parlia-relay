@@ -2,7 +2,7 @@ package tests
 
 import (
 	"context"
-	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum/signers/hd"
+	"github.com/datachainlab/ibc-hd-signer/pkg/hd"
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/hyperledger-labs/yui-relayer/config"
 	"github.com/hyperledger-labs/yui-relayer/log"
