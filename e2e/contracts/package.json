@@ -9,7 +9,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@hyperledger-labs/yui-ibc-solidity": "git+https://github.com/hyperledger-labs/yui-ibc-solidity.git#v0.3.34"
+    "@hyperledger-labs/yui-ibc-solidity": "git+https://github.com/hyperledger-labs/yui-ibc-solidity.git#v0.3.34",
+    "solidity-rlp": "2.0.8",
+    "solidity-mpt": "0.1.0"
   },
   "devDependencies": {
     "@truffle/hdwallet-provider": "^2.1.2",
