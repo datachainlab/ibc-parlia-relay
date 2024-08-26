@@ -4,7 +4,7 @@ const IBCChannelHandshake = artifacts.require("IBCChannelHandshake");
 const IBCChannelPacketSendRecv = artifacts.require("IBCChannelPacketSendRecv");
 const IBCChannelPacketTimeout = artifacts.require("IBCChannelPacketTimeout");
 const IBCChannelUpgradeInitTryAck = artifacts.require("IBCChannelUpgradeInitTryAck");
-const IBCChannelUpgradeConfirmTimeoutCancel = artifacts.require("IBCChannelUpgradeConfirmTimeoutCancel");
+const IBCChannelUpgradeConfirmOpenTimeoutCancel = artifacts.require("IBCChannelUpgradeConfirmOpenTimeoutCancel");
 const IBCHandler = artifacts.require("OwnableIBCHandler");
 const ERC20Token = artifacts.require("ERC20Token");
 const ICS20TransferBank = artifacts.require("ICS20TransferBank");
@@ -18,7 +18,7 @@ module.exports = async function (deployer) {
   await deployer.deploy(IBCChannelPacketSendRecv);
   await deployer.deploy(IBCChannelPacketTimeout);
   await deployer.deploy(IBCChannelUpgradeInitTryAck);
-  await deployer.deploy(IBCChannelUpgradeConfirmTimeoutCancel);
+  await deployer.deploy(IBCChannelUpgradeConfirmOpenTimeoutCancel);
   await deployer.deploy(IBCHandler,
       IBCClient.address,
       IBCConnection.address,
@@ -26,7 +26,7 @@ module.exports = async function (deployer) {
       IBCChannelPacketSendRecv.address,
       IBCChannelPacketTimeout.address,
       IBCChannelUpgradeInitTryAck.address,
-      IBCChannelUpgradeConfirmTimeoutCancel.address,
+      IBCChannelUpgradeConfirmOpenTimeoutCancel.address,
   );
 
   await deployer.deploy(ParliaClient, IBCHandler.address);

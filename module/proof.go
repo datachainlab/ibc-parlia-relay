@@ -30,11 +30,11 @@ func (pr *Prover) getAccountProof(height int64) ([]byte, common.Hash, error) {
 
 func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) ([]byte, error) {
 	// calculate slot for commitment
-	slot := crypto.Keccak256Hash(append(
+	storageKey := crypto.Keccak256Hash(append(
 		crypto.Keccak256Hash(path).Bytes(),
-		common.Hash{}.Bytes()...,
+		IBCCommitmentsSlot.Bytes()...,
 	))
-	marshaledSlot, err := slot.MarshalText()
+	storageKeyHex, err := storageKey.MarshalText()
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal slot: height = %d, %+v", height.GetRevisionHeight(), err)
 	}
@@ -42,12 +42,12 @@ func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) (
 	// call eth_getProof
 	stateProof, err := pr.chain.GetProof(
 		pr.chain.IBCAddress(),
-		[][]byte{marshaledSlot},
+		[][]byte{storageKeyHex},
 		big.NewInt(int64(height.GetRevisionHeight())),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get state commitment proof : address = %s, height = %d, slot = %v, %+v",
-			pr.chain.IBCAddress(), height.GetRevisionHeight(), marshaledSlot, err)
+			pr.chain.IBCAddress(), height.GetRevisionHeight(), storageKeyHex, err)
 	}
 	return stateProof.StorageProofRLP[0], nil
 }

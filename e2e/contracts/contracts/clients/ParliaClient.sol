@@ -30,7 +30,7 @@ contract ParliaClient is ILightClient {
     bytes32 private constant CONSENSUS_STATE_TYPE_URL_HASH =
     keccak256(abi.encodePacked(CONSENSUS_STATE_TYPE_URL));
 
-    uint256 private constant COMMITMENT_SLOT = 0;
+    bytes32 private constant COMMITMENT_SLOT = 0x1ee222554989dda120e26ecacf756fe1235cd8d726706b57517715dde4f0c900;
     uint8 private constant ACCOUNT_STORAGE_ROOT_INDEX = 2;
 
     address internal ibcHandler;
