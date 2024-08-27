@@ -10,8 +10,8 @@ IbcLightclientsParliaV1ConsensusState as ConsensusState,
 IbcLightclientsParliaV1Header as Header
 } from "../ibc/lightclients/parlia/v1/parlia.sol";
 import {GoogleProtobufAny as Any} from "@hyperledger-labs/yui-ibc-solidity/contracts/proto/GoogleProtobufAny.sol";
-import "solidity-rlp/contracts/Helper.sol";
-import "solidity-mpt/src/MPTProof.sol";
+import {RLPReader} from "@hyperledger-labs/yui-ibc-solidity/contracts/clients/qbft/RLPReader.sol";
+import {MPTProof} from "@hyperledger-labs/yui-ibc-solidity/contracts/clients/qbft/MPTProof.sol";
 
 contract ParliaClient is ILightClient {
     using MPTProof for bytes;
