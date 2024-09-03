@@ -3,6 +3,7 @@ package module
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/hyperledger-labs/yui-relayer/log"
 	"time"
 
@@ -15,6 +16,9 @@ import (
 )
 
 var _ core.Prover = (*Prover)(nil)
+
+// keccak256(abi.encode(uint256(keccak256("ibc.commitment")) - 1)) & ~bytes32(uint256(0xff))
+var IBCCommitmentsSlot = common.HexToHash("1ee222554989dda120e26ecacf756fe1235cd8d726706b57517715dde4f0c900")
 
 type Prover struct {
 	chain  Chain
@@ -226,7 +230,6 @@ func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState
 		return nil, nil, err
 	}
 
-	var commitmentsSlot [32]byte
 	latestHeight := toHeight(dstHeader.GetHeight())
 	clientState := ClientState{
 		TrustingPeriod:     pr.config.TrustingPeriod,
@@ -235,7 +238,7 @@ func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState
 		LatestHeight:       &latestHeight,
 		Frozen:             false,
 		IbcStoreAddress:    pr.chain.IBCAddress().Bytes(),
-		IbcCommitmentsSlot: commitmentsSlot[:],
+		IbcCommitmentsSlot: IBCCommitmentsSlot[:],
 	}
 	consensusState := ConsensusState{
 		Timestamp:              header.Time,

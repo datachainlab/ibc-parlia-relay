@@ -84,8 +84,7 @@ func (ts *ProverNetworkTestSuite) TestSuccessCreateInitialLightClientState() {
 	ts.Require().Equal(cs.MaxClockDrift, 1*time.Second)
 	ts.Require().False(cs.Frozen)
 	ts.Require().Equal(common.Bytes2Hex(cs.IbcStoreAddress), strings.ToLower(ts.chain.IBCAddress().String()[2:]))
-	var commitment [32]byte
-	ts.Require().Equal(common.Bytes2Hex(cs.IbcCommitmentsSlot), common.Bytes2Hex(commitment[:]))
+	ts.Require().Equal(common.Bytes2Hex(cs.IbcCommitmentsSlot), common.Bytes2Hex(module.IBCCommitmentsSlot[:]))
 
 	header, err := ts.chain.Header(context.Background(), cs.GetLatestHeight().GetRevisionHeight())
 	ts.Require().NoError(err)

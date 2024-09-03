@@ -10,8 +10,8 @@ IbcLightclientsParliaV1ConsensusState as ConsensusState,
 IbcLightclientsParliaV1Header as Header
 } from "../ibc/lightclients/parlia/v1/parlia.sol";
 import {GoogleProtobufAny as Any} from "@hyperledger-labs/yui-ibc-solidity/contracts/proto/GoogleProtobufAny.sol";
-import "solidity-rlp/contracts/Helper.sol";
-import "solidity-mpt/src/MPTProof.sol";
+import {RLPReader} from "@hyperledger-labs/yui-ibc-solidity/contracts/clients/qbft/RLPReader.sol";
+import {MPTProof} from "@hyperledger-labs/yui-ibc-solidity/contracts/clients/qbft/MPTProof.sol";
 
 contract ParliaClient is ILightClient {
     using MPTProof for bytes;
@@ -30,7 +30,7 @@ contract ParliaClient is ILightClient {
     bytes32 private constant CONSENSUS_STATE_TYPE_URL_HASH =
     keccak256(abi.encodePacked(CONSENSUS_STATE_TYPE_URL));
 
-    uint256 private constant COMMITMENT_SLOT = 0;
+    bytes32 private constant COMMITMENT_SLOT = 0x1ee222554989dda120e26ecacf756fe1235cd8d726706b57517715dde4f0c900;
     uint8 private constant ACCOUNT_STORAGE_ROOT_INDEX = 2;
 
     address internal ibcHandler;
