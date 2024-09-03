@@ -2,7 +2,7 @@ package module
 
 import (
 	"context"
-	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum/signers/hd"
+	"github.com/datachainlab/ibc-hd-signer/pkg/hd"
 	"github.com/hyperledger-labs/yui-relayer/log"
 	"math/big"
 	"testing"
