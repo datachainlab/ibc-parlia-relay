@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum/signers/hd"
+	"github.com/datachainlab/ibc-hd-signer/pkg/hd"
 	"log"
 
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
