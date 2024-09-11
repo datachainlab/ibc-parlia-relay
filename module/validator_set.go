@@ -23,8 +23,12 @@ func (v Validators) Contains(other Validators) bool {
 			}
 		}
 	}
-	required := ceilDiv(len(v), 3)
+	required := v.threshold()
 	return count >= required
+}
+
+func (v Validators) threshold() int {
+	return len(v) - ceilDiv(len(v)*2, 3) + 1
 }
 
 func ceilDiv(x, y int) int {
