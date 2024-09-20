@@ -2,11 +2,12 @@ package module
 
 import (
 	"context"
-	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum/signers/hd"
-	"github.com/hyperledger-labs/yui-relayer/log"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/datachainlab/ibc-hd-signer/pkg/hd"
+	"github.com/hyperledger-labs/yui-relayer/log"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"

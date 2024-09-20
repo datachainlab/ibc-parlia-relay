@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum/signers/hd"
 	"log"
 
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
-	"github.com/datachainlab/ibc-parlia-relay/module"
+	"github.com/datachainlab/ibc-hd-signer/pkg/hd"
 	"github.com/hyperledger-labs/yui-relayer/cmd"
+
+	"github.com/datachainlab/ibc-parlia-relay/module"
 )
 
 func main() {

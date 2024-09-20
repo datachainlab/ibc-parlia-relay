@@ -2,13 +2,15 @@ package internal
 
 import (
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
-	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum/signers/hd"
-	"github.com/datachainlab/ibc-parlia-relay/module"
-	"github.com/spf13/viper"
 	"os"
 	"time"
+
+	"github.com/cosmos/cosmos-sdk/codec/types"
+	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
+	"github.com/datachainlab/ibc-hd-signer/pkg/hd"
+	"github.com/spf13/viper"
+
+	"github.com/datachainlab/ibc-parlia-relay/module"
 )
 
 const (
