@@ -30,6 +30,7 @@
     "refreshThresholdRate": {
       "numerator": 1,
       "denominator": 2
-    }
+    },
+    "refreshBlockDifferenceThreshold": 1000
   }
 }

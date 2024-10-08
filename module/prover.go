@@ -191,12 +191,26 @@ func (pr *Prover) CheckRefreshRequired(counterparty core.ChainInfoICS02Querier) 
 		return time.Duration(nsec) * time.Nanosecond
 	}
 	threshold := durationMulByFraction(pr.config.GetTrustingPeriod(), pr.config.GetRefreshThresholdRate())
-	needsRefresh := elapsedTime > threshold
-	if needsRefresh {
+	if elapsedTime > threshold {
 		log.GetLogger().Debug("needs refresh", "elapsedTime", elapsedTime, "threshold", threshold)
+		return true, nil
 	}
 
-	return needsRefresh, nil
+	// Check if the block difference exceeds the threshold
+	blockDiffThreshold := pr.config.RefreshBlockDifferenceThreshold
+	if blockDiffThreshold == 0 || selfQueryHeight.GetRevisionHeight() < cs.GetLatestHeight().GetRevisionHeight() {
+		return false, nil
+	}
+	blockDiff := selfQueryHeight.GetRevisionHeight() - cs.GetLatestHeight().GetRevisionHeight()
+	if blockDiff > blockDiffThreshold {
+		log.GetLogger().Debug("needs refresh due to block diff",
+			"chain", cpQueryHeight.GetRevisionHeight(),
+			"cs", cs.GetLatestHeight().GetRevisionHeight(),
+			"threshold", blockDiffThreshold)
+		return true, nil
+	}
+	return false, nil
+
 }
 
 func (pr *Prover) withProofAndValidators(height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
