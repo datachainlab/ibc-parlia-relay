@@ -12,6 +12,7 @@ message ProverConfig {
   Fraction refresh_threshold_rate = 3;
   // Difference in blocks to refresh.
   // Refresh if the difference between blocks in the chain and ClientState exceeds this value.
+  // If the value is 0, no refresh decision is made.
   uint64 refresh_block_difference_threshold = 4;
 }
 
