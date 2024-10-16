@@ -237,19 +237,45 @@ func (ts *ProverTestSuite) TestCheckRefreshRequired() {
 		Chain:  ts.prover.chain,
 		Prover: ts.prover,
 	}
+	defer func() {
+		ts.chain.latestHeight = 0
+		ts.chain.trustedHeight = 0
+	}()
+
 	now := time.Now()
 	chainHeight := clienttypes.NewHeight(0, 0)
 	csHeight := clienttypes.NewHeight(0, 0)
 	ts.chain.chainTimestamp[chainHeight] = uint64(now.Unix())
 
-	// should refresh
+	// should refresh by trusting_period
 	ts.chain.consensusStateTimestamp[csHeight] = uint64(now.Add(-51 * time.Second).UnixNano())
 	required, err := ts.prover.CheckRefreshRequired(dst)
 	ts.Require().NoError(err)
 	ts.Require().True(required)
 
-	// needless
+	// needless by trusting_period
 	ts.chain.consensusStateTimestamp[csHeight] = uint64(now.Add(-50 * time.Second).UnixNano())
+	required, err = ts.prover.CheckRefreshRequired(dst)
+	ts.Require().NoError(err)
+	ts.Require().False(required)
+
+	// should refresh by block difference
+	ts.chain.latestHeight = 2
+	ts.prover.config.RefreshBlockDifferenceThreshold = 1
+	required, err = ts.prover.CheckRefreshRequired(dst)
+	ts.Require().NoError(err)
+	ts.Require().True(required)
+
+	// needless by block difference
+	ts.prover.config.RefreshBlockDifferenceThreshold = 2
+	required, err = ts.prover.CheckRefreshRequired(dst)
+	ts.Require().NoError(err)
+	ts.Require().False(required)
+
+	// needless by invalid block difference
+	ts.chain.latestHeight = 1
+	ts.chain.trustedHeight = 3
+	ts.prover.config.RefreshBlockDifferenceThreshold = 1
 	required, err = ts.prover.CheckRefreshRequired(dst)
 	ts.Require().NoError(err)
 	ts.Require().False(required)

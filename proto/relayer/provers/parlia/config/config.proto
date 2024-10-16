@@ -8,7 +8,12 @@ import "gogoproto/gogo.proto";
 message ProverConfig {
   google.protobuf.Duration trusting_period = 1 [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
   google.protobuf.Duration max_clock_drift = 2 [(gogoproto.nullable) = false, (gogoproto.stdduration) = true];
+  // Fraction of the trusting period that is allowed to pass before the client is considered expired
   Fraction refresh_threshold_rate = 3;
+  // Difference in blocks to refresh.
+  // Refresh if the difference between blocks in the chain and ClientState exceeds this value.
+  // If the value is 0, no refresh decision is made.
+  uint64 refresh_block_difference_threshold = 4;
 }
 
 message Fraction {
