@@ -3,7 +3,6 @@ package module
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -11,31 +10,6 @@ type Validators [][]byte
 
 func (v Validators) Checkpoint(turnLength uint8) uint64 {
 	return uint64(len(v)/2+1) * uint64(turnLength)
-}
-
-func (v Validators) Contains(other Validators) bool {
-	count := 0
-	for _, x := range other {
-		for _, y := range v {
-			if common.Bytes2Hex(x) == common.Bytes2Hex(y) {
-				count++
-				break
-			}
-		}
-	}
-	required := v.threshold()
-	return count >= required
-}
-
-func (v Validators) threshold() int {
-	return len(v) - ceilDiv(len(v)*2, 3) + 1
-}
-
-func ceilDiv(x, y int) int {
-	if y == 0 {
-		return 0
-	}
-	return (x + y - 1) / y
 }
 
 func queryValidatorSetAndTurnLength(fn getHeaderFn, epochBlockNumber uint64) (Validators, uint8, error) {
