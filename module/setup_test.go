@@ -139,45 +139,7 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_allEmpty() {
 	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch+1, 0) // non neighboring
 }
 
-func (ts *SetupTestSuite) TestSuccess_setupNeighboringEpochHeader_notContainTrusted() {
-
-	epochHeight := uint64(400)
-	trustedEpochHeight := uint64(200)
-
-	neighboringEpochFn := func(height uint64, limit uint64) (core.Header, error) {
-		target, err := newETHHeader(&types2.Header{
-			Number: big.NewInt(int64(limit)),
-		})
-		ts.Require().NoError(err)
-		return &Header{
-			Headers: []*ETHHeader{target},
-		}, nil
-	}
-	headerFn := func(_ context.Context, height uint64) (*types2.Header, error) {
-		h := headerByHeight(int64(height))
-		const validatorCount = 4
-		const indexOfValidatorCount = extraVanity
-		const indexOfTurnLength = extraVanity + validatorNumberSize + validatorCount*validatorBytesLength
-		if h.Number.Uint64() == trustedEpochHeight {
-			// set invalid validator
-			for i := range h.Extra {
-				if i != indexOfValidatorCount && i != indexOfTurnLength {
-					h.Extra[i] = 0
-				}
-			}
-		}
-		return h, nil
-	}
-	hs, err := setupNeighboringEpochHeader(headerFn, neighboringEpochFn, epochHeight, trustedEpochHeight, clienttypes.NewHeight(0, 10000))
-	ts.Require().NoError(err)
-	target, err := hs.(*Header).Target()
-	ts.Require().NoError(err)
-
-	// checkpoint - 1
-	ts.Require().Equal(int64(402), target.Number.Int64())
-}
-
-func (ts *SetupTestSuite) TestSuccess_setupNeighboringEpochHeader_containTrusted() {
+func (ts *SetupTestSuite) TestSuccess_setupNeighboringEpochHeader() {
 
 	epochHeight := uint64(400)
 	trustedEpochHeight := uint64(200)
