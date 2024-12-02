@@ -1,11 +1,4 @@
-async function readContract(contractName) {
-    const fs = require("fs");
-    const path = require("path");
-
-    const filepath = path.join("addresses", contractName);
-    const address = fs.readFileSync(filepath, "utf-8");
-    return await hre.ethers.getContractAt(contractName, address);
-}
+const util = require("./util");
 
 async function main() {
   const accounts = await hre.ethers.getSigners();
@@ -20,21 +13,20 @@ async function main() {
 
   try {
     // Mint
-    const bank = await readContract("ICS20Bank");
+    const bank = await util.readContract("ICS20Bank");
     const mintResult = await bank.mint(alice, "simple_erc_20_token_for_test", mintAmount, {
       from: alice
     });
     const mintReceipt = await mintResult.wait()
-    console.log("mint success block=", mintReceipt);
+    console.log("mint success", mintReceipt.hash);
 
     // Send to counterparty chain
-    const transfer = await readContract("ICS20TransferBank");
-    console.log(transfer.interface)
+    const transfer = await util.readContract("ICS20TransferBank");
     const transferResult = await transfer.sendTransfer("simple_erc_20_token_for_test", sendingAmount, bob, port, channel, timeoutHeight, {
       from: alice,
     });
     const transferReceipt = await transferResult.wait()
-    console.log("send success block=", transferReceipt);
+    console.log("send success", transferReceipt.hash);
 
     // Check reduced amount
     const aliceAmount = await bank.balanceOf(alice, "simple_erc_20_token_for_test")
@@ -44,7 +36,7 @@ async function main() {
     }
 
     // Check escrow balance
-    const escrowAmount = await bank.balanceOf(transfer.address, "simple_erc_20_token_for_test")
+    const escrowAmount = await bank.balanceOf(transfer.target, "simple_erc_20_token_for_test")
     console.log("escrow = ", escrowAmount.toString())
     if (parseInt(escrowAmount.toString(), 10) !== sendingAmount) {
       throw new Error("escrow amount error");
