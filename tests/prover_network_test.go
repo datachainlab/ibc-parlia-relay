@@ -112,7 +112,7 @@ func (ts *ProverNetworkTestSuite) makeChain(rpcAddr string, ibcChainID string) m
 	ts.Require().NoError(err)
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
 		EthChainId: 9999,
-		IbcAddress: "0x2F5703804E29F4252FA9405B8D357220d11b3bd9",
+		IbcAddress: "0xaa43d337145E8930d01cb4E60Abf6595C692921E",
 		Signer:     anySignerConfig,
 		RpcAddr:    rpcAddr,
 	})
