@@ -12,6 +12,9 @@
     "@hyperledger-labs/yui-ibc-solidity": "git+https://github.com/hyperledger-labs/yui-ibc-solidity.git#v0.3.35"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@openzeppelin/hardhat-upgrades": "^3.2.1",
+    "hardhat": "^2.19.1",
     "@truffle/hdwallet-provider": "^2.1.2",
     "truffle": "^5.6.6"
   }

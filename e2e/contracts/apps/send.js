@@ -11,6 +11,7 @@ module.exports = async (callback) => {
   const timeoutHeight = 10000000;
   const mintAmount = 100;
   const sendingAmount = 20
+  console.log(alice, bob)
 
   try {
     // Mint

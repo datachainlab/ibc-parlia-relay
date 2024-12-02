@@ -1,16 +1,16 @@
 .PHONY:deploy
 deploy:
 	npm i
-	npx truffle migrate --network bsc_local2 --reset
-	npx truffle migrate --network bsc_local --reset
+	npx hardhat run ./scripts/deploy.js --network bsc_local1
+	npx hardhat run ./scripts/deploy.js --network bsc_local2
 
 .PHONY:test
 test:
-	npx truffle exec apps/send.js --network bsc_local2
+	npx hardhat run ./scripts/send.js --network bsc_local2
 	sleep 60
 	../testrly tx relay ibc01 --home ../.testrly
 	sleep 20
-	npx truffle exec apps/recv.js --network bsc_local
+	npx hardhat run ./scripts/recv.js --network bsc_local1
 	sleep 20
 	../testrly query unrelayed-packets ibc01 --home ../.testrly | grep '{"src":\[\],"dst":\[\]}'
 	../testrly tx relay-acknowledgements ibc01 --home ../.testrly
