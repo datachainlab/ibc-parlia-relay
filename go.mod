@@ -11,7 +11,7 @@ require (
 	github.com/cosmos/ibc-go/v8 v8.2.0
 	github.com/datachainlab/ethereum-ibc-relay-chain v0.3.10
 	github.com/datachainlab/ibc-hd-signer v0.1.0
-	github.com/ethereum/go-ethereum v1.14.11
+	github.com/ethereum/go-ethereum v1.14.12
 	github.com/hyperledger-labs/yui-relayer v0.5.8
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.9.0

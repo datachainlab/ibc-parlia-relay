@@ -5,5 +5,5 @@ services:
       dockerfile: Dockerfile.bsc
       args:
         GIT_SOURCE: https://github.com/bnb-chain/bsc
-        GIT_CHECKOUT_BRANCH: develop
+        GIT_CHECKOUT_BRANCH: release_v1.5.2-alpha
     image: bsc-geth:docker-local
