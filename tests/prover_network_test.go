@@ -51,8 +51,9 @@ func (ts *ProverNetworkTestSuite) TestQueryLatestFinalizedHeader() {
 	ts.Require().NoError(header.ValidateBasic())
 	ts.Require().Len(header.(*module.Header).Headers, 3)
 	h := header.(*module.Header)
-	_, err = h.Target()
+	t, err := h.Target()
 	ts.Require().NoError(err)
+	ts.Require().NotNil(t.RequestsHash) // Check Pargue Enabled
 	ts.Require().True(len(h.PreviousValidators) >= 1)
 	ts.Require().True(len(h.CurrentValidators) >= 1)
 	ts.Require().True(len(h.AccountProof) >= 1)
