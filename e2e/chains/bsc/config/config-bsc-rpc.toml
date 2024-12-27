@@ -27,7 +27,6 @@ Lifetime = 600000000000
 Blocks = 20
 Percentile = 60
 OracleThreshold = 20
-Default = 5000000000
 
 [Node]
 DataDir = "node"
