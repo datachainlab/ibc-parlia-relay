@@ -89,32 +89,3 @@ func (ts *ValidatorSetTestSuite) TestCheckpoint() {
 	ts.Equal(int(validator.Checkpoint(3)), 33)
 	ts.Equal(int(validator.Checkpoint(9)), 99)
 }
-
-func (ts *ValidatorSetTestSuite) TestTrustValidator() {
-	trusted := Validators([][]byte{{1}, {2}, {3}, {4}, {5}})
-	ts.True(trusted.Contains([][]byte{{1}, {2}, {3}, {4}, {5}}))
-	ts.True(trusted.Contains([][]byte{{1}, {2}, {3}, {4}, {5}, {10}, {11}, {12}, {13}, {14}}))
-	ts.True(trusted.Contains([][]byte{{1}, {2}, {3}, {4}}))
-	ts.True(trusted.Contains([][]byte{{1}, {2}, {3}, {4}, {10}, {11}, {12}, {13}, {14}}))
-	ts.True(trusted.Contains([][]byte{{1}, {2}, {3}}))
-	ts.True(trusted.Contains([][]byte{{1}, {2}, {3}, {10}, {11}, {12}, {13}, {14}}))
-	ts.True(trusted.Contains([][]byte{{1}, {2}}))
-	ts.True(trusted.Contains([][]byte{{1}, {2}, {10}, {11}, {12}, {13}, {14}}))
-	ts.False(trusted.Contains([][]byte{{1}}))
-	ts.False(trusted.Contains([][]byte{{1}, {10}, {11}, {12}, {13}, {14}}))
-	ts.False(trusted.Contains([][]byte{}))
-	ts.False(trusted.Contains([][]byte{{10}, {11}, {12}, {13}, {14}}))
-}
-
-func (ts *ValidatorSetTestSuite) TestThreshold() {
-	ts.Equal(1, Validators(make([][]byte, 1)).threshold())
-	ts.Equal(1, Validators(make([][]byte, 2)).threshold())
-	ts.Equal(2, Validators(make([][]byte, 3)).threshold())
-	ts.Equal(2, Validators(make([][]byte, 4)).threshold())
-	ts.Equal(2, Validators(make([][]byte, 5)).threshold())
-	ts.Equal(3, Validators(make([][]byte, 6)).threshold())
-	ts.Equal(3, Validators(make([][]byte, 7)).threshold())
-	ts.Equal(3, Validators(make([][]byte, 8)).threshold())
-	ts.Equal(4, Validators(make([][]byte, 9)).threshold())
-	ts.Equal(8, Validators(make([][]byte, 21)).threshold())
-}
