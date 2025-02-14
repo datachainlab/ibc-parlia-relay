@@ -1,10 +1,9 @@
-const ICS20TransferBank = artifacts.require("ICS20TransferBank");
-const ICS20Bank = artifacts.require("ICS20Bank");
+const util = require("./util");
 
-module.exports = async (callback) => {
-  const accounts = await web3.eth.getAccounts();
-  const alice = accounts[0];
-  const bob = accounts[1];
+async function main() {
+  const accounts = await hre.ethers.getSigners();
+  const alice = accounts[0].address;
+  const bob = accounts[1].address;
 
   const port = "transfer";
   const channel = "channel-0";
@@ -14,37 +13,46 @@ module.exports = async (callback) => {
 
   try {
     // Mint
-    const bank = await ICS20Bank.deployed()
+    const bank = await util.readContract("ICS20Bank");
     const mintResult = await bank.mint(alice, "simple_erc_20_token_for_test", mintAmount, {
       from: alice
     });
-    console.log("mint success", mintResult.tx);
+    const mintReceipt = await mintResult.wait()
+    console.log("mint success", mintReceipt.hash);
 
     // Send to counterparty chain
-    const transfer = await ICS20TransferBank.deployed()
+    const transfer = await util.readContract("ICS20TransferBank");
     const transferResult = await transfer.sendTransfer("simple_erc_20_token_for_test", sendingAmount, bob, port, channel, timeoutHeight, {
       from: alice,
     });
-    console.log("send success", transferResult.tx);
+    const transferReceipt = await transferResult.wait()
+    console.log("send success", transferReceipt.hash);
 
     // Check reduced amount
     const aliceAmount = await bank.balanceOf(alice, "simple_erc_20_token_for_test")
     console.log("after = ", aliceAmount.toString())
     if (parseInt(aliceAmount.toString(), 10) !== mintAmount - sendingAmount) {
-      return callback("alice amount error");
+      throw new Error("alice amount error");
     }
 
     // Check escrow balance
-    const escrowAmount = await bank.balanceOf(transfer.address, "simple_erc_20_token_for_test")
+    const escrowAmount = await bank.balanceOf(transfer.target, "simple_erc_20_token_for_test")
     console.log("escrow = ", escrowAmount.toString())
     if (parseInt(escrowAmount.toString(), 10) !== sendingAmount) {
-      return callback("escrow amount error");
+      throw new Error("escrow amount error");
     }
-    // Wait for chain B receive the packet
-    callback()
 
   }catch (e) {
     console.log(e)
-    callback(e);
   }
-};
+
+}
+
+if (require.main === module) {
+  main()
+      .then(() => process.exit(0))
+      .catch((error) => {
+        console.error(error);
+        process.exit(1);
+      });
+}

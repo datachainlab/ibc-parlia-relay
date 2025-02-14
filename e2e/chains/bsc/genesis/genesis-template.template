@@ -33,6 +33,20 @@
     "haberTime": 0,
     "haberFixTime": 0,
     "bohrTime": 0,
+    "pascalTime": 0,
+    "pragueTime": 0,
+    "blobSchedule": {
+      "cancun": {
+        "target": 3,
+        "max": 6,
+        "baseFeeUpdateFraction": 3338477
+      },
+      "prague": {
+        "target": 6,
+        "max": 9,
+        "baseFeeUpdateFraction": 5007716
+      }
+    },
     "parlia": {
       "period": 3,
       "epoch": {{BLOCKS_PER_EPOCH}}

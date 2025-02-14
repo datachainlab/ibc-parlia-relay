@@ -51,8 +51,9 @@ func (ts *ProverNetworkTestSuite) TestQueryLatestFinalizedHeader() {
 	ts.Require().NoError(header.ValidateBasic())
 	ts.Require().Len(header.(*module.Header).Headers, 3)
 	h := header.(*module.Header)
-	_, err = h.Target()
+	t, err := h.Target()
 	ts.Require().NoError(err)
+	ts.Require().NotNil(t.RequestsHash) // Check Pargue Enabled
 	ts.Require().True(len(h.PreviousValidators) >= 1)
 	ts.Require().True(len(h.CurrentValidators) >= 1)
 	ts.Require().True(len(h.AccountProof) >= 1)
@@ -112,7 +113,7 @@ func (ts *ProverNetworkTestSuite) makeChain(rpcAddr string, ibcChainID string) m
 	ts.Require().NoError(err)
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
 		EthChainId: 9999,
-		IbcAddress: "0x2F5703804E29F4252FA9405B8D357220d11b3bd9",
+		IbcAddress: "0xaa43d337145E8930d01cb4E60Abf6595C692921E",
 		Signer:     anySignerConfig,
 		RpcAddr:    rpcAddr,
 	})
