@@ -2,13 +2,14 @@ package tests
 
 import (
 	"context"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/datachainlab/ibc-hd-signer/pkg/hd"
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/hyperledger-labs/yui-relayer/config"
 	"github.com/hyperledger-labs/yui-relayer/log"
-	"strings"
-	"testing"
-	"time"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
@@ -21,7 +22,7 @@ type dstChain struct {
 	core.Chain
 }
 
-func (d dstChain) GetLatestFinalizedHeader() (latestFinalizedHeader core.Header, err error) {
+func (d dstChain) GetLatestFinalizedHeader(_ context.Context) (latestFinalizedHeader core.Header, err error) {
 	panic("implement me")
 }
 
@@ -46,7 +47,7 @@ func (ts *ProverNetworkTestSuite) SetupTest() {
 }
 
 func (ts *ProverNetworkTestSuite) TestQueryLatestFinalizedHeader() {
-	header, err := ts.prover.GetLatestFinalizedHeader()
+	header, err := ts.prover.GetLatestFinalizedHeader(context.TODO())
 	ts.Require().NoError(err)
 	ts.Require().NoError(header.ValidateBasic())
 	ts.Require().Len(header.(*module.Header).Headers, 3)
@@ -65,9 +66,9 @@ func (ts *ProverNetworkTestSuite) TestSetupHeadersForUpdate() {
 	dst := dstChain{
 		Chain: ts.makeChain("http://localhost:8645", "ibc0"),
 	}
-	header, err := ts.prover.GetLatestFinalizedHeader()
+	header, err := ts.prover.GetLatestFinalizedHeader(context.TODO())
 	ts.Require().NoError(err)
-	setupDone, err := ts.prover.SetupHeadersForUpdate(dst, header)
+	setupDone, err := ts.prover.SetupHeadersForUpdate(context.TODO(), dst, header)
 	ts.Require().NoError(err)
 	ts.Require().True(len(setupDone) > 0)
 	for _, h := range setupDone {
@@ -76,7 +77,7 @@ func (ts *ProverNetworkTestSuite) TestSetupHeadersForUpdate() {
 }
 
 func (ts *ProverNetworkTestSuite) TestSuccessCreateInitialLightClientState() {
-	s1, s2, err := ts.prover.CreateInitialLightClientState(nil)
+	s1, s2, err := ts.prover.CreateInitialLightClientState(context.TODO(), nil)
 	ts.Require().NoError(err)
 
 	cs := s1.(*module.ClientState)
