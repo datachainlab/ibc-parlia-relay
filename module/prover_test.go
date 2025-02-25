@@ -2,11 +2,12 @@ package module
 
 import (
 	"context"
-	"github.com/datachainlab/ibc-hd-signer/pkg/hd"
-	"github.com/hyperledger-labs/yui-relayer/log"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/datachainlab/ibc-hd-signer/pkg/hd"
+	"github.com/hyperledger-labs/yui-relayer/log"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
@@ -77,11 +78,11 @@ func (c *mockChain) QueryClientConsensusState(_ core.QueryContext, height export
 	return clienttypes.NewQueryConsensusStateResponse(anyConsensusState, nil, cHeight), nil
 }
 
-func (c *mockChain) Timestamp(height exported.Height) (time.Time, error) {
+func (c *mockChain) Timestamp(_ context.Context, height exported.Height) (time.Time, error) {
 	return time.Unix(int64(c.chainTimestamp[height]), 0), nil
 }
 
-func (c *mockChain) LatestHeight() (exported.Height, error) {
+func (c *mockChain) LatestHeight(_ context.Context) (exported.Height, error) {
 	return clienttypes.NewHeight(0, c.latestHeight), nil
 }
 
@@ -249,26 +250,26 @@ func (ts *ProverTestSuite) TestCheckRefreshRequired() {
 
 	// should refresh by trusting_period
 	ts.chain.consensusStateTimestamp[csHeight] = uint64(now.Add(-51 * time.Second).UnixNano())
-	required, err := ts.prover.CheckRefreshRequired(dst)
+	required, err := ts.prover.CheckRefreshRequired(context.TODO(), dst)
 	ts.Require().NoError(err)
 	ts.Require().True(required)
 
 	// needless by trusting_period
 	ts.chain.consensusStateTimestamp[csHeight] = uint64(now.Add(-50 * time.Second).UnixNano())
-	required, err = ts.prover.CheckRefreshRequired(dst)
+	required, err = ts.prover.CheckRefreshRequired(context.TODO(), dst)
 	ts.Require().NoError(err)
 	ts.Require().False(required)
 
 	// should refresh by block difference
 	ts.chain.latestHeight = 2
 	ts.prover.config.RefreshBlockDifferenceThreshold = 1
-	required, err = ts.prover.CheckRefreshRequired(dst)
+	required, err = ts.prover.CheckRefreshRequired(context.TODO(), dst)
 	ts.Require().NoError(err)
 	ts.Require().True(required)
 
 	// needless by block difference
 	ts.prover.config.RefreshBlockDifferenceThreshold = 2
-	required, err = ts.prover.CheckRefreshRequired(dst)
+	required, err = ts.prover.CheckRefreshRequired(context.TODO(), dst)
 	ts.Require().NoError(err)
 	ts.Require().False(required)
 
@@ -276,7 +277,7 @@ func (ts *ProverTestSuite) TestCheckRefreshRequired() {
 	ts.chain.latestHeight = 1
 	ts.chain.trustedHeight = 3
 	ts.prover.config.RefreshBlockDifferenceThreshold = 1
-	required, err = ts.prover.CheckRefreshRequired(dst)
+	required, err = ts.prover.CheckRefreshRequired(context.TODO(), dst)
 	ts.Require().NoError(err)
 	ts.Require().False(required)
 }
