@@ -254,6 +254,7 @@ func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState
 		Frozen:             false,
 		IbcStoreAddress:    pr.chain.IBCAddress().Bytes(),
 		IbcCommitmentsSlot: IBCCommitmentsSlot[:],
+		ForkSpecs:          GetForkParameters(Network(pr.config.Network)),
 	}
 	consensusState := ConsensusState{
 		Timestamp:              header.Time,
