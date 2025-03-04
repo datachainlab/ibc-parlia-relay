@@ -25,7 +25,7 @@ func (m *headerModule) success() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			latest, err := chain.LatestHeight()
+			latest, err := chain.LatestHeight(cmd.Context())
 			if err != nil {
 				return err
 			}

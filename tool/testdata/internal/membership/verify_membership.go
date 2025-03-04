@@ -75,7 +75,7 @@ func (m *verifyMembershipModule) proveState(chainID uint64, port int64, path str
 	if err != nil {
 		return common.Hash{}, nil, types.Height{}, err
 	}
-	latest, err := chain.LatestHeight()
+	latest, err := chain.LatestHeight(context.Background())
 	if err != nil {
 		return common.Hash{}, nil, types.Height{}, err
 	}

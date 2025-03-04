@@ -8,7 +8,7 @@ const (
 	Mainnet  Network = "mainnet"
 )
 
-// After Pascal HF only
+// Only after Pascal HF
 func GetForkParameters(network Network) []*ForkSpec {
 	switch network {
 	case Localnet:
@@ -21,14 +21,13 @@ func GetForkParameters(network Network) []*ForkSpec {
 	case Testnet:
 		return []*ForkSpec{
 			{
-				HeightOrTimestamp:         &ForkSpec_Timestamp{Timestamp: 1740452880},
+				HeightOrTimestamp:         &ForkSpec_Timestamp{Timestamp: 0},
 				AdditionalHeaderItemCount: 21,
 			},
 		}
 	case Mainnet:
 		return []*ForkSpec{
 			{
-				//TODO
 				HeightOrTimestamp:         &ForkSpec_Timestamp{Timestamp: 0},
 				AdditionalHeaderItemCount: 21,
 			},
