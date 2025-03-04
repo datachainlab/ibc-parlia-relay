@@ -48,5 +48,5 @@ func (c *ethChain) CanonicalChainID(ctx context.Context) (uint64, error) {
 }
 
 func (c *ethChain) GetProof(address common.Address, storageKeys [][]byte, blockNumber *big.Int) (*client.StateProof, error) {
-	return c.Client().GetProof(address, storageKeys, blockNumber)
+	return c.Client().GetProof(context.TODO(), address, storageKeys, blockNumber)
 }

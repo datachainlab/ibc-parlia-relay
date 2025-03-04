@@ -106,7 +106,7 @@ func (ts *ProverTestSuite) SetupTest() {
 	}
 	anySignerConfig, err := codectypes.NewAnyWithValue(signerConfig)
 	ts.Require().NoError(err)
-	chain, err := ethereum.NewChain(ethereum.ChainConfig{
+	chain, err := ethereum.NewChain(context.Background(), ethereum.ChainConfig{
 		EthChainId: 9999,
 		IbcAddress: common.Address{}.String(),
 		Signer:     anySignerConfig,
