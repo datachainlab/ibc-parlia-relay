@@ -257,7 +257,7 @@ func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState
 		ForkSpecs:          GetForkParameters(Network(pr.config.Network)),
 	}
 	consensusState := ConsensusState{
-		Timestamp:              header.Time,
+		Timestamp:              MilliTimestamp(header),
 		PreviousValidatorsHash: makeEpochHash(previousValidators, previousTurnLength),
 		CurrentValidatorsHash:  makeEpochHash(currentValidators, currentTurnLength),
 		StateRoot:              stateRoot.Bytes(),
