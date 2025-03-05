@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"github.com/cometbft/cometbft/libs/json"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
@@ -28,7 +29,7 @@ func (m *historyModule) mainnet() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			latest, err := chain.LatestHeight()
+			latest, err := chain.LatestHeight(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -56,7 +57,7 @@ func (m *historyModule) testnet() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			latest, err := chain.LatestHeight()
+			latest, err := chain.LatestHeight(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -87,12 +88,12 @@ func (m *historyModule) outputMsgUpdate(prover *module.Prover, createdEpoch, lat
 	for i := num; i > 0; i-- {
 		log.Println(num - i)
 		targetLatest := latest - i
-		header, err := prover.GetLatestFinalizedHeaderByLatestHeight(targetLatest)
+		header, err := prover.GetLatestFinalizedHeaderByLatestHeight(context.Background(), targetLatest)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		blocks, err := prover.SetupHeadersForUpdateByLatestHeight(lastFinalized, header.(*module.Header))
+		blocks, err := prover.SetupHeadersForUpdateByLatestHeight(context.Background(), lastFinalized, header.(*module.Header))
 		if err != nil {
 			log.Println(err)
 			continue
@@ -124,7 +125,7 @@ func (m *historyModule) outputMsgUpdate(prover *module.Prover, createdEpoch, lat
 }
 
 func (m *historyModule) outputMsgClient(prover *module.Prover, firstNumber uint64, path string) (uint64, error) {
-	firstHeader, err := prover.GetLatestFinalizedHeaderByLatestHeight(firstNumber)
+	firstHeader, err := prover.GetLatestFinalizedHeaderByLatestHeight(context.Background(), firstNumber)
 	if err != nil {
 		return 0, err
 	}
@@ -132,7 +133,7 @@ func (m *historyModule) outputMsgClient(prover *module.Prover, firstNumber uint6
 		ClientState    string `json:"clientState"`
 		ConsensusState string `json:"consensusState"`
 	}
-	cs, consState, err := prover.CreateInitialLightClientState(types.NewHeight(0, firstNumber))
+	cs, consState, err := prover.CreateInitialLightClientState(context.Background(), types.NewHeight(0, firstNumber))
 	if err != nil {
 		return 0, err
 	}

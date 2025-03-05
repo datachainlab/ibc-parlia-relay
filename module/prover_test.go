@@ -2,12 +2,10 @@ package module
 
 import (
 	"context"
+	"github.com/hyperledger-labs/yui-relayer/log"
 	"math/big"
 	"testing"
 	"time"
-
-	"github.com/datachainlab/ibc-hd-signer/pkg/hd"
-	"github.com/hyperledger-labs/yui-relayer/log"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
@@ -17,6 +15,7 @@ import (
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/client"
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
+	"github.com/datachainlab/ibc-hd-signer/pkg/hd"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/hyperledger-labs/yui-relayer/core"
@@ -97,6 +96,9 @@ func TestProverTestSuite(t *testing.T) {
 }
 
 func (ts *ProverTestSuite) SetupTest() {
+	err := log.InitLogger("DEBUG", "text", "stdout")
+	ts.Require().NoError(err)
+
 	signerConfig := &hd.SignerConfig{
 		Mnemonic: "math razor capable expose worth grape metal sunset metal sudden usage scheme",
 		Path:     "m/44'/60'/0'/0/0",
@@ -112,9 +114,6 @@ func (ts *ProverTestSuite) SetupTest() {
 	codec := core.MakeCodec()
 
 	err = chain.Init("", 0, codec, false)
-	ts.Require().NoError(err)
-
-	err = log.InitLogger("DEBUG", "text", "stdout")
 	ts.Require().NoError(err)
 
 	err = chain.SetRelayInfo(&core.PathEnd{
@@ -133,6 +132,7 @@ func (ts *ProverTestSuite) SetupTest() {
 			Numerator:   1,
 			Denominator: 2,
 		},
+		Network: string(Localnet),
 	}
 	ts.chain = &mockChain{
 		Chain:                   NewChain(chain),

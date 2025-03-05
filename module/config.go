@@ -17,5 +17,8 @@ func (c *ProverConfig) Build(chain core.Chain) (core.Prover, error) {
 }
 
 func (c *ProverConfig) Validate() error {
+	if GetForkParameters(Network(c.Network)) == nil {
+		return fmt.Errorf("unknown network: %s", c.Network)
+	}
 	return nil
 }

@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 	"github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
@@ -58,15 +59,15 @@ func (m *misbehaviorModule) error() *cobra.Command {
 				return err
 			}
 
-			latestHeight, err := chain.LatestHeight()
+			latestHeight, err := chain.LatestHeight(cmd.Context())
 			if err != nil {
 				return err
 			}
 			latest := latestHeight.GetRevisionHeight()
 			println(latest)
-			header, err := prover.GetLatestFinalizedHeaderByLatestHeight(latest)
+			header, err := prover.GetLatestFinalizedHeaderByLatestHeight(cmd.Context(), latest)
 			target, err := header.(*module.Header).Target()
-			updating, err := prover.SetupHeadersForUpdateByLatestHeight(types.NewHeight(header.GetHeight().GetRevisionNumber(), target.Number.Uint64()-1), header.(*module.Header))
+			updating, err := prover.SetupHeadersForUpdateByLatestHeight(cmd.Context(), types.NewHeight(header.GetHeight().GetRevisionNumber(), target.Number.Uint64()-1), header.(*module.Header))
 			if err != nil {
 				return err
 			}
@@ -84,8 +85,8 @@ func (m *misbehaviorModule) error() *cobra.Command {
 			log.Println("Exactly same block: height", target.Number.Int64())
 
 			// Invalid block
-			header2, _ := prover.GetLatestFinalizedHeaderByLatestHeight(latest)
-			updating2, _ := prover.SetupHeadersForUpdateByLatestHeight(types.NewHeight(header2.GetHeight().GetRevisionNumber(), target.Number.Uint64()-1), header2.(*module.Header))
+			header2, _ := prover.GetLatestFinalizedHeaderByLatestHeight(cmd.Context(), latest)
+			updating2, _ := prover.SetupHeadersForUpdateByLatestHeight(cmd.Context(), types.NewHeight(header2.GetHeight().GetRevisionNumber(), target.Number.Uint64()-1), header2.(*module.Header))
 			target2, _ := updating2[0].(*module.Header).Target()
 			target2.Root = common.Hash{}
 			rlpTarget, err := rlp.EncodeToBytes(target2)
@@ -121,7 +122,7 @@ func (m *misbehaviorModule) getLocalHeader(chainID uint64, port int64, targetHei
 		return targetHeight, nil, err
 	}
 	if targetHeight == 0 {
-		latest, err := chain.LatestHeight()
+		latest, err := chain.LatestHeight(context.Background())
 		if err != nil {
 			return targetHeight, nil, err
 		}
@@ -133,7 +134,7 @@ func (m *misbehaviorModule) getLocalHeader(chainID uint64, port int64, targetHei
 	// Get Finalized header
 	latestHeight := types.NewHeight(0, targetHeight)
 	latest := latestHeight.GetRevisionHeight()
-	iHeader, err := prover.GetLatestFinalizedHeaderByLatestHeight(latest)
+	iHeader, err := prover.GetLatestFinalizedHeaderByLatestHeight(context.Background(), latest)
 	if err != nil {
 		return latest, nil, err
 	}

@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/gogoproto/proto"
 	"github.com/datachainlab/ibc-parlia-relay/module"
@@ -20,7 +21,7 @@ func (m *createClientModule) createClientSuccessCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			cs, consState, err := prover.CreateInitialLightClientState(nil)
+			cs, consState, err := prover.CreateInitialLightClientState(context.Background(), nil)
 			if err != nil {
 				return err
 			}
