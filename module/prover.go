@@ -94,7 +94,7 @@ func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(latestBlockNumber uint6
 		return nil, err
 	}
 	// Make headers verifiable
-	return pr.withProofAndValidators(height, finalizedHeader)
+	return pr.withValidators(height, finalizedHeader)
 }
 
 // SetupHeadersForUpdate creates a new header based on a given header
@@ -126,7 +126,7 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight ex
 		if ethHeaders == nil {
 			return nil, nil
 		}
-		return pr.withProofAndValidators(height, ethHeaders)
+		return pr.withValidators(height, ethHeaders)
 	}
 	latestHeight, err := pr.chain.LatestHeight()
 	if err != nil {
@@ -142,7 +142,24 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight ex
 
 func (pr *Prover) ProveState(ctx core.QueryContext, path string, value []byte) ([]byte, clienttypes.Height, error) {
 	proofHeight := toHeight(ctx.Height())
-	proof, err := pr.getStateCommitmentProof([]byte(path), proofHeight)
+	accountProofRLP, _, err := pr.getAccountProof(proofHeight.RevisionHeight)
+	if err != nil {
+		return nil, proofHeight, err
+	}
+
+	commitmentProof, err := pr.getStateCommitmentProof([]byte(path), proofHeight)
+	if err != nil {
+		return nil, proofHeight, err
+	}
+	ret := ProveState{
+		AccountProof:    accountProofRLP,
+		CommitmentProof: commitmentProof,
+	}
+	proof, err := ret.Marshal()
+	if err != nil {
+		return nil, proofHeight, err
+	}
+
 	return proof, proofHeight, err
 }
 
@@ -213,8 +230,8 @@ func (pr *Prover) CheckRefreshRequired(counterparty core.ChainInfoICS02Querier) 
 
 }
 
-func (pr *Prover) withProofAndValidators(height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
-	return withProofAndValidators(pr.chain.Header, pr.getAccountProof, height, ethHeaders)
+func (pr *Prover) withValidators(height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
+	return withValidators(pr.chain.Header, height, ethHeaders)
 }
 
 func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState, exported.ConsensusState, error) {
@@ -230,11 +247,6 @@ func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState
 		return nil, nil, err
 	}
 	header, err := dstHeader.(*Header).Target()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	stateRoot, err := pr.GetStorageRoot(header)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -258,7 +270,7 @@ func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState
 		Timestamp:              header.Time,
 		PreviousValidatorsHash: makeEpochHash(previousValidators, previousTurnLength),
 		CurrentValidatorsHash:  makeEpochHash(currentValidators, currentTurnLength),
-		StateRoot:              stateRoot.Bytes(),
+		StateRoot:              header.Root.Bytes(),
 	}
 	return &clientState, &consensusState, nil
 }

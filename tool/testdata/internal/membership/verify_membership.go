@@ -89,13 +89,8 @@ func (m *verifyMembershipModule) proveState(chainID uint64, port int64, path str
 		return common.Hash{}, nil, types.Height{}, err
 	}
 
-	stateRoot, err := prover.GetStorageRoot(header)
-	if err != nil {
-		return common.Hash{}, nil, types.Height{}, err
-	}
-
 	proof, proofHeight, err := prover.ProveState(ctx, path, value)
-	return stateRoot, proof, proofHeight, err
+	return header.Root, proof, proofHeight, err
 }
 
 func CreateVerifyMembership() *cobra.Command {

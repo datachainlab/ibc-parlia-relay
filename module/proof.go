@@ -16,11 +16,11 @@ import (
 	"github.com/ethereum/go-ethereum/trie"
 )
 
-func (pr *Prover) getAccountProof(height int64) ([]byte, common.Hash, error) {
+func (pr *Prover) getAccountProof(height uint64) ([]byte, common.Hash, error) {
 	stateProof, err := pr.chain.GetProof(
 		pr.chain.IBCAddress(),
 		nil,
-		big.NewInt(height),
+		big.NewInt(0).SetUint64(height),
 	)
 	if err != nil {
 		return nil, common.Hash{}, fmt.Errorf("failed to get account proof %+v", err)
@@ -53,7 +53,7 @@ func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) (
 }
 
 func (pr *Prover) GetStorageRoot(header *types.Header) (common.Hash, error) {
-	rlpAccountProof, _, err := pr.getAccountProof(header.Number.Int64())
+	rlpAccountProof, _, err := pr.getAccountProof(header.Number.Uint64())
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -170,24 +170,16 @@ func verifyAccount(target *types.Header, accountProof []byte, path common.Addres
 	return &account, nil
 }
 
-type getAccountProof = func(height int64) ([]byte, common.Hash, error)
-
-func withProofAndValidators(headerFn getHeaderFn, accountProofFn getAccountProof, height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
-
-	// get RLP-encoded account proof
-	rlpAccountProof, _, err := accountProofFn(int64(height))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get account proof : height = %d, %+v", height, err)
-	}
+func withValidators(headerFn getHeaderFn, height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
 
 	header := &Header{
-		AccountProof: rlpAccountProof,
-		Headers:      ethHeaders,
+		Headers: ethHeaders,
 	}
 
 	// Get validator set for verify headers
 	previousEpoch := getPreviousEpoch(height)
 	var previousTurnLength uint8
+	var err error
 	header.PreviousValidators, previousTurnLength, err = queryValidatorSetAndTurnLength(headerFn, previousEpoch)
 	header.PreviousTurnLength = uint32(previousTurnLength)
 	if err != nil {
