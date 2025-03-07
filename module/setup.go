@@ -33,6 +33,7 @@ func setupHeadersForUpdate(
 
 	trustedEpochHeight := toEpoch(savedLatestHeight)
 
+	logger := log.GetLogger()
 	// Append insufficient epoch blocks
 	for epochHeight := firstUnsavedEpoch; epochHeight < latestFinalizedHeight; epochHeight += constant.BlocksPerEpoch {
 		verifiableEpoch, err := setupNeighboringEpochHeader(getHeader, queryVerifiableNeighboringEpochHeader, epochHeight, trustedEpochHeight, latestHeight)
@@ -40,11 +41,12 @@ func setupHeadersForUpdate(
 			return nil, err
 		}
 		if verifiableEpoch == nil {
-			log.GetLogger().Error("[FastFinalityError]", fmt.Errorf("insufficient vote attestation: epochHeight=%d, trustedEpochHeight=%d", epochHeight, trustedEpochHeight))
+			logger.Error("[FastFinalityError]", fmt.Errorf("insufficient vote attestation: epochHeight=%d, trustedEpochHeight=%d", epochHeight, trustedEpochHeight))
 			return withTrustedHeight(targetHeaders, clientStateLatestHeight), nil
 		}
 		targetHeaders = append(targetHeaders, verifiableEpoch)
 		trustedEpochHeight = epochHeight
+		logger.Debug("setup epoch header", "height", epochHeight)
 	}
 	return withTrustedHeight(append(targetHeaders, latestFinalizedHeader), clientStateLatestHeight), nil
 }
