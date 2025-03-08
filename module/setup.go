@@ -18,6 +18,8 @@ func setupHeadersForUpdate(
 	latestFinalizedHeader *Header,
 	latestHeight exported.Height,
 ) ([]core.Header, error) {
+	logger := log.GetLogger()
+	logger.Debug("setupHeadersForUpdate start", "target", latestFinalizedHeader.GetHeight().GetRevisionHeight())
 	targetHeaders := make([]core.Header, 0)
 
 	// Needless to update already saved state
@@ -33,7 +35,6 @@ func setupHeadersForUpdate(
 
 	trustedEpochHeight := toEpoch(savedLatestHeight)
 
-	logger := log.GetLogger()
 	// Append insufficient epoch blocks
 	for epochHeight := firstUnsavedEpoch; epochHeight < latestFinalizedHeight; epochHeight += constant.BlocksPerEpoch {
 		verifiableEpoch, err := setupNeighboringEpochHeader(getHeader, queryVerifiableNeighboringEpochHeader, epochHeight, trustedEpochHeight, latestHeight)
@@ -80,7 +81,7 @@ func withTrustedHeight(targetHeaders []core.Header, clientStateLatestHeight expo
 		}
 		h.(*Header).TrustedHeight = &trustedHeight
 
-		logger.Debug("setupHeadersForUpdate", "target", h.GetHeight(), "trusted", trustedHeight, "headerSize", len(h.(*Header).Headers))
+		logger.Debug("setupHeadersForUpdate end", "target", h.GetHeight(), "trusted", trustedHeight, "headerSize", len(h.(*Header).Headers))
 	}
 	return targetHeaders
 }
