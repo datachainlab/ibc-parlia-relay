@@ -6,7 +6,6 @@ import (
 
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 )
@@ -33,9 +32,6 @@ func (h *Header) GetHeight() exported.Height {
 
 func (h *Header) ValidateBasic() error {
 	if _, err := h.Target(); err != nil {
-		return err
-	}
-	if _, err := decodeAccountProof(h.AccountProof); err != nil {
 		return err
 	}
 	return nil
@@ -73,12 +69,4 @@ func (h *Header) Last() (*types.Header, error) {
 		return nil, fmt.Errorf("invalid header length")
 	}
 	return decodedHeaders[len(decodedHeaders)-1], nil
-}
-
-func (h *Header) Account(path common.Address) (*types.StateAccount, error) {
-	target, err := h.Target()
-	if err != nil {
-		return nil, err
-	}
-	return verifyAccount(target, h.AccountProof, path)
 }

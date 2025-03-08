@@ -18,6 +18,8 @@ func setupHeadersForUpdate(
 	latestFinalizedHeader *Header,
 	latestHeight exported.Height,
 ) ([]core.Header, error) {
+	logger := log.GetLogger()
+	logger.Debug("setupHeadersForUpdate start", "target", latestFinalizedHeader.GetHeight().GetRevisionHeight())
 	targetHeaders := make([]core.Header, 0)
 
 	// Needless to update already saved state
@@ -40,11 +42,12 @@ func setupHeadersForUpdate(
 			return nil, err
 		}
 		if verifiableEpoch == nil {
-			log.GetLogger().Error("[FastFinalityError]", fmt.Errorf("insufficient vote attestation: epochHeight=%d, trustedEpochHeight=%d", epochHeight, trustedEpochHeight))
+			logger.Error("[FastFinalityError]", fmt.Errorf("insufficient vote attestation: epochHeight=%d, trustedEpochHeight=%d", epochHeight, trustedEpochHeight))
 			return withTrustedHeight(targetHeaders, clientStateLatestHeight), nil
 		}
 		targetHeaders = append(targetHeaders, verifiableEpoch)
 		trustedEpochHeight = epochHeight
+		logger.Debug("setup epoch header", "height", epochHeight)
 	}
 	return withTrustedHeight(append(targetHeaders, latestFinalizedHeader), clientStateLatestHeight), nil
 }
@@ -78,7 +81,7 @@ func withTrustedHeight(targetHeaders []core.Header, clientStateLatestHeight expo
 		}
 		h.(*Header).TrustedHeight = &trustedHeight
 
-		logger.Debug("setupHeadersForUpdate", "target", h.GetHeight(), "trusted", trustedHeight, "headerSize", len(h.(*Header).Headers))
+		logger.Debug("setupHeadersForUpdate end", "target", h.GetHeight(), "trusted", trustedHeight, "headerSize", len(h.(*Header).Headers))
 	}
 	return targetHeaders
 }

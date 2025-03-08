@@ -2,7 +2,6 @@ package module
 
 import (
 	"encoding/hex"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/suite"
 	"testing"
@@ -46,12 +45,6 @@ func (ts *HeaderTestSuite) TestNewHeaderSuccess() {
 	ts.Require().Equal(turnLength, uint8(1))
 	ts.Require().NoError(header.ValidateBasic())
 	ts.Require().Equal(header.GetHeight().GetRevisionHeight(), target.Number.Uint64())
-	account, err := header.Account(common.HexToAddress("aa43d337145e8930d01cb4e60abf6595c692921e"))
-	ts.Require().NoError(err)
-	ts.Require().Equal(account.Root, common.HexToHash("c3608871098f21b59607ef3fb9412a091de9246ad1281a92f5b07dc2f465b7a0"))
-	ts.Require().Equal(account.CodeHash, common.Hex2Bytes("7498e14000b8457a51de3cd583e9337cfa52aee2c2e9f945fac35a820e685904"))
-	ts.Require().Equal(account.Nonce, uint64(1))
-	ts.Require().Equal(account.Balance.Uint64(), uint64(0))
 }
 
 func (ts *HeaderTestSuite) TestNewHeaderError() {
