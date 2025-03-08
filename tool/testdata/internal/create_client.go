@@ -54,9 +54,9 @@ func (m *createClientModule) createClientSuccessCmd() *cobra.Command {
 			log.Println("consensusState", common.Bytes2Hex(anyConsState))
 			log.Println("height", cs.GetLatestHeight().GetRevisionHeight())
 			log.Println("time", consState.GetTimestamp())
-			log.Println("currentEpochHash", module.MakeEpochHash(currentValidatorSet, currentTurnLength))
-			log.Println("previousEpochHash", module.MakeEpochHash(previousValidatorSet, previousTurnLength))
-			log.Println("storageRoot", consState.(*module.ConsensusState).StateRoot)
+			log.Println("currentEpochHash", common.BytesToHash(module.MakeEpochHash(currentValidatorSet, currentTurnLength)))
+			log.Println("previousEpochHash", common.BytesToHash(module.MakeEpochHash(previousValidatorSet, previousTurnLength)))
+			log.Println("storageRoot", common.BytesToHash(consState.(*module.ConsensusState).StateRoot))
 
 			return nil
 		},

@@ -2,6 +2,7 @@ package module
 
 import (
 	"fmt"
+	"github.com/holiman/uint256"
 	"log"
 
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
@@ -81,4 +82,12 @@ func (h *Header) Account(path common.Address) (*types.StateAccount, error) {
 		return nil, err
 	}
 	return verifyAccount(target, h.AccountProof, path)
+}
+
+func MilliTimestamp(h *types.Header) uint64 {
+	milliseconds := uint64(0)
+	if h.MixDigest != (common.Hash{}) {
+		milliseconds = uint256.NewInt(0).SetBytes32(h.MixDigest[:]).Uint64()
+	}
+	return h.Time*1000 + milliseconds
 }
