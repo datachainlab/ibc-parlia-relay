@@ -142,17 +142,12 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(clientStateLatestHeight ex
 
 func (pr *Prover) ProveState(ctx core.QueryContext, path string, value []byte) ([]byte, clienttypes.Height, error) {
 	proofHeight := toHeight(ctx.Height())
-	accountProofRLP, _, err := pr.getAccountProof(proofHeight.RevisionHeight)
-	if err != nil {
-		return nil, proofHeight, err
-	}
-
-	commitmentProof, err := pr.getStateCommitmentProof([]byte(path), proofHeight)
+	accountProof, commitmentProof, err := pr.getStateCommitmentProof([]byte(path), proofHeight)
 	if err != nil {
 		return nil, proofHeight, err
 	}
 	ret := ProveState{
-		AccountProof:    accountProofRLP,
+		AccountProof:    accountProof,
 		CommitmentProof: commitmentProof,
 	}
 	proof, err := ret.Marshal()

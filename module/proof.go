@@ -28,7 +28,7 @@ func (pr *Prover) getAccountProof(height uint64) ([]byte, common.Hash, error) {
 	return stateProof.AccountProofRLP, common.BytesToHash(stateProof.StorageHash[:]), nil
 }
 
-func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) ([]byte, error) {
+func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) ([]byte, []byte, error) {
 	// calculate slot for commitment
 	storageKey := crypto.Keccak256Hash(append(
 		crypto.Keccak256Hash(path).Bytes(),
@@ -36,7 +36,7 @@ func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) (
 	))
 	storageKeyHex, err := storageKey.MarshalText()
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal slot: height = %d, %+v", height.GetRevisionHeight(), err)
+		return nil, nil, fmt.Errorf("failed to marshal slot: height = %d, %+v", height.GetRevisionHeight(), err)
 	}
 
 	// call eth_getProof
@@ -46,10 +46,10 @@ func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) (
 		big.NewInt(int64(height.GetRevisionHeight())),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get state commitment proof : address = %s, height = %d, slot = %v, %+v",
+		return nil, nil, fmt.Errorf("failed to get state commitment proof : address = %s, height = %d, slot = %v, %+v",
 			pr.chain.IBCAddress(), height.GetRevisionHeight(), storageKeyHex, err)
 	}
-	return stateProof.StorageProofRLP[0], nil
+	return stateProof.AccountProofRLP, stateProof.StorageProofRLP[0], nil
 }
 
 func (pr *Prover) GetStorageRoot(header *types.Header) (common.Hash, error) {
