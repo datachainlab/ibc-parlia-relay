@@ -699,7 +699,6 @@ library IbcLightclientsParliaV1Header {
   struct Data {
     IbcLightclientsParliaV1ETHHeader.Data[] headers;
     IbcCoreClientV1Height.Data trusted_height;
-    bytes account_proof;
     bytes[] current_validators;
     bytes[] previous_validators;
     uint32 current_turn_length;
@@ -743,7 +742,7 @@ library IbcLightclientsParliaV1Header {
     returns (Data memory, uint)
   {
     Data memory r;
-    uint[8] memory counters;
+    uint[7] memory counters;
     uint256 fieldId;
     ProtoBufRuntime.WireType wireType;
     uint256 bytesRead;
@@ -759,18 +758,15 @@ library IbcLightclientsParliaV1Header {
         pointer += _read_trusted_height(pointer, bs, r);
       } else
       if (fieldId == 3) {
-        pointer += _read_account_proof(pointer, bs, r);
-      } else
-      if (fieldId == 4) {
         pointer += _read_unpacked_repeated_current_validators(pointer, bs, nil(), counters);
       } else
-      if (fieldId == 5) {
+      if (fieldId == 4) {
         pointer += _read_unpacked_repeated_previous_validators(pointer, bs, nil(), counters);
       } else
-      if (fieldId == 6) {
+      if (fieldId == 5) {
         pointer += _read_current_turn_length(pointer, bs, r);
       } else
-      if (fieldId == 7) {
+      if (fieldId == 6) {
         pointer += _read_previous_turn_length(pointer, bs, r);
       } else
       {
@@ -783,13 +779,13 @@ library IbcLightclientsParliaV1Header {
       require(r.headers.length == 0);
       r.headers = new IbcLightclientsParliaV1ETHHeader.Data[](counters[1]);
     }
-    if (counters[4] > 0) {
+    if (counters[3] > 0) {
       require(r.current_validators.length == 0);
-      r.current_validators = new bytes[](counters[4]);
+      r.current_validators = new bytes[](counters[3]);
     }
-    if (counters[5] > 0) {
+    if (counters[4] > 0) {
       require(r.previous_validators.length == 0);
-      r.previous_validators = new bytes[](counters[5]);
+      r.previous_validators = new bytes[](counters[4]);
     }
 
     while (pointer < offset + sz) {
@@ -798,10 +794,10 @@ library IbcLightclientsParliaV1Header {
       if (fieldId == 1) {
         pointer += _read_unpacked_repeated_headers(pointer, bs, r, counters);
       } else
-      if (fieldId == 4) {
+      if (fieldId == 3) {
         pointer += _read_unpacked_repeated_current_validators(pointer, bs, r, counters);
       } else
-      if (fieldId == 5) {
+      if (fieldId == 4) {
         pointer += _read_unpacked_repeated_previous_validators(pointer, bs, r, counters);
       } else
       {
@@ -825,7 +821,7 @@ library IbcLightclientsParliaV1Header {
     uint256 p,
     bytes memory bs,
     Data memory r,
-    uint[8] memory counters
+    uint[7] memory counters
   ) internal pure returns (uint) {
     /**
      * if `r` is NULL, then only counting the number of fields.
@@ -862,23 +858,6 @@ library IbcLightclientsParliaV1Header {
    * @param p The offset of bytes array to start decode
    * @param bs The bytes array to be decoded
    * @param r The in-memory struct
-   * @return The number of bytes decoded
-   */
-  function _read_account_proof(
-    uint256 p,
-    bytes memory bs,
-    Data memory r
-  ) internal pure returns (uint) {
-    (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
-    r.account_proof = x;
-    return sz;
-  }
-
-  /**
-   * @dev The decoder for reading a field
-   * @param p The offset of bytes array to start decode
-   * @param bs The bytes array to be decoded
-   * @param r The in-memory struct
    * @param counters The counters for repeated fields
    * @return The number of bytes decoded
    */
@@ -886,17 +865,17 @@ library IbcLightclientsParliaV1Header {
     uint256 p,
     bytes memory bs,
     Data memory r,
-    uint[8] memory counters
+    uint[7] memory counters
   ) internal pure returns (uint) {
     /**
      * if `r` is NULL, then only counting the number of fields.
      */
     (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
     if (isNil(r)) {
-      counters[4] += 1;
+      counters[3] += 1;
     } else {
-      r.current_validators[r.current_validators.length - counters[4]] = x;
-      counters[4] -= 1;
+      r.current_validators[r.current_validators.length - counters[3]] = x;
+      counters[3] -= 1;
     }
     return sz;
   }
@@ -913,17 +892,17 @@ library IbcLightclientsParliaV1Header {
     uint256 p,
     bytes memory bs,
     Data memory r,
-    uint[8] memory counters
+    uint[7] memory counters
   ) internal pure returns (uint) {
     /**
      * if `r` is NULL, then only counting the number of fields.
      */
     (bytes memory x, uint256 sz) = ProtoBufRuntime._decode_bytes(p, bs);
     if (isNil(r)) {
-      counters[5] += 1;
+      counters[4] += 1;
     } else {
-      r.previous_validators[r.previous_validators.length - counters[5]] = x;
-      counters[5] -= 1;
+      r.previous_validators[r.previous_validators.length - counters[4]] = x;
+      counters[4] -= 1;
     }
     return sz;
   }
@@ -1054,19 +1033,10 @@ library IbcLightclientsParliaV1Header {
     );
     pointer += IbcCoreClientV1Height._encode_nested(r.trusted_height, pointer, bs);
     
-    if (r.account_proof.length != 0) {
-    pointer += ProtoBufRuntime._encode_key(
-      3,
-      ProtoBufRuntime.WireType.LengthDelim,
-      pointer,
-      bs
-    );
-    pointer += ProtoBufRuntime._encode_bytes(r.account_proof, pointer, bs);
-    }
     if (r.current_validators.length != 0) {
     for(i = 0; i < r.current_validators.length; i++) {
       pointer += ProtoBufRuntime._encode_key(
-        4,
+        3,
         ProtoBufRuntime.WireType.LengthDelim,
         pointer,
         bs)
@@ -1077,7 +1047,7 @@ library IbcLightclientsParliaV1Header {
     if (r.previous_validators.length != 0) {
     for(i = 0; i < r.previous_validators.length; i++) {
       pointer += ProtoBufRuntime._encode_key(
-        5,
+        4,
         ProtoBufRuntime.WireType.LengthDelim,
         pointer,
         bs)
@@ -1087,7 +1057,7 @@ library IbcLightclientsParliaV1Header {
     }
     if (r.current_turn_length != 0) {
     pointer += ProtoBufRuntime._encode_key(
-      6,
+      5,
       ProtoBufRuntime.WireType.Varint,
       pointer,
       bs
@@ -1096,7 +1066,7 @@ library IbcLightclientsParliaV1Header {
     }
     if (r.previous_turn_length != 0) {
     pointer += ProtoBufRuntime._encode_key(
-      7,
+      6,
       ProtoBufRuntime.WireType.Varint,
       pointer,
       bs
@@ -1150,7 +1120,6 @@ library IbcLightclientsParliaV1Header {
       e += 1 + ProtoBufRuntime._sz_lendelim(IbcLightclientsParliaV1ETHHeader._estimate(r.headers[i]));
     }
     e += 1 + ProtoBufRuntime._sz_lendelim(IbcCoreClientV1Height._estimate(r.trusted_height));
-    e += 1 + ProtoBufRuntime._sz_lendelim(r.account_proof.length);
     for(i = 0; i < r.current_validators.length; i++) {
       e += 1 + ProtoBufRuntime._sz_lendelim(r.current_validators[i].length);
     }
@@ -1168,10 +1137,6 @@ library IbcLightclientsParliaV1Header {
   ) internal pure returns (bool) {
     
   if (r.headers.length != 0) {
-    return false;
-  }
-
-  if (r.account_proof.length != 0) {
     return false;
   }
 
@@ -1208,7 +1173,6 @@ library IbcLightclientsParliaV1Header {
     }
     
     IbcCoreClientV1Height.store(input.trusted_height, output.trusted_height);
-    output.account_proof = input.account_proof;
     output.current_validators = input.current_validators;
     output.previous_validators = input.previous_validators;
     output.current_turn_length = input.current_turn_length;
