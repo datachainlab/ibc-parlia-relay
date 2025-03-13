@@ -2,10 +2,12 @@ package module
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"math/big"
+
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/hyperledger-labs/yui-relayer/core"
-	"math/big"
 
 	"github.com/cosmos/gogoproto/proto"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
@@ -18,6 +20,7 @@ import (
 
 func (pr *Prover) getAccountProof(height uint64) ([]byte, common.Hash, error) {
 	stateProof, err := pr.chain.GetProof(
+		context.TODO(),
 		pr.chain.IBCAddress(),
 		nil,
 		big.NewInt(0).SetUint64(height),
@@ -41,6 +44,7 @@ func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) (
 
 	// call eth_getProof
 	stateProof, err := pr.chain.GetProof(
+		context.TODO(),
 		pr.chain.IBCAddress(),
 		[][]byte{storageKeyHex},
 		big.NewInt(int64(height.GetRevisionHeight())),
