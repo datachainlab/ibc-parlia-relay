@@ -1,7 +1,9 @@
 package module
 
 import (
+	"context"
 	"fmt"
+
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
@@ -60,7 +62,7 @@ func setupNeighboringEpochHeader(
 	latestHeight exported.Height,
 ) (core.Header, error) {
 	// neighboring epoch needs block before checkpoint
-	currentValidatorSet, currentTurnLength, err := queryValidatorSetAndTurnLength(getHeader, epochHeight)
+	currentValidatorSet, currentTurnLength, err := queryValidatorSetAndTurnLength(context.TODO(), getHeader, epochHeight)
 	if err != nil {
 		return nil, fmt.Errorf("setupNeighboringEpochHeader: failed to get current validator set: epochHeight=%d : %+v", epochHeight, err)
 	}

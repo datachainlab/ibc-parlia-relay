@@ -184,14 +184,14 @@ func withValidators(headerFn getHeaderFn, height uint64, ethHeaders []*ETHHeader
 	previousEpoch := getPreviousEpoch(height)
 	var previousTurnLength uint8
 	var err error
-	header.PreviousValidators, previousTurnLength, err = queryValidatorSetAndTurnLength(headerFn, previousEpoch)
+	header.PreviousValidators, previousTurnLength, err = queryValidatorSetAndTurnLength(context.TODO(), headerFn, previousEpoch)
 	header.PreviousTurnLength = uint32(previousTurnLength)
 	if err != nil {
 		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
 	}
 	currentEpoch := getCurrentEpoch(height)
 	var currentTurnLength uint8
-	header.CurrentValidators, currentTurnLength, err = queryValidatorSetAndTurnLength(headerFn, currentEpoch)
+	header.CurrentValidators, currentTurnLength, err = queryValidatorSetAndTurnLength(context.TODO(), headerFn, currentEpoch)
 	header.CurrentTurnLength = uint32(currentTurnLength)
 	if err != nil {
 		return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
