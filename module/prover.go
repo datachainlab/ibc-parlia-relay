@@ -58,9 +58,9 @@ func (pr *Prover) CreateInitialLightClientState(ctx context.Context, height expo
 	}
 	var finalizedHeader []*ETHHeader
 	if height == nil {
-		_, finalizedHeader, err = queryLatestFinalizedHeader(pr.chain.Header, latestHeight.GetRevisionHeight())
+		_, finalizedHeader, err = queryLatestFinalizedHeader(context.TODO(), pr.chain.Header, latestHeight.GetRevisionHeight())
 	} else {
-		finalizedHeader, err = queryFinalizedHeader(pr.chain.Header, height.GetRevisionHeight(), latestHeight.GetRevisionHeight())
+		finalizedHeader, err = queryFinalizedHeader(context.TODO(), pr.chain.Header, height.GetRevisionHeight(), latestHeight.GetRevisionHeight())
 	}
 	if err != nil {
 		return nil, nil, err
@@ -90,7 +90,7 @@ func (pr *Prover) GetLatestFinalizedHeader(ctx context.Context) (out core.Header
 
 // GetLatestFinalizedHeaderByLatestHeight returns the latest finalized verifiable header from the chain
 func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(ctx context.Context, latestBlockNumber uint64) (core.Header, error) {
-	height, finalizedHeader, err := queryLatestFinalizedHeader(pr.chain.Header, latestBlockNumber)
+	height, finalizedHeader, err := queryLatestFinalizedHeader(context.TODO(), pr.chain.Header, latestBlockNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (pr *Prover) SetupHeadersForUpdate(ctx context.Context, counterparty core.F
 
 func (pr *Prover) SetupHeadersForUpdateByLatestHeight(ctx context.Context, clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
 	queryVerifiableNeighboringEpochHeader := func(height uint64, limitHeight uint64) (core.Header, error) {
-		ethHeaders, err := queryFinalizedHeader(pr.chain.Header, height, limitHeight)
+		ethHeaders, err := queryFinalizedHeader(context.TODO(), pr.chain.Header, height, limitHeight)
 		if err != nil {
 			return nil, err
 		}
@@ -232,13 +232,13 @@ func (pr *Prover) withValidators(height uint64, ethHeaders []*ETHHeader) (core.H
 
 func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState, exported.ConsensusState, error) {
 	currentEpoch := getCurrentEpoch(dstHeader.GetHeight().GetRevisionHeight())
-	currentValidators, currentTurnLength, err := queryValidatorSetAndTurnLength(pr.chain.Header, currentEpoch)
+	currentValidators, currentTurnLength, err := queryValidatorSetAndTurnLength(context.TODO(), pr.chain.Header, currentEpoch)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	previousEpoch := getPreviousEpoch(dstHeader.GetHeight().GetRevisionHeight())
-	previousValidators, previousTurnLength, err := queryValidatorSetAndTurnLength(pr.chain.Header, previousEpoch)
+	previousValidators, previousTurnLength, err := queryValidatorSetAndTurnLength(context.TODO(), pr.chain.Header, previousEpoch)
 	if err != nil {
 		return nil, nil, err
 	}
