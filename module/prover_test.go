@@ -31,7 +31,7 @@ type mockChain struct {
 	trustedHeight           uint64
 }
 
-func (c *mockChain) GetProof(_ common.Address, _ [][]byte, _ *big.Int) (*client.StateProof, error) {
+func (c *mockChain) GetProof(_ context.Context, _ common.Address, _ [][]byte, _ *big.Int) (*client.StateProof, error) {
 	// eth.getProof("0xaa43d337145E8930d01cb4E60Abf6595C692921E",["0x0c0dd47e5867d48cad725de0d09f9549bd564c1d143f6c1f451b26ccd981eeae"], 21400)
 	// storageHash: "0xc3608871098f21b59607ef3fb9412a091de9246ad1281a92f5b07dc2f465b7a0",
 	accountProof := []string{
@@ -166,7 +166,7 @@ func (ts *ProverTestSuite) TestQueryClientStateWithProof() {
 	decoded := ProveState{}
 	ts.Require().NoError(decoded.Unmarshal(proof))
 
-	expected, _ := ts.chain.GetProof(common.Address{}, nil, nil)
+	expected, _ := ts.chain.GetProof(context.Background(), common.Address{}, nil, nil)
 	ts.Require().Equal(common.Bytes2Hex(decoded.AccountProof), common.Bytes2Hex(expected.AccountProofRLP))
 	// storage_key is 0x0c0dd47e5867d48cad725de0d09f9549bd564c1d143f6c1f451b26ccd981eeae
 	ts.Require().Equal(common.Bytes2Hex(decoded.CommitmentProof), "f853f8518080a0143145e818eeff83817419a6632ea193fd1acaa4f791eb17282f623f38117f568080808080808080a016cbf6e0ba10512eb618d99a1e34025adb7e6f31d335bda7fb20c8bb95fb5b978080808080")
