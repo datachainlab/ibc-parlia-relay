@@ -156,7 +156,7 @@ func (ts *ProverTestSuite) TestQueryClientStateWithProof() {
 	bzCs, err := ts.prover.chain.Codec().Marshal(cs)
 	ts.Require().NoError(err)
 
-	ctx := core.NewQueryContext(context.TODO(), clienttypes.NewHeight(0, 21400))
+	ctx := core.NewQueryContext(context.Background(), clienttypes.NewHeight(0, 21400))
 	proof, proofHeight, err := ts.prover.ProveState(ctx, host.FullClientStatePath(ts.prover.chain.Path().ClientID), bzCs)
 	ts.Require().NoError(err)
 
@@ -248,6 +248,7 @@ func (ts *ProverTestSuite) TestCheckRefreshRequired() {
 		ts.chain.trustedHeight = 0
 	}()
 
+	ctx := context.Background()
 	now := time.Now()
 	chainHeight := clienttypes.NewHeight(0, 0)
 	csHeight := clienttypes.NewHeight(0, 0)
@@ -255,26 +256,26 @@ func (ts *ProverTestSuite) TestCheckRefreshRequired() {
 
 	// should refresh by trusting_period
 	ts.chain.consensusStateTimestamp[csHeight] = uint64(now.Add(-51 * time.Second).UnixNano())
-	required, err := ts.prover.CheckRefreshRequired(context.TODO(), dst)
+	required, err := ts.prover.CheckRefreshRequired(ctx, dst)
 	ts.Require().NoError(err)
 	ts.Require().True(required)
 
 	// needless by trusting_period
 	ts.chain.consensusStateTimestamp[csHeight] = uint64(now.Add(-50 * time.Second).UnixNano())
-	required, err = ts.prover.CheckRefreshRequired(context.TODO(), dst)
+	required, err = ts.prover.CheckRefreshRequired(ctx, dst)
 	ts.Require().NoError(err)
 	ts.Require().False(required)
 
 	// should refresh by block difference
 	ts.chain.latestHeight = 2
 	ts.prover.config.RefreshBlockDifferenceThreshold = 1
-	required, err = ts.prover.CheckRefreshRequired(context.TODO(), dst)
+	required, err = ts.prover.CheckRefreshRequired(ctx, dst)
 	ts.Require().NoError(err)
 	ts.Require().True(required)
 
 	// needless by block difference
 	ts.prover.config.RefreshBlockDifferenceThreshold = 2
-	required, err = ts.prover.CheckRefreshRequired(context.TODO(), dst)
+	required, err = ts.prover.CheckRefreshRequired(ctx, dst)
 	ts.Require().NoError(err)
 	ts.Require().False(required)
 
@@ -282,7 +283,7 @@ func (ts *ProverTestSuite) TestCheckRefreshRequired() {
 	ts.chain.latestHeight = 1
 	ts.chain.trustedHeight = 3
 	ts.prover.config.RefreshBlockDifferenceThreshold = 1
-	required, err = ts.prover.CheckRefreshRequired(context.TODO(), dst)
+	required, err = ts.prover.CheckRefreshRequired(ctx, dst)
 	ts.Require().NoError(err)
 	ts.Require().False(required)
 }
@@ -299,7 +300,7 @@ func (ts *ProverTestSuite) TestProveHostConsensusState() {
 		(*exported.ConsensusState)(nil),
 		&ConsensusState{},
 	)
-	ctx := core.NewQueryContext(context.TODO(), clienttypes.NewHeight(0, 0))
+	ctx := core.NewQueryContext(context.Background(), clienttypes.NewHeight(0, 0))
 	prove, err := ts.prover.ProveHostConsensusState(ctx, clienttypes.NewHeight(0, 0), &cs)
 	ts.Require().NoError(err)
 	ts.Require().Len(prove, 150)
