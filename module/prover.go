@@ -118,8 +118,8 @@ func (pr *Prover) SetupHeadersForUpdate(ctx context.Context, counterparty core.F
 }
 
 func (pr *Prover) SetupHeadersForUpdateByLatestHeight(ctx context.Context, clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
-	queryVerifiableNeighboringEpochHeader := func(height uint64, limitHeight uint64) (core.Header, error) {
-		ethHeaders, err := queryFinalizedHeader(context.TODO(), pr.chain.Header, height, limitHeight)
+	queryVerifiableNeighboringEpochHeader := func(ctx context.Context, height uint64, limitHeight uint64) (core.Header, error) {
+		ethHeaders, err := queryFinalizedHeader(ctx, pr.chain.Header, height, limitHeight)
 		if err != nil {
 			return nil, err
 		}
@@ -134,6 +134,7 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(ctx context.Context, clien
 		return nil, err
 	}
 	return setupHeadersForUpdate(
+		context.TODO(),
 		queryVerifiableNeighboringEpochHeader,
 		pr.chain.Header,
 		clientStateLatestHeight,
