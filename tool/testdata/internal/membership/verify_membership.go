@@ -2,6 +2,10 @@ package membership
 
 import (
 	"context"
+	"log"
+	"math/big"
+	"os"
+
 	"github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	conntypes "github.com/cosmos/ibc-go/v8/modules/core/03-connection/types"
 	types3 "github.com/cosmos/ibc-go/v8/modules/core/23-commitment/types"
@@ -12,9 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/hyperledger-labs/yui-relayer/core"
 	"github.com/spf13/cobra"
-	"log"
-	"math/big"
-	"os"
 )
 
 type verifyMembershipModule struct {
@@ -89,7 +90,7 @@ func (m *verifyMembershipModule) proveState(chainID uint64, path string, value [
 	}
 
 	proof, proofHeight, err := prover.ProveState(ctx, path, value)
-	storageRoot, err := prover.GetStorageRoot(header)
+	storageRoot, err := prover.GetStorageRoot(context.TODO(), header)
 	if err != nil {
 		return common.Hash{}, nil, types.Height{}, err
 	}

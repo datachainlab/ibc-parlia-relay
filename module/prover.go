@@ -143,7 +143,7 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(ctx context.Context, clien
 
 func (pr *Prover) ProveState(ctx core.QueryContext, path string, value []byte) ([]byte, clienttypes.Height, error) {
 	proofHeight := toHeight(ctx.Height())
-	accountProof, commitmentProof, err := pr.getStateCommitmentProof([]byte(path), proofHeight)
+	accountProof, commitmentProof, err := pr.getStateCommitmentProof(context.TODO(), []byte(path), proofHeight)
 	if err != nil {
 		return nil, proofHeight, err
 	}
@@ -227,7 +227,7 @@ func (pr *Prover) CheckRefreshRequired(ctx context.Context, counterparty core.Ch
 }
 
 func (pr *Prover) withValidators(height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
-	return withValidators(pr.chain.Header, height, ethHeaders)
+	return withValidators(context.TODO(), pr.chain.Header, height, ethHeaders)
 }
 
 func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState, exported.ConsensusState, error) {
