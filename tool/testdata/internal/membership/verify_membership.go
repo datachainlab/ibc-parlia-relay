@@ -2,7 +2,6 @@ package membership
 
 import (
 	"context"
-	"fmt"
 	"github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	conntypes "github.com/cosmos/ibc-go/v8/modules/core/03-connection/types"
 	types3 "github.com/cosmos/ibc-go/v8/modules/core/23-commitment/types"
@@ -15,10 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	"log"
 	"math/big"
-)
-
-const (
-	ibcAddress = "0x702E40245797c5a2108A566b3CE2Bf14Bc6aF841"
+	"os"
 )
 
 type verifyMembershipModule struct {
@@ -52,7 +48,7 @@ func (m *verifyMembershipModule) latest() *cobra.Command {
 			}
 
 			path := host.ConnectionPath("connection-0")
-			stateRoot, proof, proofHeight, err := m.proveState(chainID, 8645, path, commitment)
+			stateRoot, proof, proofHeight, err := m.proveState(chainID, path, commitment)
 			if err != nil {
 				log.Panic(err)
 			}
@@ -65,10 +61,13 @@ func (m *verifyMembershipModule) latest() *cobra.Command {
 	}
 }
 
-func (m *verifyMembershipModule) proveState(chainID uint64, port int64, path string, value []byte) (common.Hash, []byte, types.Height, error) {
+func (m *verifyMembershipModule) proveState(chainID uint64, path string, value []byte) (common.Hash, []byte, types.Height, error) {
+	rpcAddr := os.Getenv("BSC_RPC_ADDR")
+	ibcAddress := os.Getenv("BSC_IBC_ADDR")
+	log.Println(rpcAddr, ibcAddress)
 	chain, err := ethereum.NewChain(ethereum.ChainConfig{
 		EthChainId: chainID,
-		RpcAddr:    fmt.Sprintf("http://localhost:%d", port),
+		RpcAddr:    rpcAddr,
 		Signer:     internal.CreateSignerConfig(),
 		IbcAddress: ibcAddress,
 	})
@@ -89,13 +88,14 @@ func (m *verifyMembershipModule) proveState(chainID uint64, port int64, path str
 		return common.Hash{}, nil, types.Height{}, err
 	}
 
-	stateRoot, err := prover.GetStorageRoot(header)
+	proof, proofHeight, err := prover.ProveState(ctx, path, value)
+	storageRoot, err := prover.GetStorageRoot(header)
 	if err != nil {
 		return common.Hash{}, nil, types.Height{}, err
 	}
+	log.Println("storageRoot", storageRoot)
 
-	proof, proofHeight, err := prover.ProveState(ctx, path, value)
-	return stateRoot, proof, proofHeight, err
+	return header.Root, proof, proofHeight, err
 }
 
 func CreateVerifyMembership() *cobra.Command {
