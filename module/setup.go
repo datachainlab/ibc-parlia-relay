@@ -11,9 +11,10 @@ import (
 	"github.com/hyperledger-labs/yui-relayer/log"
 )
 
-type queryVerifiableNeighboringEpochHeaderFn = func(uint64, uint64) (core.Header, error)
+type queryVerifiableNeighboringEpochHeaderFn = func(context.Context, uint64, uint64) (core.Header, error)
 
 func setupHeadersForUpdate(
+	ctx context.Context,
 	queryVerifiableNeighboringEpochHeader queryVerifiableNeighboringEpochHeaderFn,
 	getHeader getHeaderFn,
 	clientStateLatestHeight exported.Height,
@@ -39,7 +40,7 @@ func setupHeadersForUpdate(
 
 	// Append insufficient epoch blocks
 	for epochHeight := firstUnsavedEpoch; epochHeight < latestFinalizedHeight; epochHeight += constant.BlocksPerEpoch {
-		verifiableEpoch, err := setupNeighboringEpochHeader(getHeader, queryVerifiableNeighboringEpochHeader, epochHeight, trustedEpochHeight, latestHeight)
+		verifiableEpoch, err := setupNeighboringEpochHeader(ctx, getHeader, queryVerifiableNeighboringEpochHeader, epochHeight, trustedEpochHeight, latestHeight)
 		if err != nil {
 			return nil, err
 		}
@@ -55,6 +56,7 @@ func setupHeadersForUpdate(
 }
 
 func setupNeighboringEpochHeader(
+	ctx context.Context,
 	getHeader getHeaderFn,
 	queryVerifiableHeader queryVerifiableNeighboringEpochHeaderFn,
 	epochHeight uint64,
@@ -62,14 +64,14 @@ func setupNeighboringEpochHeader(
 	latestHeight exported.Height,
 ) (core.Header, error) {
 	// neighboring epoch needs block before checkpoint
-	currentValidatorSet, currentTurnLength, err := queryValidatorSetAndTurnLength(context.TODO(), getHeader, epochHeight)
+	currentValidatorSet, currentTurnLength, err := queryValidatorSetAndTurnLength(ctx, getHeader, epochHeight)
 	if err != nil {
 		return nil, fmt.Errorf("setupNeighboringEpochHeader: failed to get current validator set: epochHeight=%d : %+v", epochHeight, err)
 	}
 	// ex) trusted(prevSaved = 200), epochHeight = 400 must be finalized by min(610,latest)
 	nextCheckpoint := currentValidatorSet.Checkpoint(currentTurnLength) + (epochHeight + constant.BlocksPerEpoch)
 	limit := minUint64(nextCheckpoint-1, latestHeight.GetRevisionHeight())
-	return queryVerifiableHeader(epochHeight, limit)
+	return queryVerifiableHeader(ctx, epochHeight, limit)
 }
 
 func withTrustedHeight(targetHeaders []core.Header, clientStateLatestHeight exported.Height) []core.Header {
