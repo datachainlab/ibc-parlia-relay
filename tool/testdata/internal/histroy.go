@@ -1,6 +1,11 @@
 package internal
 
 import (
+	"context"
+	"log"
+	"os"
+	"time"
+
 	"github.com/cometbft/cometbft/libs/json"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
@@ -9,9 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/golang/protobuf/proto"
 	"github.com/spf13/cobra"
-	"log"
-	"os"
-	"time"
 )
 
 type historyModule struct {
@@ -24,21 +26,21 @@ func (m *historyModule) mainnet() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			log.Printf("num = %d\n", num)
-			prover, chain, err := createProver()
+			prover, chain, err := createProver(cmd.Context())
 			if err != nil {
 				return err
 			}
-			latest, err := chain.LatestHeight()
-			if err != nil {
-				return err
-			}
-
-			createdEpoch, err := m.outputMsgClient(prover, latest.GetRevisionHeight()-num, "create_mainnet.json")
+			latest, err := chain.LatestHeight(cmd.Context())
 			if err != nil {
 				return err
 			}
 
-			return m.outputMsgUpdate(prover, createdEpoch, latest.GetRevisionHeight(), num, "update_mainnet.json")
+			createdEpoch, err := m.outputMsgClient(cmd.Context(), prover, latest.GetRevisionHeight()-num, "create_mainnet.json")
+			if err != nil {
+				return err
+			}
+
+			return m.outputMsgUpdate(cmd.Context(), prover, createdEpoch, latest.GetRevisionHeight(), num, "update_mainnet.json")
 		},
 	}
 	cmd.Flags().Uint64Var(&num, "num", 240, "--num")
@@ -52,28 +54,28 @@ func (m *historyModule) testnet() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			log.Printf("num = %d\n", num)
-			prover, chain, err := createProver()
+			prover, chain, err := createProver(cmd.Context())
 			if err != nil {
 				return err
 			}
-			latest, err := chain.LatestHeight()
-			if err != nil {
-				return err
-			}
-
-			createdEpoch, err := m.outputMsgClient(prover, latest.GetRevisionHeight()-num, "create_testnet.json")
+			latest, err := chain.LatestHeight(cmd.Context())
 			if err != nil {
 				return err
 			}
 
-			return m.outputMsgUpdate(prover, createdEpoch, latest.GetRevisionHeight(), num, "update_testnet.json")
+			createdEpoch, err := m.outputMsgClient(cmd.Context(), prover, latest.GetRevisionHeight()-num, "create_testnet.json")
+			if err != nil {
+				return err
+			}
+
+			return m.outputMsgUpdate(cmd.Context(), prover, createdEpoch, latest.GetRevisionHeight(), num, "update_testnet.json")
 		},
 	}
 	cmd.Flags().Uint64Var(&num, "num", 240, "--num")
 	return cmd
 }
 
-func (m *historyModule) outputMsgUpdate(prover *module.Prover, createdEpoch, latest uint64, num uint64, path string) error {
+func (m *historyModule) outputMsgUpdate(ctx context.Context, prover *module.Prover, createdEpoch, latest, num uint64, path string) error {
 	type updatingData struct {
 		Header string `json:"header"`
 	}
@@ -87,12 +89,12 @@ func (m *historyModule) outputMsgUpdate(prover *module.Prover, createdEpoch, lat
 	for i := num; i > 0; i-- {
 		log.Println(num - i)
 		targetLatest := latest - i
-		header, err := prover.GetLatestFinalizedHeaderByLatestHeight(targetLatest)
+		header, err := prover.GetLatestFinalizedHeaderByLatestHeight(ctx, targetLatest)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		blocks, err := prover.SetupHeadersForUpdateByLatestHeight(lastFinalized, header.(*module.Header))
+		blocks, err := prover.SetupHeadersForUpdateByLatestHeight(ctx, lastFinalized, header.(*module.Header))
 		if err != nil {
 			log.Println(err)
 			continue
@@ -123,8 +125,8 @@ func (m *historyModule) outputMsgUpdate(prover *module.Prover, createdEpoch, lat
 	return os.WriteFile(path, serialized, 0666)
 }
 
-func (m *historyModule) outputMsgClient(prover *module.Prover, firstNumber uint64, path string) (uint64, error) {
-	firstHeader, err := prover.GetLatestFinalizedHeaderByLatestHeight(firstNumber)
+func (m *historyModule) outputMsgClient(ctx context.Context, prover *module.Prover, firstNumber uint64, path string) (uint64, error) {
+	firstHeader, err := prover.GetLatestFinalizedHeaderByLatestHeight(ctx, firstNumber)
 	if err != nil {
 		return 0, err
 	}
@@ -132,7 +134,7 @@ func (m *historyModule) outputMsgClient(prover *module.Prover, firstNumber uint6
 		ClientState    string `json:"clientState"`
 		ConsensusState string `json:"consensusState"`
 	}
-	cs, consState, err := prover.CreateInitialLightClientState(types.NewHeight(0, firstNumber))
+	cs, consState, err := prover.CreateInitialLightClientState(ctx, types.NewHeight(0, firstNumber))
 	if err != nil {
 		return 0, err
 	}
