@@ -90,7 +90,7 @@ func (m *verifyMembershipModule) proveState(chainID uint64, path string, value [
 	}
 
 	proof, proofHeight, err := prover.ProveState(ctx, path, value)
-	storageRoot, err := prover.GetStorageRoot(context.TODO(), header)
+	storageRoot, err := prover.GetStorageRoot(ctx.Context(), header)
 	if err != nil {
 		return common.Hash{}, nil, types.Height{}, err
 	}
