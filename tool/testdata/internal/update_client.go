@@ -8,7 +8,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"log"
-	"os"
 )
 
 type updateClientModule struct {
@@ -150,11 +149,6 @@ func (m *updateClientModule) printHeader(prover *module.Prover, chain module.Cha
 		return errors.WithStack(err)
 	}
 
-	account, err := header.Account(common.HexToAddress(os.Getenv("BSC_IBC_ADDR")))
-	if err != nil {
-		return errors.WithStack(err)
-	}
-
 	// setup
 	updating, err := prover.SetupHeadersForUpdateByLatestHeight(types.NewHeight(header.GetHeight().GetRevisionNumber(), target.Number.Uint64()-1), header)
 	if err != nil {
@@ -181,7 +175,6 @@ func (m *updateClientModule) printHeader(prover *module.Prover, chain module.Cha
 		return err
 	}
 	log.Println("header", common.Bytes2Hex(marshal))
-	log.Println("stateRoot", account.Root)
 	log.Println("height", header.GetHeight().GetRevisionHeight())
 	log.Println("trustedHeight", trustedHeight)
 	log.Println("currentEpochHashOfTrustedHeight", common.Bytes2Hex(module.MakeEpochHash(currentValidatorSetOfTrustedHeight, currentTurnLengthOfTrustedHeight)))
