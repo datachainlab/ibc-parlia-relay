@@ -1,12 +1,13 @@
 package internal
 
 import (
+	"log"
+
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/gogoproto/proto"
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cobra"
-	"log"
 )
 
 type createClientModule struct {
@@ -16,11 +17,11 @@ func (m *createClientModule) createClientSuccessCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use: "success",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			prover, chain, err := createProver()
+			prover, chain, err := createProver(cmd.Context())
 			if err != nil {
 				return err
 			}
-			cs, consState, err := prover.CreateInitialLightClientState(nil)
+			cs, consState, err := prover.CreateInitialLightClientState(cmd.Context(), nil)
 			if err != nil {
 				return err
 			}
@@ -41,11 +42,11 @@ func (m *createClientModule) createClientSuccessCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			currentValidatorSet, currentTurnLength, err := module.QueryValidatorSetAndTurnLength(chain.Header, module.GetCurrentEpoch(cs.GetLatestHeight().GetRevisionHeight()))
+			currentValidatorSet, currentTurnLength, err := module.QueryValidatorSetAndTurnLength(cmd.Context(), chain.Header, module.GetCurrentEpoch(cs.GetLatestHeight().GetRevisionHeight()))
 			if err != nil {
 				return err
 			}
-			previousValidatorSet, previousTurnLength, err := module.QueryValidatorSetAndTurnLength(chain.Header, module.GetPreviousEpoch(cs.GetLatestHeight().GetRevisionHeight()))
+			previousValidatorSet, previousTurnLength, err := module.QueryValidatorSetAndTurnLength(cmd.Context(), chain.Header, module.GetPreviousEpoch(cs.GetLatestHeight().GetRevisionHeight()))
 			if err != nil {
 				return err
 			}

@@ -49,7 +49,7 @@ func (m *verifyMembershipModule) latest() *cobra.Command {
 			}
 
 			path := host.ConnectionPath("connection-0")
-			stateRoot, proof, proofHeight, err := m.proveState(chainID, path, commitment)
+			stateRoot, proof, proofHeight, err := m.proveState(cmd.Context(), chainID, path, commitment)
 			if err != nil {
 				log.Panic(err)
 			}
@@ -62,11 +62,11 @@ func (m *verifyMembershipModule) latest() *cobra.Command {
 	}
 }
 
-func (m *verifyMembershipModule) proveState(chainID uint64, path string, value []byte) (common.Hash, []byte, types.Height, error) {
+func (m *verifyMembershipModule) proveState(ctx context.Context, chainID uint64, path string, value []byte) (common.Hash, []byte, types.Height, error) {
 	rpcAddr := os.Getenv("BSC_RPC_ADDR")
 	ibcAddress := os.Getenv("BSC_IBC_ADDR")
 	log.Println(rpcAddr, ibcAddress)
-	chain, err := ethereum.NewChain(ethereum.ChainConfig{
+	chain, err := ethereum.NewChain(ctx, ethereum.ChainConfig{
 		EthChainId: chainID,
 		RpcAddr:    rpcAddr,
 		Signer:     internal.CreateSignerConfig(),
@@ -75,22 +75,22 @@ func (m *verifyMembershipModule) proveState(chainID uint64, path string, value [
 	if err != nil {
 		return common.Hash{}, nil, types.Height{}, err
 	}
-	latest, err := chain.LatestHeight()
+	latest, err := chain.LatestHeight(ctx)
 	if err != nil {
 		return common.Hash{}, nil, types.Height{}, err
 	}
 	config := module.ProverConfig{}
 	prover := module.NewProver(module.NewChain(chain), &config).(*module.Prover)
 
-	ctx := core.NewQueryContext(context.Background(), latest)
+	queryCtx := core.NewQueryContext(ctx, latest)
 
-	header, err := chain.Client().HeaderByNumber(ctx.Context(), big.NewInt(int64(latest.GetRevisionHeight())))
+	header, err := chain.Client().HeaderByNumber(ctx, big.NewInt(int64(latest.GetRevisionHeight())))
 	if err != nil {
 		return common.Hash{}, nil, types.Height{}, err
 	}
 
-	proof, proofHeight, err := prover.ProveState(ctx, path, value)
-	storageRoot, err := prover.GetStorageRoot(ctx.Context(), header)
+	proof, proofHeight, err := prover.ProveState(queryCtx, path, value)
+	storageRoot, err := prover.GetStorageRoot(ctx, header)
 	if err != nil {
 		return common.Hash{}, nil, types.Height{}, err
 	}
