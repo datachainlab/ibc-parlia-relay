@@ -3,6 +3,7 @@ package module
 import (
 	"context"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/hyperledger-labs/yui-relayer/log"
@@ -10,10 +11,10 @@ import (
 
 type getHeaderFn func(context.Context, uint64) (*types.Header, error)
 
-func queryLatestFinalizedHeader(getHeader getHeaderFn, latestBlockNumber uint64) (uint64, []*ETHHeader, error) {
+func queryLatestFinalizedHeader(ctx context.Context, getHeader getHeaderFn, latestBlockNumber uint64) (uint64, []*ETHHeader, error) {
 	logger := log.GetLogger()
 	for i := latestBlockNumber; i > 0; i-- {
-		header, err := getHeader(context.Background(), i)
+		header, err := getHeader(ctx, i)
 		if err != nil {
 			return 0, nil, err
 		}
@@ -28,7 +29,7 @@ func queryLatestFinalizedHeader(getHeader getHeaderFn, latestBlockNumber uint64)
 
 		logger.Debug("Try to seek verifying headers to finalize", "probablyFinalized", probablyFinalized, "latest", latestBlockNumber)
 
-		headers, err := queryFinalizedHeader(getHeader, probablyFinalized, latestBlockNumber)
+		headers, err := queryFinalizedHeader(ctx, getHeader, probablyFinalized, latestBlockNumber)
 		if err != nil {
 			return 0, nil, err
 		}
@@ -40,18 +41,18 @@ func queryLatestFinalizedHeader(getHeader getHeaderFn, latestBlockNumber uint64)
 	return 0, nil, fmt.Errorf("no finalized header found: %d", latestBlockNumber)
 }
 
-func queryFinalizedHeader(fn getHeaderFn, height uint64, limitHeight uint64) ([]*ETHHeader, error) {
+func queryFinalizedHeader(ctx context.Context, fn getHeaderFn, height uint64, limitHeight uint64) ([]*ETHHeader, error) {
 	var ethHeaders []*ETHHeader
 	for i := height; i+2 <= limitHeight; i++ {
-		targetBlock, targetETHHeader, _, err := queryETHHeader(fn, i)
+		targetBlock, targetETHHeader, _, err := queryETHHeader(ctx, fn, i)
 		if err != nil {
 			return nil, err
 		}
-		childBlock, childETHHeader, childVote, err := queryETHHeader(fn, i+1)
+		childBlock, childETHHeader, childVote, err := queryETHHeader(ctx, fn, i+1)
 		if err != nil {
 			return nil, err
 		}
-		_, grandChildETHHeader, grandChildVote, err := queryETHHeader(fn, i+2)
+		_, grandChildETHHeader, grandChildVote, err := queryETHHeader(ctx, fn, i+2)
 		if err != nil {
 			return nil, err
 		}
@@ -70,8 +71,8 @@ func queryFinalizedHeader(fn getHeaderFn, height uint64, limitHeight uint64) ([]
 	return nil, nil
 }
 
-func queryETHHeader(fn getHeaderFn, height uint64) (*types.Header, *ETHHeader, *VoteAttestation, error) {
-	block, err := fn(context.TODO(), height)
+func queryETHHeader(ctx context.Context, fn getHeaderFn, height uint64) (*types.Header, *ETHHeader, *VoteAttestation, error) {
+	block, err := fn(ctx, height)
 	if err != nil {
 		return nil, nil, nil, err
 	}

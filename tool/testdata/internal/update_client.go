@@ -1,13 +1,15 @@
 package internal
 
 import (
+	"context"
+	"log"
+
 	"github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"log"
 )
 
 type updateClientModule struct {
@@ -22,31 +24,31 @@ func (m *updateClientModule) success() *cobra.Command {
 		Use:   "latest",
 		Short: "for latest block",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			prover, chain, err := createProver()
+			prover, chain, err := createProver(cmd.Context())
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			latest, err := chain.LatestHeight()
+			latest, err := chain.LatestHeight(cmd.Context())
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			return m.printHeader(prover, chain, latest.GetRevisionHeight())
+			return m.printHeader(cmd.Context(), prover, chain, latest.GetRevisionHeight())
 		},
 	})
 	cmd.AddCommand(&cobra.Command{
 		Use:   "epoch",
 		Short: "for epoch block",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			prover, chain, err := createProver()
+			prover, chain, err := createProver(cmd.Context())
 			if err != nil {
 				return err
 			}
-			latest, err := chain.LatestHeight()
+			latest, err := chain.LatestHeight(cmd.Context())
 			if err != nil {
 				return err
 			}
 			epochCount := latest.GetRevisionHeight() / constant.BlocksPerEpoch
-			return m.printHeader(prover, chain, epochCount*constant.BlocksPerEpoch+2)
+			return m.printHeader(cmd.Context(), prover, chain, epochCount*constant.BlocksPerEpoch+2)
 		},
 	})
 	var num uint64
@@ -54,23 +56,23 @@ func (m *updateClientModule) success() *cobra.Command {
 	specified := &cobra.Command{
 		Use: "specified",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			prover, chain, err := createProver()
+			prover, chain, err := createProver(cmd.Context())
 			if err != nil {
 				return errors.WithStack(err)
 			}
 			currentEpoch := module.GetCurrentEpoch(num)
 			previousEpoch := module.GetPreviousEpoch(num)
-			validator, turnLength, err := module.QueryValidatorSetAndTurnLength(chain.Header, previousEpoch)
+			validator, turnLength, err := module.QueryValidatorSetAndTurnLength(cmd.Context(), chain.Header, previousEpoch)
 			if err != nil {
 				return errors.WithStack(err)
 			}
 			checkpoint := currentEpoch + validator.Checkpoint(turnLength)
-			target, err := prover.GetLatestFinalizedHeaderByLatestHeight(uint64(int64(num) + 2 + diff))
+			target, err := prover.GetLatestFinalizedHeaderByLatestHeight(cmd.Context(), uint64(int64(num)+2+diff))
 			if err != nil {
 				return errors.WithStack(err)
 			}
 			log.Println("checkpoint", checkpoint, "turnLength", turnLength, "target", target.GetHeight())
-			headers, err := prover.SetupHeadersForUpdateByLatestHeight(types.NewHeight(0, previousEpoch), target.(*module.Header))
+			headers, err := prover.SetupHeadersForUpdateByLatestHeight(cmd.Context(), types.NewHeight(0, previousEpoch), target.(*module.Header))
 			if err != nil {
 				return errors.WithStack(err)
 			}
@@ -99,20 +101,20 @@ func (m *updateClientModule) error() *cobra.Command {
 		Use:   "error",
 		Short: "create updateClient testdata for error",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			prover, chain, err := createProver()
+			prover, chain, err := createProver(cmd.Context())
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			latest, err := chain.LatestHeight()
+			latest, err := chain.LatestHeight(cmd.Context())
 			if err != nil {
 				return errors.WithStack(err)
 			}
 			epoch := module.GetCurrentEpoch(latest.GetRevisionHeight())
-			header, err := prover.GetLatestFinalizedHeaderByLatestHeight(epoch + 2)
+			header, err := prover.GetLatestFinalizedHeaderByLatestHeight(cmd.Context(), epoch+2)
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			updating, err := prover.SetupHeadersForUpdateByLatestHeight(types.NewHeight(0, header.GetHeight().GetRevisionNumber()-constant.BlocksPerEpoch), header.(*module.Header))
+			updating, err := prover.SetupHeadersForUpdateByLatestHeight(cmd.Context(), types.NewHeight(0, header.GetHeight().GetRevisionNumber()-constant.BlocksPerEpoch), header.(*module.Header))
 			if err != nil {
 				return errors.WithStack(err)
 			}
@@ -134,9 +136,9 @@ func (m *updateClientModule) error() *cobra.Command {
 	}
 }
 
-func (m *updateClientModule) printHeader(prover *module.Prover, chain module.Chain, height uint64) error {
+func (m *updateClientModule) printHeader(ctx context.Context, prover *module.Prover, chain module.Chain, height uint64) error {
 	log.Println("printHeader latest=", height)
-	iHeader, err := prover.GetLatestFinalizedHeaderByLatestHeight(height)
+	iHeader, err := prover.GetLatestFinalizedHeaderByLatestHeight(ctx, height)
 	if err != nil {
 		return errors.WithStack(err)
 	}
@@ -150,7 +152,7 @@ func (m *updateClientModule) printHeader(prover *module.Prover, chain module.Cha
 	}
 
 	// setup
-	updating, err := prover.SetupHeadersForUpdateByLatestHeight(types.NewHeight(header.GetHeight().GetRevisionNumber(), target.Number.Uint64()-1), header)
+	updating, err := prover.SetupHeadersForUpdateByLatestHeight(ctx, types.NewHeight(header.GetHeight().GetRevisionNumber(), target.Number.Uint64()-1), header)
 	if err != nil {
 		return err
 	}
@@ -166,11 +168,11 @@ func (m *updateClientModule) printHeader(prover *module.Prover, chain module.Cha
 	}
 
 	trustedHeight := updating[0].(*module.Header).TrustedHeight.GetRevisionHeight()
-	currentValidatorSetOfTrustedHeight, currentTurnLengthOfTrustedHeight, err := module.QueryValidatorSetAndTurnLength(chain.Header, module.GetCurrentEpoch(trustedHeight))
+	currentValidatorSetOfTrustedHeight, currentTurnLengthOfTrustedHeight, err := module.QueryValidatorSetAndTurnLength(ctx, chain.Header, module.GetCurrentEpoch(trustedHeight))
 	if err != nil {
 		return err
 	}
-	previousValidatorSetOfTrustedHeight, previousTurnLengthOfTrustedHeight, err := module.QueryValidatorSetAndTurnLength(chain.Header, module.GetPreviousEpoch(trustedHeight))
+	previousValidatorSetOfTrustedHeight, previousTurnLengthOfTrustedHeight, err := module.QueryValidatorSetAndTurnLength(ctx, chain.Header, module.GetPreviousEpoch(trustedHeight))
 	if err != nil {
 		return err
 	}

@@ -3,10 +3,11 @@ package module
 import (
 	"context"
 	"errors"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/stretchr/testify/suite"
 	"math/big"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/stretchr/testify/suite"
 )
 
 type ValidatorSetTestSuite struct {
@@ -54,7 +55,7 @@ func (ts *ValidatorSetTestSuite) TestSuccessQueryValidatorSet() {
 	fn := func(ctx context.Context, height uint64) (*types.Header, error) {
 		return epochHeader(), nil
 	}
-	validators, turnLength, err := QueryValidatorSetAndTurnLength(fn, 400)
+	validators, turnLength, err := QueryValidatorSetAndTurnLength(context.Background(), fn, 400)
 	ts.Require().NoError(err)
 	ts.Require().Len(validators, 4)
 	ts.Require().Equal(turnLength, uint8(1))
@@ -64,7 +65,7 @@ func (ts *ValidatorSetTestSuite) TestErrorQueryValidatorSet() {
 	fn := func(ctx context.Context, height uint64) (*types.Header, error) {
 		return nil, errors.New("error")
 	}
-	_, _, err := QueryValidatorSetAndTurnLength(fn, 200)
+	_, _, err := QueryValidatorSetAndTurnLength(context.Background(), fn, 200)
 	ts.Require().Equal(err.Error(), "error")
 }
 

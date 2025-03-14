@@ -2,13 +2,14 @@ package module
 
 import (
 	"context"
+	"math/big"
+	"strings"
+	"testing"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/hyperledger-labs/yui-relayer/log"
 	"github.com/stretchr/testify/suite"
-	"math/big"
-	"strings"
-	"testing"
 )
 
 type HeaderQueryTestSuite struct {
@@ -33,7 +34,7 @@ func (ts *HeaderQueryTestSuite) TestErrorQueryFinalizedHeader() {
 	}
 
 	// No finalized header found
-	headers, err := queryFinalizedHeader(fn, 1, 10)
+	headers, err := queryFinalizedHeader(context.Background(), fn, 1, 10)
 	ts.Require().NoError(err)
 	ts.Require().Nil(headers)
 
@@ -45,7 +46,7 @@ func (ts *HeaderQueryTestSuite) TestErrorQueryFinalizedHeader() {
 		return &types.Header{Number: big.NewInt(int64(height))}, nil
 	}
 
-	headers, err = queryFinalizedHeader(fn, 360, 400)
+	headers, err = queryFinalizedHeader(context.Background(), fn, 360, 400)
 	ts.Require().NoError(err)
 	ts.Require().Nil(headers)
 }
@@ -60,7 +61,7 @@ func (ts *HeaderQueryTestSuite) TestSuccessQueryFinalizedHeader() {
 		return &types.Header{Number: big.NewInt(int64(height))}, nil
 	}
 
-	headers, err := queryFinalizedHeader(fn, 360, 402)
+	headers, err := queryFinalizedHeader(context.Background(), fn, 360, 402)
 	ts.Require().NoError(err)
 	ts.Require().Len(headers, 402-360)
 }
@@ -75,7 +76,7 @@ func (ts *HeaderQueryTestSuite) TestSuccessQueryLatestFinalizedHeader() {
 			}
 			return &types.Header{Number: big.NewInt(int64(height))}, nil
 		}
-		height, h, err := queryLatestFinalizedHeader(getHeader, latestBlockNumber)
+		height, h, err := queryLatestFinalizedHeader(context.Background(), getHeader, latestBlockNumber)
 		ts.Require().NoError(err)
 		ts.Require().Len(h, 3)
 		ts.Require().Equal(int(height), 401)
@@ -94,7 +95,7 @@ func (ts *HeaderQueryTestSuite) TestErrorQueryLatestFinalizedHeader_NoVote() {
 				Extra:  extra,
 			}, nil
 		}
-		_, _, err := queryLatestFinalizedHeader(getHeader, latestBlockNumber)
+		_, _, err := queryLatestFinalizedHeader(context.Background(), getHeader, latestBlockNumber)
 		ts.Require().True(strings.Contains(err.Error(), "no finalized header found"))
 	}
 

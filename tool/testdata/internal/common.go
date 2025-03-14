@@ -1,14 +1,16 @@
 package internal
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
 	"github.com/datachainlab/ibc-hd-signer/pkg/hd"
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/spf13/viper"
-	"os"
-	"time"
 )
 
 const (
@@ -36,12 +38,12 @@ func CreateSignerConfig() *types.Any {
 	return anySignerConfig
 }
 
-func createProver() (*module.Prover, module.Chain, error) {
+func createProver(ctx context.Context) (*module.Prover, module.Chain, error) {
 	rpcAddr, err := createRPCAddr()
 	if err != nil {
 		return nil, nil, err
 	}
-	chain, err := ethereum.NewChain(ethereum.ChainConfig{
+	chain, err := ethereum.NewChain(ctx, ethereum.ChainConfig{
 		EthChainId: 9999,
 		RpcAddr:    rpcAddr,
 		Signer:     CreateSignerConfig(),
