@@ -54,7 +54,10 @@ jobs:
         run: |
           make chain
           make contracts
-          sleep 20
+          # epoch length is fixed in lorentz HF.
+          # epoch is 200, 400, 500, 1000
+          # must wait for 1000 block (1.5sec * 1000)
+          sleep 1500
           make relayer
           make test
       - name: integration-test

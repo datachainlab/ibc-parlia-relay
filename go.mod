@@ -10,6 +10,7 @@ require (
 	github.com/datachainlab/ethereum-ibc-relay-chain v0.3.16
 	github.com/datachainlab/ibc-hd-signer v0.1.2
 	github.com/ethereum/go-ethereum v1.15.0
+	github.com/holiman/uint256 v1.3.2
 	github.com/hyperledger-labs/yui-relayer v0.5.11
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.10.0
@@ -132,7 +133,6 @@ require (
 	github.com/hashicorp/yamux v0.1.1 // indirect
 	github.com/hdevalence/ed25519consensus v0.1.0 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
-	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/huandu/skiplist v1.2.0 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/improbable-eng/grpc-web v0.15.0 // indirect
