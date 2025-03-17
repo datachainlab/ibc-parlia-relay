@@ -163,8 +163,13 @@ func (ts *ProverTestSuite) TestQueryClientStateWithProof() {
 	ts.Require().Equal(proofHeight.GetRevisionNumber(), uint64(0))
 	ts.Require().Equal(proofHeight.GetRevisionHeight(), uint64(21400))
 
+	decoded := ProveState{}
+	ts.Require().NoError(decoded.Unmarshal(proof))
+
+	expected, _ := ts.chain.GetProof(common.Address{}, nil, nil)
+	ts.Require().Equal(common.Bytes2Hex(decoded.AccountProof), common.Bytes2Hex(expected.AccountProofRLP))
 	// storage_key is 0x0c0dd47e5867d48cad725de0d09f9549bd564c1d143f6c1f451b26ccd981eeae
-	ts.Require().Equal(common.Bytes2Hex(proof), "f853f8518080a0143145e818eeff83817419a6632ea193fd1acaa4f791eb17282f623f38117f568080808080808080a016cbf6e0ba10512eb618d99a1e34025adb7e6f31d335bda7fb20c8bb95fb5b978080808080")
+	ts.Require().Equal(common.Bytes2Hex(decoded.CommitmentProof), "f853f8518080a0143145e818eeff83817419a6632ea193fd1acaa4f791eb17282f623f38117f568080808080808080a016cbf6e0ba10512eb618d99a1e34025adb7e6f31d335bda7fb20c8bb95fb5b978080808080")
 }
 
 func (ts *ProverTestSuite) TestConnection() {

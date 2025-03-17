@@ -7,7 +7,8 @@ import "@hyperledger-labs/yui-ibc-solidity/contracts/proto/Client.sol";
 import {
 IbcLightclientsParliaV1ClientState as ClientState,
 IbcLightclientsParliaV1ConsensusState as ConsensusState,
-IbcLightclientsParliaV1Header as Header
+IbcLightclientsParliaV1Header as Header,
+IbcLightclientsParliaV1ProveState as ProveState
 } from "../ibc/lightclients/parlia/v1/parlia.sol";
 import {GoogleProtobufAny as Any} from "@hyperledger-labs/yui-ibc-solidity/contracts/proto/GoogleProtobufAny.sol";
 import {RLPReader} from "@hyperledger-labs/yui-ibc-solidity/contracts/clients/qbft/RLPReader.sol";
@@ -132,16 +133,14 @@ contract ParliaClient is ILightClient {
         RLPReader.RLPItem[] memory items = rlpEthHeader.toRlpItem().toList();
         Height.Data memory height = Height.Data({revision_number: 0, revision_height: uint64(items[8].toUint())});
         uint64 timestamp = uint64(items[11].toUint());
-        bytes32 stateRoot = bytes32(items[3].toBytes());
+        bytes memory stateRoot = items[3].toBytes();
 
         //TODO verify header
 
         clientStates[clientId].latest_height.revision_number = height.revision_number;
         clientStates[clientId].latest_height.revision_height = height.revision_height;
         consensusStates[clientId][height.toUint128()].timestamp = timestamp;
-        consensusStates[clientId][height.toUint128()].state_root = abi.encodePacked(
-            verifyStorageProof(address(bytes20(clientStates[clientId].ibc_store_address)), stateRoot, header.account_proof));
-
+        consensusStates[clientId][height.toUint128()].state_root = stateRoot;
         heights = new Height.Data[](1);
         heights[0] = height;
         return heights;
@@ -164,6 +163,7 @@ contract ParliaClient is ILightClient {
         ConsensusState.Data storage consensusState = consensusStates[clientId][height.toUint128()];
         require(consensusState.timestamp != 0,  "consensus state not found");
         return verifyMembership(
+            clientId,
             proof,
             bytes32(consensusState.state_root),
             keccak256(abi.encodePacked(keccak256(path), COMMITMENT_SLOT)),
@@ -187,22 +187,32 @@ contract ParliaClient is ILightClient {
         ConsensusState.Data storage consensusState = consensusStates[clientId][height.toUint128()];
         require(consensusState.timestamp != 0,  "consensus state not found");
         return verifyNonMembership(
-            proof, bytes32(consensusState.state_root), keccak256(abi.encodePacked(keccak256(path), COMMITMENT_SLOT))
+            clientId,
+            proof,
+            bytes32(consensusState.state_root),
+            keccak256(abi.encodePacked(keccak256(path), COMMITMENT_SLOT))
         );
     }
 
     // Same as IBFT2Client.sol
-    function verifyMembership(bytes calldata proof, bytes32 root, bytes32 slot, bytes32 expectedValue)
+    function verifyMembership(string memory clientId, bytes calldata proof, bytes32 root, bytes32 slot, bytes32 expectedValue)
     internal
-    pure
+    view
     returns (bool)
     {
+        ProveState.Data memory proveState = ProveState.decode(proof);
+        bytes memory storageRoot = abi.encodePacked(
+            verifyStorageProof(
+                address(bytes20(clientStates[clientId].ibc_store_address)),
+                root,
+                proveState.account_proof));
+
         bytes32 path = keccak256(abi.encodePacked(slot));
-        bytes memory dataHash = proof.verifyRLPProof(root, path);
+        bytes memory dataHash = proveState.commitment_proof.verifyRLPProof(bytes32(storageRoot), path);
         return expectedValue == bytes32(dataHash.toRlpItem().toUint());
     }
 
-    function verifyNonMembership(bytes calldata proof, bytes32 root, bytes32 slot) internal pure returns (bool) {
+    function verifyNonMembership(string calldata clientId, bytes calldata proof, bytes32 root, bytes32 slot) internal pure returns (bool) {
         // bytes32 path = keccak256(abi.encodePacked(slot));
         // bytes memory dataHash = proof.verifyRLPProof(root, path); // reverts if proof is invalid
         // return dataHash.toRlpItem().toBytes().length == 0;

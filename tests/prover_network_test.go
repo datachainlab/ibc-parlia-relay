@@ -57,7 +57,6 @@ func (ts *ProverNetworkTestSuite) TestQueryLatestFinalizedHeader() {
 	ts.Require().NotNil(t.RequestsHash) // Check Pargue Enabled
 	ts.Require().True(len(h.PreviousValidators) >= 1)
 	ts.Require().True(len(h.CurrentValidators) >= 1)
-	ts.Require().True(len(h.AccountProof) >= 1)
 	ts.Require().True(h.CurrentTurnLength >= 1 && h.CurrentTurnLength <= 9)
 	ts.Require().True(h.PreviousTurnLength >= 1 && h.PreviousTurnLength <= 9)
 }
@@ -99,10 +98,8 @@ func (ts *ProverNetworkTestSuite) TestSuccessCreateInitialLightClientState() {
 	consState := s2.(*module.ConsensusState)
 	ts.Require().Equal(consState.CurrentValidatorsHash, module.MakeEpochHash(cVal, cTurn))
 	ts.Require().Equal(consState.PreviousValidatorsHash, module.MakeEpochHash(pVal, pTurn))
-	ts.Require().Equal(consState.Timestamp, module.MilliTimestamp(header))
-	storageRoot, err := ts.prover.GetStorageRoot(header)
-	ts.Require().NoError(err)
-	ts.Require().Equal(common.BytesToHash(consState.StateRoot), storageRoot)
+	ts.Require().Equal(consState.Timestamp, header.Time)
+	ts.Require().Equal(common.BytesToHash(consState.StateRoot), header.Root)
 }
 
 func (ts *ProverNetworkTestSuite) makeChain(rpcAddr string, ibcChainID string) module.Chain {
