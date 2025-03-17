@@ -36,6 +36,9 @@ function generate_genesis() {
   INIT_HOLDER_ADDRESSES=$(ls ${workspace}/init-holders | tr '\n' ',')
   INIT_HOLDER_ADDRESSES=${INIT_HOLDER_ADDRESSES/%,/}
 
+  echo "replace genesis-template.template"
+  cp genesis-template.template genesis-template.json
+
   echo "replace init_holders.template"
   sed "s/{{INIT_HOLDER_ADDRESSES}}/${INIT_HOLDER_ADDRESSES}/g" scripts/init_holders.template | sed "s/{{INIT_HOLDER_BALANCE}}/${INIT_HOLDER_BALANCE}/g" >scripts/init_holders.js
 
@@ -45,6 +48,7 @@ function generate_genesis() {
 
   echo "replace generate.py"
   sed "s/dev_chain_id: int = 714/dev_chain_id: int = ${BSC_CHAIN_ID}/g" scripts/generate.py > scripts/generate.py.out
+  cp scripts/generate.py.out scripts/generate.py
 
   echo "start generate validators"
   node scripts/generate-validator.js
