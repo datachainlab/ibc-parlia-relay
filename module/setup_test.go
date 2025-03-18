@@ -141,8 +141,8 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_allEmpty() {
 
 func (ts *SetupTestSuite) TestSuccess_setupNeighboringEpochHeader() {
 
-	epochHeight := uint64(400)
-	trustedEpochHeight := uint64(200)
+	epochHeight := constant.BlocksPerEpoch * 2
+	trustedEpochHeight := constant.BlocksPerEpoch
 
 	neighboringEpochFn := func(height uint64, limit uint64) (core.Header, error) {
 		target, err := newETHHeader(&types2.Header{
@@ -162,5 +162,6 @@ func (ts *SetupTestSuite) TestSuccess_setupNeighboringEpochHeader() {
 	ts.Require().NoError(err)
 
 	// next checkpoint - 1
-	ts.Require().Equal(int64(602), target.Number.Int64())
+	// turnLength = 6, then checkpoint = 18
+	ts.Require().Equal(int64(1517), target.Number.Int64())
 }

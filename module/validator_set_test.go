@@ -32,7 +32,7 @@ func (ts *ValidatorSetTestSuite) TestSuccessExtractValidatorSet() {
 	validators, turnLength, err = extractValidatorSetAndTurnLength(block)
 	ts.Require().NoError(err)
 	ts.Require().Len(validators, 4)
-	ts.Require().Equal(turnLength, uint8(1))
+	ts.Require().Equal(turnLength, uint8(6))
 
 }
 
@@ -57,7 +57,7 @@ func (ts *ValidatorSetTestSuite) TestSuccessQueryValidatorSet() {
 	validators, turnLength, err := QueryValidatorSetAndTurnLength(fn, 400)
 	ts.Require().NoError(err)
 	ts.Require().Len(validators, 4)
-	ts.Require().Equal(turnLength, uint8(1))
+	ts.Require().Equal(turnLength, uint8(6))
 }
 
 func (ts *ValidatorSetTestSuite) TestErrorQueryValidatorSet() {
