@@ -98,7 +98,7 @@ func (ts *ProverNetworkTestSuite) TestSuccessCreateInitialLightClientState() {
 	consState := s2.(*module.ConsensusState)
 	ts.Require().Equal(consState.CurrentValidatorsHash, module.MakeEpochHash(cVal, cTurn))
 	ts.Require().Equal(consState.PreviousValidatorsHash, module.MakeEpochHash(pVal, pTurn))
-	ts.Require().Equal(consState.Timestamp, header.Time)
+	ts.Require().Equal(consState.Timestamp, module.MilliTimestamp(header))
 	ts.Require().Equal(common.BytesToHash(consState.StateRoot), header.Root)
 }
 
