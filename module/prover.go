@@ -138,7 +138,9 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(ctx context.Context, clien
 		pr.chain.Header,
 		clientStateLatestHeight,
 		latestFinalizedHeader,
-		latestHeight)
+		latestHeight,
+		GetForkParameters(Network(pr.config.Network)),
+	)
 }
 
 func (pr *Prover) ProveState(ctx core.QueryContext, path string, value []byte) ([]byte, clienttypes.Height, error) {
@@ -227,7 +229,11 @@ func (pr *Prover) CheckRefreshRequired(ctx context.Context, counterparty core.Ch
 }
 
 func (pr *Prover) withValidators(height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
-	return withValidators(pr.chain.Header, height, ethHeaders)
+	return withValidators(pr.chain.Header, height, ethHeaders, pr.getForkParameters())
+}
+
+func (pr *Prover) getForkParameters() []*ForkSpec {
+	return GetForkParameters(Network(pr.config.Network))
 }
 
 func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState, exported.ConsensusState, error) {

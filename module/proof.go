@@ -2,6 +2,7 @@ package module
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/hyperledger-labs/yui-relayer/core"
@@ -170,22 +171,40 @@ func verifyAccount(target *types.Header, accountProof []byte, path common.Addres
 	return &account, nil
 }
 
-func withValidators(headerFn getHeaderFn, height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
+func withValidators(headerFn getHeaderFn, height uint64, ethHeaders []*ETHHeader, forkSpecs []*ForkSpec) (core.Header, error) {
 
 	header := &Header{
 		Headers: ethHeaders,
 	}
 
+	blockHeader, err := headerFn(context.Background(), height)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get block header : number = %d : %+v", height, err)
+	}
+	currentForkSpec, prevForkSpec, err := findTargetForkSpec(forkSpecs, height, blockHeader.Time)
+	if err != nil {
+		return nil, err
+	}
+
+	boundaryHeight, err := getBoundaryHeight(headerFn, height, *currentForkSpec)
+	if err != nil {
+		return nil, err
+	}
+
+	boundaryEpochs, err := boundaryHeight.getBoundaryEpochs(*currentForkSpec, *prevForkSpec)
+	if err != nil {
+		return nil, err
+	}
+
 	// Get validator set for verify headers
-	previousEpoch := getPreviousEpoch(height)
+	previousEpoch := boundaryEpochs.PreviousEpochBlockNumber(height)
 	var previousTurnLength uint8
-	var err error
 	header.PreviousValidators, previousTurnLength, err = queryValidatorSetAndTurnLength(headerFn, previousEpoch)
 	header.PreviousTurnLength = uint32(previousTurnLength)
 	if err != nil {
 		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
 	}
-	currentEpoch := getCurrentEpoch(height)
+	currentEpoch := boundaryEpochs.CurrentEpochBlockNumber(height)
 	var currentTurnLength uint8
 	header.CurrentValidators, currentTurnLength, err = queryValidatorSetAndTurnLength(headerFn, currentEpoch)
 	header.CurrentTurnLength = uint32(currentTurnLength)
