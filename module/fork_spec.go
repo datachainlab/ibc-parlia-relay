@@ -122,6 +122,12 @@ func (be BoundaryEpochs) CurrentEpochBlockNumber(number uint64) uint64 {
 	if number >= be.CurrentFirst {
 		return number - (number % be.CurrentForkSpec.EpochLength)
 	}
+
+	for i := len(be.Intermediates); i >= 0; i-- {
+		if number >= be.Intermediates[i] {
+			return be.Intermediates[i]
+		}
+	}
 	return number - (number % be.PreviousForkSpec.EpochLength)
 }
 
