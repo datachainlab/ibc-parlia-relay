@@ -3,6 +3,7 @@ package module
 import (
 	"context"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -12,8 +13,8 @@ func (v Validators) Checkpoint(turnLength uint8) uint64 {
 	return uint64(len(v)/2+1) * uint64(turnLength)
 }
 
-func queryValidatorSetAndTurnLength(fn getHeaderFn, epochBlockNumber uint64) (Validators, uint8, error) {
-	header, err := fn(context.TODO(), epochBlockNumber)
+func queryValidatorSetAndTurnLength(ctx context.Context, fn getHeaderFn, epochBlockNumber uint64) (Validators, uint8, error) {
+	header, err := fn(ctx, epochBlockNumber)
 	if err != nil {
 		return nil, 1, err
 	}

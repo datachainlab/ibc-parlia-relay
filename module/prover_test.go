@@ -31,7 +31,7 @@ type mockChain struct {
 	trustedHeight           uint64
 }
 
-func (c *mockChain) GetProof(_ common.Address, _ [][]byte, _ *big.Int) (*client.StateProof, error) {
+func (c *mockChain) GetProof(_ context.Context, _ common.Address, _ [][]byte, _ *big.Int) (*client.StateProof, error) {
 	// eth.getProof("0xaa43d337145E8930d01cb4E60Abf6595C692921E",["0x0c0dd47e5867d48cad725de0d09f9549bd564c1d143f6c1f451b26ccd981eeae"], 21400)
 	// storageHash: "0xc3608871098f21b59607ef3fb9412a091de9246ad1281a92f5b07dc2f465b7a0",
 	accountProof := []string{
@@ -106,7 +106,7 @@ func (ts *ProverTestSuite) SetupTest() {
 	}
 	anySignerConfig, err := codectypes.NewAnyWithValue(signerConfig)
 	ts.Require().NoError(err)
-	chain, err := ethereum.NewChain(ethereum.ChainConfig{
+	chain, err := ethereum.NewChain(context.Background(), ethereum.ChainConfig{
 		EthChainId: 9999,
 		IbcAddress: common.Address{}.String(),
 		Signer:     anySignerConfig,
@@ -156,7 +156,7 @@ func (ts *ProverTestSuite) TestQueryClientStateWithProof() {
 	bzCs, err := ts.prover.chain.Codec().Marshal(cs)
 	ts.Require().NoError(err)
 
-	ctx := core.NewQueryContext(context.TODO(), clienttypes.NewHeight(0, 21400))
+	ctx := core.NewQueryContext(context.Background(), clienttypes.NewHeight(0, 21400))
 	proof, proofHeight, err := ts.prover.ProveState(ctx, host.FullClientStatePath(ts.prover.chain.Path().ClientID), bzCs)
 	ts.Require().NoError(err)
 
@@ -166,7 +166,7 @@ func (ts *ProverTestSuite) TestQueryClientStateWithProof() {
 	decoded := ProveState{}
 	ts.Require().NoError(decoded.Unmarshal(proof))
 
-	expected, _ := ts.chain.GetProof(common.Address{}, nil, nil)
+	expected, _ := ts.chain.GetProof(context.Background(), common.Address{}, nil, nil)
 	ts.Require().Equal(common.Bytes2Hex(decoded.AccountProof), common.Bytes2Hex(expected.AccountProofRLP))
 	// storage_key is 0x0c0dd47e5867d48cad725de0d09f9549bd564c1d143f6c1f451b26ccd981eeae
 	ts.Require().Equal(common.Bytes2Hex(decoded.CommitmentProof), "f853f8518080a0143145e818eeff83817419a6632ea193fd1acaa4f791eb17282f623f38117f568080808080808080a016cbf6e0ba10512eb618d99a1e34025adb7e6f31d335bda7fb20c8bb95fb5b978080808080")
@@ -248,6 +248,7 @@ func (ts *ProverTestSuite) TestCheckRefreshRequired() {
 		ts.chain.trustedHeight = 0
 	}()
 
+	ctx := context.Background()
 	now := time.Now()
 	chainHeight := clienttypes.NewHeight(0, 0)
 	csHeight := clienttypes.NewHeight(0, 0)
@@ -255,26 +256,26 @@ func (ts *ProverTestSuite) TestCheckRefreshRequired() {
 
 	// should refresh by trusting_period
 	ts.chain.consensusStateTimestamp[csHeight] = uint64(now.Add(-51 * time.Second).UnixNano())
-	required, err := ts.prover.CheckRefreshRequired(context.TODO(), dst)
+	required, err := ts.prover.CheckRefreshRequired(ctx, dst)
 	ts.Require().NoError(err)
 	ts.Require().True(required)
 
 	// needless by trusting_period
 	ts.chain.consensusStateTimestamp[csHeight] = uint64(now.Add(-50 * time.Second).UnixNano())
-	required, err = ts.prover.CheckRefreshRequired(context.TODO(), dst)
+	required, err = ts.prover.CheckRefreshRequired(ctx, dst)
 	ts.Require().NoError(err)
 	ts.Require().False(required)
 
 	// should refresh by block difference
 	ts.chain.latestHeight = 2
 	ts.prover.config.RefreshBlockDifferenceThreshold = 1
-	required, err = ts.prover.CheckRefreshRequired(context.TODO(), dst)
+	required, err = ts.prover.CheckRefreshRequired(ctx, dst)
 	ts.Require().NoError(err)
 	ts.Require().True(required)
 
 	// needless by block difference
 	ts.prover.config.RefreshBlockDifferenceThreshold = 2
-	required, err = ts.prover.CheckRefreshRequired(context.TODO(), dst)
+	required, err = ts.prover.CheckRefreshRequired(ctx, dst)
 	ts.Require().NoError(err)
 	ts.Require().False(required)
 
@@ -282,7 +283,7 @@ func (ts *ProverTestSuite) TestCheckRefreshRequired() {
 	ts.chain.latestHeight = 1
 	ts.chain.trustedHeight = 3
 	ts.prover.config.RefreshBlockDifferenceThreshold = 1
-	required, err = ts.prover.CheckRefreshRequired(context.TODO(), dst)
+	required, err = ts.prover.CheckRefreshRequired(ctx, dst)
 	ts.Require().NoError(err)
 	ts.Require().False(required)
 }
@@ -299,7 +300,7 @@ func (ts *ProverTestSuite) TestProveHostConsensusState() {
 		(*exported.ConsensusState)(nil),
 		&ConsensusState{},
 	)
-	ctx := core.NewQueryContext(context.TODO(), clienttypes.NewHeight(0, 0))
+	ctx := core.NewQueryContext(context.Background(), clienttypes.NewHeight(0, 0))
 	prove, err := ts.prover.ProveHostConsensusState(ctx, clienttypes.NewHeight(0, 0), &cs)
 	ts.Require().NoError(err)
 	ts.Require().Len(prove, 150)
