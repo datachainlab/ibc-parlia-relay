@@ -32,7 +32,7 @@ func shouldSubmitBoundaryTimestampHeader(
 	latestCondition := latestForkSpec.GetHeightOrTimestamp()
 	if x, ok := latestCondition.(*ForkSpec_Timestamp); ok {
 		if MilliTimestamp(trustedBlock) < x.Timestamp && x.Timestamp < MilliTimestamp(latestFinalizedBlock) {
-			boundaryHeight, err := getBoundaryHeight(getHeader, latestFinalizedBlock.Number.Uint64(), *latestForkSpec)
+			boundaryHeight, err := GetBoundaryHeight(getHeader, latestFinalizedBlock.Number.Uint64(), *latestForkSpec)
 			if err != nil {
 				return nil, 0, err
 			}
@@ -69,15 +69,15 @@ func setupHeadersForUpdate(
 		return nil, err
 	}
 
-	trustedCurrentForkSpec, trustedPreviousForkSpec, err := findTargetForkSpec(forkSpecs, savedLatestHeight, MilliTimestamp(trustedBlock))
+	trustedCurrentForkSpec, trustedPreviousForkSpec, err := FindTargetForkSpec(forkSpecs, savedLatestHeight, MilliTimestamp(trustedBlock))
 	if err != nil {
 		return nil, err
 	}
-	trustedBoundaryHeight, err := getBoundaryHeight(getHeader, savedLatestHeight, *trustedCurrentForkSpec)
+	trustedBoundaryHeight, err := GetBoundaryHeight(getHeader, savedLatestHeight, *trustedCurrentForkSpec)
 	if err != nil {
 		return nil, err
 	}
-	trustedBoundaryEpochs, err := trustedBoundaryHeight.getBoundaryEpochs(*trustedCurrentForkSpec, *trustedPreviousForkSpec)
+	trustedBoundaryEpochs, err := trustedBoundaryHeight.GetBoundaryEpochs(*trustedCurrentForkSpec, *trustedPreviousForkSpec)
 	if err != nil {
 		return nil, err
 	}

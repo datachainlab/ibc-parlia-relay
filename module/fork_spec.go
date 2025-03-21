@@ -91,7 +91,7 @@ type BoundaryEpochs struct {
 
 type BoundaryHeight uint64
 
-func (b BoundaryHeight) getBoundaryEpochs(currentForkSpec ForkSpec, prevForkSpec ForkSpec) (*BoundaryEpochs, error) {
+func (b BoundaryHeight) GetBoundaryEpochs(currentForkSpec ForkSpec, prevForkSpec ForkSpec) (*BoundaryEpochs, error) {
 	boundaryHeight := uint64(b)
 	prevLast := boundaryHeight - (boundaryHeight % prevForkSpec.EpochLength)
 	index := uint64(0)
@@ -158,7 +158,7 @@ func (be BoundaryEpochs) PreviousEpochBlockNumber(currentEpochBlockNumber uint64
 	return currentEpochBlockNumber - be.CurrentForkSpec.EpochLength
 }
 
-func findTargetForkSpec(forkSpecs []*ForkSpec, height uint64, timestamp uint64) (*ForkSpec, *ForkSpec, error) {
+func FindTargetForkSpec(forkSpecs []*ForkSpec, height uint64, timestamp uint64) (*ForkSpec, *ForkSpec, error) {
 	reversed := make([]*ForkSpec, len(forkSpecs))
 	for i, spec := range forkSpecs {
 		reversed[len(forkSpecs)-i-1] = spec
@@ -187,7 +187,7 @@ func findTargetForkSpec(forkSpecs []*ForkSpec, height uint64, timestamp uint64) 
 
 var cache = make(map[uint64]BoundaryHeight)
 
-func getBoundaryHeight(headerFn getHeaderFn, currentHeight uint64, currentForkSpec ForkSpec) (BoundaryHeight, error) {
+func GetBoundaryHeight(headerFn getHeaderFn, currentHeight uint64, currentForkSpec ForkSpec) (BoundaryHeight, error) {
 	logger := log.GetLogger()
 	boundaryHeight := uint64(0)
 	if condition, ok := currentForkSpec.GetHeightOrTimestamp().(*ForkSpec_Height); ok {
