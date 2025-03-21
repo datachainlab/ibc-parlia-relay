@@ -35,7 +35,7 @@ func GetForkParameters(network Network) []*ForkSpec {
 			// Pascal HF
 			{
 				// Must Set Milli timestamp
-				HeightOrTimestamp:         &ForkSpec_Timestamp{Timestamp: 0},
+				HeightOrTimestamp:         &ForkSpec_Height{Height: 0},
 				AdditionalHeaderItemCount: 1,
 				EpochLength:               200,
 			},
@@ -125,7 +125,7 @@ func (be BoundaryEpochs) CurrentEpochBlockNumber(number uint64) uint64 {
 	}
 
 	if len(be.Intermediates) > 0 {
-		for i := len(be.Intermediates); i >= 0; i-- {
+		for i := len(be.Intermediates) - 1; i >= 0; i-- {
 			if number >= be.Intermediates[i] {
 				return be.Intermediates[i]
 			}
@@ -198,8 +198,8 @@ func getBoundaryHeight(headerFn getHeaderFn, currentHeight uint64, currentForkSp
 			return v, nil
 		}
 		logger.Debug("seek fork height", "currentHeight", currentHeight, "ts", ts)
-		for i := currentHeight; i >= 0; i-- {
-			h, err := headerFn(context.Background(), i)
+		for i := int64(currentHeight); i >= 0; i-- {
+			h, err := headerFn(context.Background(), uint64(i))
 			if err != nil {
 				return 0, err
 			}

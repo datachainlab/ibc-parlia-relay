@@ -32,8 +32,15 @@ func shouldSubmitBoundaryTimestampHeader(
 	latestCondition := latestForkSpec.GetHeightOrTimestamp()
 	if x, ok := latestCondition.(*ForkSpec_Timestamp); ok {
 		if MilliTimestamp(trustedBlock) < x.Timestamp && x.Timestamp < MilliTimestamp(latestFinalizedBlock) {
-			// TODO 対象のheightを出す
-			return &x.Timestamp, 0, nil
+			boundaryHeight, err := getBoundaryHeight(getHeader, latestFinalizedBlock.Number.Uint64(), *latestForkSpec)
+			if err != nil {
+				return nil, 0, err
+			}
+			// Must be right before boundary height
+			if boundaryHeight == 0 {
+				return nil, 0, fmt.Errorf("boundary height not found")
+			}
+			return &x.Timestamp, uint64(boundaryHeight) - 1, nil
 		}
 	}
 	return nil, 0, nil
@@ -96,17 +103,24 @@ func setupHeadersForUpdate(
 			submittingHeights = append(submittingHeights, nextForkBoundaryHeightMinus1)
 		}
 	} else {
+		var temp []uint64
 		for epochCandidate := firstUnsaved; epochCandidate < latestFinalizedHeight; epochCandidate += skip {
-			if nextForkBoundaryTs != nil && nextForkBoundaryHeightMinus1 < epochCandidate {
-				submittingHeights = append(submittingHeights, nextForkBoundaryHeightMinus1, epochCandidate)
-			} else {
+			temp = append(temp, epochCandidate)
+		}
+		if nextForkBoundaryTs != nil {
+			for i, epochCandidate := range temp {
+				if i > 0 {
+					if temp[i-1] < nextForkBoundaryHeightMinus1 && nextForkBoundaryHeightMinus1 < epochCandidate {
+						submittingHeights = append(submittingHeights, temp[i-1])
+					}
+				}
 				submittingHeights = append(submittingHeights, epochCandidate)
 			}
-		}
-		if nextForkBoundaryTs != nil &&
-			submittingHeights[len(submittingHeights)-1] < nextForkBoundaryHeightMinus1 &&
-			nextForkBoundaryHeightMinus1 < latestFinalizedHeight {
-			submittingHeights = append(submittingHeights, nextForkBoundaryHeightMinus1)
+			if submittingHeights[len(submittingHeights)-1] < nextForkBoundaryHeightMinus1 && nextForkBoundaryHeightMinus1 < latestFinalizedHeight {
+				submittingHeights = append(submittingHeights, nextForkBoundaryHeightMinus1)
+			}
+		} else {
+			submittingHeights = temp
 		}
 	}
 	logger.Debug("submitting heights", "heights", submittingHeights)
