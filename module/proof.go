@@ -181,35 +181,36 @@ func withValidators(headerFn getHeaderFn, height uint64, ethHeaders []*ETHHeader
 	if err != nil {
 		return nil, fmt.Errorf("failed to get block header : number = %d : %+v", height, err)
 	}
-	currentForkSpec, prevForkSpec, err := findTargetForkSpec(forkSpecs, height, blockHeader.Time)
+	currentForkSpec, prevForkSpec, err := FindTargetForkSpec(forkSpecs, height, blockHeader.Time)
 	if err != nil {
 		return nil, err
 	}
 
-	boundaryHeight, err := getBoundaryHeight(headerFn, height, *currentForkSpec)
+	boundaryHeight, err := GetBoundaryHeight(headerFn, height, *currentForkSpec)
 	if err != nil {
 		return nil, err
 	}
 
-	boundaryEpochs, err := boundaryHeight.getBoundaryEpochs(*currentForkSpec, *prevForkSpec)
+	boundaryEpochs, err := boundaryHeight.GetBoundaryEpochs(*currentForkSpec, *prevForkSpec)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get validator set for verify headers
-	previousEpoch := boundaryEpochs.PreviousEpochBlockNumber(height)
-	var previousTurnLength uint8
-	header.PreviousValidators, previousTurnLength, err = queryValidatorSetAndTurnLength(headerFn, previousEpoch)
-	header.PreviousTurnLength = uint32(previousTurnLength)
-	if err != nil {
-		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
-	}
 	currentEpoch := boundaryEpochs.CurrentEpochBlockNumber(height)
 	var currentTurnLength uint8
 	header.CurrentValidators, currentTurnLength, err = queryValidatorSetAndTurnLength(headerFn, currentEpoch)
 	header.CurrentTurnLength = uint32(currentTurnLength)
 	if err != nil {
 		return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
+	}
+
+	previousEpoch := boundaryEpochs.PreviousEpochBlockNumber(currentEpoch)
+	var previousTurnLength uint8
+	header.PreviousValidators, previousTurnLength, err = queryValidatorSetAndTurnLength(headerFn, previousEpoch)
+	header.PreviousTurnLength = uint32(previousTurnLength)
+	if err != nil {
+		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
 	}
 
 	return header, nil
