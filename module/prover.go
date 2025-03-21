@@ -237,18 +237,13 @@ func (pr *Prover) getForkParameters() []*ForkSpec {
 }
 
 func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState, exported.ConsensusState, error) {
-	currentEpoch := getCurrentEpoch(dstHeader.GetHeight().GetRevisionHeight())
-	currentValidators, currentTurnLength, err := queryValidatorSetAndTurnLength(pr.chain.Header, currentEpoch)
+	dstHeader, err := pr.withValidators(dstHeader.GetHeight().GetRevisionHeight(), dstHeader.(*Header).Headers)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	previousEpoch := getPreviousEpoch(dstHeader.GetHeight().GetRevisionHeight())
-	previousValidators, previousTurnLength, err := queryValidatorSetAndTurnLength(pr.chain.Header, previousEpoch)
-	if err != nil {
-		return nil, nil, err
-	}
-	header, err := dstHeader.(*Header).Target()
+	downcast := dstHeader.(*Header)
+	header, err := downcast.Target()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -271,8 +266,8 @@ func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState
 	}
 	consensusState := ConsensusState{
 		Timestamp:              MilliTimestamp(header),
-		PreviousValidatorsHash: makeEpochHash(previousValidators, previousTurnLength),
-		CurrentValidatorsHash:  makeEpochHash(currentValidators, currentTurnLength),
+		PreviousValidatorsHash: makeEpochHash(downcast.PreviousValidators, uint8(downcast.PreviousTurnLength)),
+		CurrentValidatorsHash:  makeEpochHash(downcast.CurrentValidators, uint8(downcast.CurrentTurnLength)),
 		StateRoot:              header.Root.Bytes(),
 	}
 	return &clientState, &consensusState, nil
