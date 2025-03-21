@@ -102,6 +102,7 @@ func (b BoundaryHeight) getBoundaryEpochs(currentForkSpec ForkSpec, prevForkSpec
 			currentFirst = candidate
 			break
 		}
+		index++
 	}
 	var intermediates []uint64
 	for mid := prevLast + prevForkSpec.EpochLength; mid < currentFirst; mid += prevForkSpec.EpochLength {
@@ -123,9 +124,11 @@ func (be BoundaryEpochs) CurrentEpochBlockNumber(number uint64) uint64 {
 		return number - (number % be.CurrentForkSpec.EpochLength)
 	}
 
-	for i := len(be.Intermediates); i >= 0; i-- {
-		if number >= be.Intermediates[i] {
-			return be.Intermediates[i]
+	if len(be.Intermediates) > 0 {
+		for i := len(be.Intermediates); i >= 0; i-- {
+			if number >= be.Intermediates[i] {
+				return be.Intermediates[i]
+			}
 		}
 	}
 	return number - (number % be.PreviousForkSpec.EpochLength)
@@ -182,7 +185,7 @@ func findTargetForkSpec(forkSpecs []*ForkSpec, height uint64, timestamp uint64) 
 	return nil, nil, fmt.Errorf("no fork spec found height=%d, timestmp=%d", height, timestamp)
 }
 
-var cache map[uint64]BoundaryHeight
+var cache = make(map[uint64]BoundaryHeight)
 
 func getBoundaryHeight(headerFn getHeaderFn, currentHeight uint64, currentForkSpec ForkSpec) (BoundaryHeight, error) {
 	logger := log.GetLogger()
@@ -203,7 +206,7 @@ func getBoundaryHeight(headerFn getHeaderFn, currentHeight uint64, currentForkSp
 			if MilliTimestamp(h) == ts {
 				boundaryHeight = h.Number.Uint64()
 				logger.Debug("seek fork height found", "currentHeight", currentHeight, "ts", ts, "boundaryHeight", boundaryHeight)
-				cache[currentForkSpec.GetTimestamp()] = BoundaryHeight(boundaryHeight)
+				cache[ts] = BoundaryHeight(boundaryHeight)
 				break
 			}
 		}

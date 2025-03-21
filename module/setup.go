@@ -86,6 +86,9 @@ func setupHeadersForUpdate(
 	logger.Info("Must set boundary timestamp", "ts", nextForkBoundaryTs, "nextForkBoundaryHeightMinus1", nextForkBoundaryHeightMinus1)
 
 	firstUnsaved := trustedEpochHeight + skip
+	if firstUnsaved == savedLatestHeight {
+		firstUnsaved += skip
+	}
 
 	var submittingHeights []uint64
 	if latestFinalizedHeight < firstUnsaved {

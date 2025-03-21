@@ -3,7 +3,6 @@ package module
 import (
 	"context"
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
-	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	types2 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/hyperledger-labs/yui-relayer/core"
 	"github.com/hyperledger-labs/yui-relayer/log"
@@ -27,8 +26,8 @@ func (ts *SetupTestSuite) SetupTest() {
 
 func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_neighboringEpoch() {
 
-	verify := func(latestHeight, nextHeight uint64, expected int) {
-		clientStateLatestHeight := clienttypes.NewHeight(0, latestHeight)
+	verify := func(trustedHeight, nextHeight uint64, expected int) {
+		clientStateLatestHeight := clienttypes.NewHeight(0, trustedHeight)
 		target, err := newETHHeader(&types2.Header{
 			Number: big.NewInt(int64(nextHeight)),
 		})
@@ -53,47 +52,47 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_neighboringEpoch() {
 			}, nil
 		}
 
-		targets, err := setupHeadersForUpdate(neighborFn, headerFn, clientStateLatestHeight, latestFinalizedHeader, clienttypes.NewHeight(0, 100000))
+		targets, err := setupHeadersForUpdate(neighborFn, headerFn, clientStateLatestHeight, latestFinalizedHeader, clienttypes.NewHeight(0, 100000), GetForkParameters(Localnet))
 		ts.Require().NoError(err)
 		ts.Require().Len(targets, expected)
 		for i, h := range targets {
 			trusted := h.(*Header).TrustedHeight
 			if i == 0 {
-				ts.Require().Equal(trusted.RevisionHeight, latestHeight)
+				ts.Require().Equal(trusted.RevisionHeight, trustedHeight)
 			} else {
 				ts.Require().Equal(*trusted, targets[i-1].GetHeight())
 			}
 		}
 	}
 
-	verify(0, constant.BlocksPerEpoch-1, 1)
-	verify(0, constant.BlocksPerEpoch, 1)
-	verify(0, constant.BlocksPerEpoch+1, 2)
-	verify(0, 10*constant.BlocksPerEpoch-1, 10)
-	verify(0, 10*constant.BlocksPerEpoch, 10)
-	verify(0, 10*constant.BlocksPerEpoch+1, 11)
-	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch-1, 0)
-	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch, 1)
-	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch+1, 2)
-	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch-1, 10)
-	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch, 10)
-	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch+1, 11)
-	verify(constant.BlocksPerEpoch, constant.BlocksPerEpoch, 0)
-	verify(constant.BlocksPerEpoch, constant.BlocksPerEpoch+1, 1)
-	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch-1, 9)
-	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch, 9)
-	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch+1, 10)
-	verify(constant.BlocksPerEpoch+1, constant.BlocksPerEpoch+1, 0)
-	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch-1, 9)
-	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch, 9)
-	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch+1, 10)
+	verify(0, skip-1, 1)
+	verify(0, skip, 1)
+	verify(0, skip+1, 2)
+	verify(0, 10*skip-1, 10)
+	verify(0, 10*skip, 10)
+	verify(0, 10*skip+1, 11)
+	verify(skip-1, skip-1, 0)
+	verify(skip-1, skip, 1)
+	verify(skip-1, skip+1, 2)
+	verify(skip-1, 10*skip-1, 10)
+	verify(skip-1, 10*skip, 10)
+	verify(skip-1, 10*skip+1, 11)
+	verify(skip, skip, 0)
+	verify(skip, skip+1, 1)
+	verify(skip, 10*skip-1, 9)
+	verify(skip, 10*skip, 9)
+	verify(skip, 10*skip+1, 10)
+	verify(skip+1, skip+1, 0)
+	verify(skip+1, 10*skip-1, 10)
+	verify(skip+1, 10*skip, 10)
+	verify(skip+1, 10*skip+1, 11)
 
 }
 
 func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_allEmpty() {
 
-	verify := func(latestHeight, nextHeight uint64, expected int) {
-		clientStateLatestHeight := clienttypes.NewHeight(0, latestHeight)
+	verify := func(trustedHeight, nextHeight uint64, expected int) {
+		clientStateLatestHeight := clienttypes.NewHeight(0, trustedHeight)
 		target, err := newETHHeader(&types2.Header{
 			Number: big.NewInt(int64(nextHeight)),
 		})
@@ -111,57 +110,34 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_allEmpty() {
 				Extra:  epochHeader().Extra,
 			}, nil
 		}
-		targets, err := setupHeadersForUpdate(neighboringEpochFn, headerFn, clientStateLatestHeight, latestFinalizedHeader, clienttypes.NewHeight(0, 1000000))
+		targets, err := setupHeadersForUpdate(neighboringEpochFn, headerFn, clientStateLatestHeight, latestFinalizedHeader,
+			clienttypes.NewHeight(0,
+				1000000), GetForkParameters(Localnet))
 		ts.Require().NoError(err)
 		ts.Require().Len(targets, expected)
 	}
 
-	verify(0, constant.BlocksPerEpoch-1, 1)
-	verify(0, constant.BlocksPerEpoch, 1)
-	verify(0, constant.BlocksPerEpoch+1, 0) // non neighboring
-	verify(0, 10*constant.BlocksPerEpoch-1, 0)
-	verify(0, 10*constant.BlocksPerEpoch, 0)                        // non neighboring
-	verify(0, 10*constant.BlocksPerEpoch+1, 0)                      // non neighboring
-	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch-1, 0) // same
-	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch, 1)
-	verify(constant.BlocksPerEpoch-1, constant.BlocksPerEpoch+1, 0) // non neighboring
-	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch-1, 0)
-	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch, 0)   // non neighboring
-	verify(constant.BlocksPerEpoch-1, 10*constant.BlocksPerEpoch+1, 0) // non neighboring
-	verify(constant.BlocksPerEpoch, constant.BlocksPerEpoch, 0)        // same
-	verify(constant.BlocksPerEpoch, constant.BlocksPerEpoch+1, 1)
-	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch-1, 0)   // non neighboring
-	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch, 0)     // non neighboring
-	verify(constant.BlocksPerEpoch, 10*constant.BlocksPerEpoch+1, 0)   // non neighboring
-	verify(constant.BlocksPerEpoch+1, constant.BlocksPerEpoch+1, 0)    // same
-	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch-1, 0) // non neighboring
-	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch, 0)   // non neighboring
-	verify(constant.BlocksPerEpoch+1, 10*constant.BlocksPerEpoch+1, 0) // non neighboring
-}
+	const skip = 100
 
-func (ts *SetupTestSuite) TestSuccess_setupNeighboringEpochHeader() {
-
-	epochHeight := constant.BlocksPerEpoch * 2
-	trustedEpochHeight := constant.BlocksPerEpoch
-
-	neighboringEpochFn := func(height uint64, limit uint64) (core.Header, error) {
-		target, err := newETHHeader(&types2.Header{
-			Number: big.NewInt(int64(limit)),
-		})
-		ts.Require().NoError(err)
-		return &Header{
-			Headers: []*ETHHeader{target},
-		}, nil
-	}
-	headerFn := func(_ context.Context, height uint64) (*types2.Header, error) {
-		return headerByHeight(int64(height)), nil
-	}
-	hs, err := setupNeighboringEpochHeader(headerFn, neighboringEpochFn, epochHeight, trustedEpochHeight, clienttypes.NewHeight(0, 10000))
-	ts.Require().NoError(err)
-	target, err := hs.(*Header).Target()
-	ts.Require().NoError(err)
-
-	// next checkpoint - 1
-	// turnLength = 6, then checkpoint = 18
-	ts.Require().Equal(int64(1517), target.Number.Int64())
+	verify(0, skip-1, 1)
+	verify(0, skip, 1)
+	verify(0, skip+1, 0) // non neighboring
+	verify(0, 10*skip-1, 0)
+	verify(0, 10*skip, 0)     // non neighboring
+	verify(0, 10*skip+1, 0)   // non neighboring
+	verify(skip-1, skip-1, 0) // same
+	verify(skip-1, skip, 1)
+	verify(skip-1, skip+1, 0) // non neighboring
+	verify(skip-1, 10*skip-1, 0)
+	verify(skip-1, 10*skip, 0)   // non neighboring
+	verify(skip-1, 10*skip+1, 0) // non neighboring
+	verify(skip, skip, 0)        // same
+	verify(skip, skip+1, 1)
+	verify(skip, 10*skip-1, 0)   // non neighboring
+	verify(skip, 10*skip, 0)     // non neighboring
+	verify(skip, 10*skip+1, 0)   // non neighboring
+	verify(skip+1, skip+1, 0)    // same
+	verify(skip+1, 10*skip-1, 0) // non neighboring
+	verify(skip+1, 10*skip, 0)   // non neighboring
+	verify(skip+1, 10*skip+1, 0) // non neighboring
 }
