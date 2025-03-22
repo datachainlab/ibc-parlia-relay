@@ -208,6 +208,11 @@ func GetBoundaryHeight(headerFn getHeaderFn, currentHeight uint64, currentForkSp
 				logger.Debug("seek fork height found", "currentHeight", currentHeight, "ts", ts, "boundaryHeight", boundaryHeight)
 				cache[ts] = BoundaryHeight(boundaryHeight)
 				break
+			} else if MilliTimestamp(h) < ts {
+				boundaryHeight = h.Number.Uint64() + 1
+				logger.Debug("seek fork height found", "currentHeight", currentHeight, "ts", ts, "boundaryHeight", boundaryHeight)
+				cache[ts] = BoundaryHeight(boundaryHeight)
+				break
 			}
 		}
 	}
