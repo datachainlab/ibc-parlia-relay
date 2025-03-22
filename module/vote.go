@@ -3,7 +3,6 @@ package module
 import (
 	"bytes"
 	"fmt"
-	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -39,8 +38,13 @@ func getVoteAttestationFromHeader(header *types.Header) (*VoteAttestation, error
 		return nil, nil
 	}
 
+	isEpoch := true
+	if _, _, err := extractValidatorSetAndTurnLength(header); err != nil {
+		isEpoch = false
+	}
+
 	var attestationBytes []byte
-	if header.Number.Uint64()%constant.BlocksPerEpoch != 0 {
+	if !isEpoch {
 		attestationBytes = header.Extra[extraVanity : len(header.Extra)-extraSeal]
 	} else {
 		num := int(header.Extra[extraVanity])
