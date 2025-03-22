@@ -118,8 +118,6 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_allEmpty() {
 		ts.Require().Len(targets, expected)
 	}
 
-	const skip = 100
-
 	verify(0, skip-1, 1)
 	verify(0, skip, 1)
 	verify(0, skip+1, 0) // non neighboring
@@ -224,5 +222,58 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_withHFBoundary() {
 	verify(skip+1, 10*skip-1, 10+1)
 	verify(skip+1, 10*skip, 10+1)
 	verify(skip+1, 10*skip+1, 11+1)
+
+}
+
+func (ts *SetupTestSuite) Test_makeSubmittingHeights() {
+	rq := ts.Require()
+	msec := uint64(0)
+	rq.Len(makeSubmittingHeights(10, 11, nil, 0), 0)
+	rq.Len(makeSubmittingHeights(10, 11, &msec, 11), 0)
+	rq.Len(makeSubmittingHeights(10, 11, &msec, 9), 1)
+	rq.Equal(
+		[]uint64{100, 200, 300, 400, 500},
+		makeSubmittingHeights(501, 100, &msec, 99),
+	)
+	rq.Equal(
+		[]uint64{100, 200, 300, 400, 500},
+		makeSubmittingHeights(501, 100, &msec, 100),
+	)
+	rq.Equal(
+		[]uint64{100, 101, 200, 300, 400, 500},
+		makeSubmittingHeights(501, 100, &msec, 101),
+	)
+	rq.Equal(
+		[]uint64{100, 200, 300, 400, 500},
+		makeSubmittingHeights(501, 100, nil, 101),
+	)
+	rq.Equal(
+		[]uint64{100, 200, 201, 300, 400, 500},
+		makeSubmittingHeights(501, 100, &msec, 201),
+	)
+	rq.Equal(
+		[]uint64{100, 200, 300, 301, 400, 500},
+		makeSubmittingHeights(501, 100, &msec, 301),
+	)
+	rq.Equal(
+		[]uint64{100, 200, 300, 400, 401, 500},
+		makeSubmittingHeights(501, 100, &msec, 401),
+	)
+	rq.Equal(
+		[]uint64{100, 200, 300, 400, 500},
+		makeSubmittingHeights(501, 100, nil, 401),
+	)
+	rq.Equal(
+		[]uint64{100, 200, 300, 400, 500},
+		makeSubmittingHeights(501, 100, &msec, 501),
+	)
+	rq.Equal(
+		[]uint64{100, 200, 300, 400, 500, 501},
+		makeSubmittingHeights(502, 100, &msec, 501),
+	)
+	rq.Equal(
+		[]uint64{100, 200, 300, 400, 500},
+		makeSubmittingHeights(502, 100, nil, 501),
+	)
 
 }

@@ -97,32 +97,7 @@ func setupHeadersForUpdate(
 		firstUnsaved += skip
 	}
 
-	var submittingHeights []uint64
-	if latestFinalizedHeight < firstUnsaved {
-		if nextForkBoundaryTs != nil && nextForkBoundaryHeightMinus1 < latestFinalizedHeight {
-			submittingHeights = append(submittingHeights, nextForkBoundaryHeightMinus1)
-		}
-	} else {
-		var temp []uint64
-		for epochCandidate := firstUnsaved; epochCandidate < latestFinalizedHeight; epochCandidate += skip {
-			temp = append(temp, epochCandidate)
-		}
-		if nextForkBoundaryTs != nil {
-			for i, epochCandidate := range temp {
-				if i > 0 {
-					if temp[i-1] < nextForkBoundaryHeightMinus1 && nextForkBoundaryHeightMinus1 < epochCandidate {
-						submittingHeights = append(submittingHeights, temp[i-1])
-					}
-				}
-				submittingHeights = append(submittingHeights, epochCandidate)
-			}
-			if submittingHeights[len(submittingHeights)-1] < nextForkBoundaryHeightMinus1 && nextForkBoundaryHeightMinus1 < latestFinalizedHeight {
-				submittingHeights = append(submittingHeights, nextForkBoundaryHeightMinus1)
-			}
-		} else {
-			submittingHeights = temp
-		}
-	}
+	submittingHeights := makeSubmittingHeights(latestFinalizedHeight, firstUnsaved, nextForkBoundaryTs, nextForkBoundaryHeightMinus1)
 	logger.Debug("submitting heights", "heights", submittingHeights)
 
 	trustedHeight := clientStateLatestHeight.GetRevisionHeight()
@@ -164,4 +139,34 @@ func withTrustedHeight(targetHeaders []core.Header, clientStateLatestHeight expo
 		logger.Debug("setupHeadersForUpdate end", "target", h.GetHeight(), "trusted", trustedHeight, "headerSize", len(h.(*Header).Headers))
 	}
 	return targetHeaders
+}
+
+func makeSubmittingHeights(latestFinalizedHeight uint64, firstUnsaved uint64, nextForkBoundaryTs *uint64, nextForkBoundaryHeightMinus1 uint64) []uint64 {
+	var submittingHeights []uint64
+	if latestFinalizedHeight < firstUnsaved {
+		if nextForkBoundaryTs != nil && nextForkBoundaryHeightMinus1 < latestFinalizedHeight {
+			submittingHeights = append(submittingHeights, nextForkBoundaryHeightMinus1)
+		}
+	} else {
+		var temp []uint64
+		for epochCandidate := firstUnsaved; epochCandidate < latestFinalizedHeight; epochCandidate += skip {
+			temp = append(temp, epochCandidate)
+		}
+		if nextForkBoundaryTs != nil {
+			for i, epochCandidate := range temp {
+				if i > 0 {
+					if temp[i-1] < nextForkBoundaryHeightMinus1 && nextForkBoundaryHeightMinus1 < epochCandidate {
+						submittingHeights = append(submittingHeights, nextForkBoundaryHeightMinus1)
+					}
+				}
+				submittingHeights = append(submittingHeights, epochCandidate)
+			}
+			if submittingHeights[len(submittingHeights)-1] < nextForkBoundaryHeightMinus1 && nextForkBoundaryHeightMinus1 < latestFinalizedHeight {
+				submittingHeights = append(submittingHeights, nextForkBoundaryHeightMinus1)
+			}
+		} else {
+			submittingHeights = temp
+		}
+	}
+	return submittingHeights
 }
