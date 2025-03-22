@@ -108,7 +108,7 @@ func (b BoundaryHeight) GetBoundaryEpochs(currentForkSpec ForkSpec, prevForkSpec
 		}
 		index++
 	}
-	var intermediates []uint64
+	intermediates := make([]uint64, 0)
 	for mid := prevLast + prevForkSpec.EpochLength; mid < currentFirst; mid += prevForkSpec.EpochLength {
 		intermediates = append(intermediates, mid)
 	}
