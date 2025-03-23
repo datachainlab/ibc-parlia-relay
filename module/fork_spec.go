@@ -22,7 +22,6 @@ var localLorentzHF isForkSpec_HeightOrTimestamp = &ForkSpec_Height{Height: 1}
 func init() {
 	localLorentzHFTimestamp := os.Getenv("LOCAL_LORENTZ_HF_TIMESTAMP")
 	if localLorentzHFTimestamp != "" {
-		fmt.Println("LOCAL_LORENTZ_HF_TIMESTAMP is found", localLorentzHFTimestamp)
 		result, err := strconv.Atoi(localLorentzHFTimestamp)
 		if err != nil {
 			panic(err)
@@ -32,7 +31,6 @@ func init() {
 }
 
 func GetForkParameters(network Network) []*ForkSpec {
-
 	switch network {
 	case Localnet:
 		return []*ForkSpec{
