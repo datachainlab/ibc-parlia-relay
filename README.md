@@ -43,5 +43,9 @@ make proto-gen
 
 ## About ForkSpec
 
+1. Set HF height as soon as possibile
 As soon as the HF height is determined, please modify the timestamp in the ForkSpec to the height as soon as possible.
 HF height is calculated from timestamp, but the further away from the HF, the longer it takes to calculate.
+
+2. Limitation of the CreateClient
+When the latest HF height is not set it is impossible to create client if the latest finalize header is after latest HF timestamp
