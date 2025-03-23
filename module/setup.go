@@ -93,11 +93,11 @@ func setupHeadersForUpdate(
 	logger.Info("Must set boundary timestamp", "ts", nextForkBoundaryTs, "nextForkBoundaryHeightMinus1", nextForkBoundaryHeightMinus1)
 
 	firstUnsaved := trustedEpochHeight + skip
-	if firstUnsaved == savedLatestHeight {
+	if firstUnsaved <= savedLatestHeight {
 		firstUnsaved += skip
 	}
 
-	submittingHeights := makeSubmittingHeights(latestFinalizedHeight, firstUnsaved, nextForkBoundaryTs, nextForkBoundaryHeightMinus1)
+	submittingHeights := makeSubmittingHeights(latestFinalizedHeight, savedLatestHeight, firstUnsaved, nextForkBoundaryTs, nextForkBoundaryHeightMinus1)
 	logger.Debug("submitting heights", "heights", submittingHeights)
 
 	trustedHeight := clientStateLatestHeight.GetRevisionHeight()
@@ -141,7 +141,7 @@ func withTrustedHeight(targetHeaders []core.Header, clientStateLatestHeight expo
 	return targetHeaders
 }
 
-func makeSubmittingHeights(latestFinalizedHeight uint64, firstUnsaved uint64, nextForkBoundaryTs *uint64, nextForkBoundaryHeightMinus1 uint64) []uint64 {
+func makeSubmittingHeights(latestFinalizedHeight uint64, savedLatestHeight uint64, firstUnsaved uint64, nextForkBoundaryTs *uint64, nextForkBoundaryHeightMinus1 uint64) []uint64 {
 	var submittingHeights []uint64
 	if latestFinalizedHeight < firstUnsaved {
 		if nextForkBoundaryTs != nil && nextForkBoundaryHeightMinus1 < latestFinalizedHeight {
@@ -156,6 +156,10 @@ func makeSubmittingHeights(latestFinalizedHeight uint64, firstUnsaved uint64, ne
 			for i, epochCandidate := range temp {
 				if i > 0 {
 					if temp[i-1] < nextForkBoundaryHeightMinus1 && nextForkBoundaryHeightMinus1 < epochCandidate {
+						submittingHeights = append(submittingHeights, nextForkBoundaryHeightMinus1)
+					}
+				} else if i == 0 {
+					if savedLatestHeight < nextForkBoundaryHeightMinus1 && nextForkBoundaryHeightMinus1 < epochCandidate {
 						submittingHeights = append(submittingHeights, nextForkBoundaryHeightMinus1)
 					}
 				}

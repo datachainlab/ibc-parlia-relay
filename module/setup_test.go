@@ -228,52 +228,56 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_withHFBoundary() {
 func (ts *SetupTestSuite) Test_makeSubmittingHeights() {
 	rq := ts.Require()
 	msec := uint64(0)
-	rq.Len(makeSubmittingHeights(10, 11, nil, 0), 0)
-	rq.Len(makeSubmittingHeights(10, 11, &msec, 11), 0)
-	rq.Len(makeSubmittingHeights(10, 11, &msec, 9), 1)
+	rq.Len(makeSubmittingHeights(10, 1, 11, nil, 0), 0)
+	rq.Len(makeSubmittingHeights(10, 1, 11, &msec, 11), 0)
+	rq.Len(makeSubmittingHeights(10, 1, 11, &msec, 9), 1)
 	rq.Equal(
-		[]uint64{100, 200, 300, 400, 500},
-		makeSubmittingHeights(501, 100, &msec, 99),
+		[]uint64{99, 100, 200, 300, 400, 500},
+		makeSubmittingHeights(501, 0, 100, &msec, 99),
 	)
 	rq.Equal(
 		[]uint64{100, 200, 300, 400, 500},
-		makeSubmittingHeights(501, 100, &msec, 100),
+		makeSubmittingHeights(501, 101, 100, &msec, 99),
+	)
+	rq.Equal(
+		[]uint64{100, 200, 300, 400, 500},
+		makeSubmittingHeights(501, 0, 100, &msec, 100),
 	)
 	rq.Equal(
 		[]uint64{100, 101, 200, 300, 400, 500},
-		makeSubmittingHeights(501, 100, &msec, 101),
+		makeSubmittingHeights(501, 0, 100, &msec, 101),
 	)
 	rq.Equal(
 		[]uint64{100, 200, 300, 400, 500},
-		makeSubmittingHeights(501, 100, nil, 101),
+		makeSubmittingHeights(501, 0, 100, nil, 101),
 	)
 	rq.Equal(
 		[]uint64{100, 200, 201, 300, 400, 500},
-		makeSubmittingHeights(501, 100, &msec, 201),
+		makeSubmittingHeights(501, 0, 100, &msec, 201),
 	)
 	rq.Equal(
 		[]uint64{100, 200, 300, 301, 400, 500},
-		makeSubmittingHeights(501, 100, &msec, 301),
+		makeSubmittingHeights(501, 0, 100, &msec, 301),
 	)
 	rq.Equal(
 		[]uint64{100, 200, 300, 400, 401, 500},
-		makeSubmittingHeights(501, 100, &msec, 401),
+		makeSubmittingHeights(501, 0, 100, &msec, 401),
 	)
 	rq.Equal(
 		[]uint64{100, 200, 300, 400, 500},
-		makeSubmittingHeights(501, 100, nil, 401),
+		makeSubmittingHeights(501, 0, 100, nil, 401),
 	)
 	rq.Equal(
 		[]uint64{100, 200, 300, 400, 500},
-		makeSubmittingHeights(501, 100, &msec, 501),
+		makeSubmittingHeights(501, 0, 100, &msec, 501),
 	)
 	rq.Equal(
 		[]uint64{100, 200, 300, 400, 500, 501},
-		makeSubmittingHeights(502, 100, &msec, 501),
+		makeSubmittingHeights(502, 0, 100, &msec, 501),
 	)
 	rq.Equal(
 		[]uint64{100, 200, 300, 400, 500},
-		makeSubmittingHeights(502, 100, nil, 501),
+		makeSubmittingHeights(502, 0, 100, nil, 501),
 	)
 
 }

@@ -237,6 +237,21 @@ func (pr *Prover) getForkParameters() []*ForkSpec {
 }
 
 func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState, exported.ConsensusState, error) {
+
+	// Last ForkSpec must have height or CreateClient is less than fork spec timestamp
+	forkSpecs := pr.getForkParameters()
+	lastForkSpec := forkSpecs[len(forkSpecs)-1]
+	lastForkSpecTime := lastForkSpec.GetHeightOrTimestamp().(*ForkSpec_Timestamp)
+	if lastForkSpecTime != nil {
+		target, err := dstHeader.(*Header).Target()
+		if err != nil {
+			return nil, nil, err
+		}
+		if MilliTimestamp(target) >= lastForkSpecTime.Timestamp {
+			return nil, nil, fmt.Errorf("target timestamp is less than the last fork spec timestamp %d, %d", lastForkSpecTime.Timestamp, MilliTimestamp(target))
+		}
+	}
+
 	dstHeader, err := pr.withValidators(dstHeader.GetHeight().GetRevisionHeight(), dstHeader.(*Header).Headers)
 	if err != nil {
 		return nil, nil, err
