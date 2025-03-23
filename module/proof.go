@@ -6,6 +6,7 @@ import (
 	"fmt"
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/hyperledger-labs/yui-relayer/core"
+	"github.com/hyperledger-labs/yui-relayer/log"
 	"math/big"
 
 	"github.com/cosmos/gogoproto/proto"
@@ -181,20 +182,23 @@ func withValidators(headerFn getHeaderFn, height uint64, ethHeaders []*ETHHeader
 	if err != nil {
 		return nil, fmt.Errorf("failed to get block header : number = %d : %+v", height, err)
 	}
-	currentForkSpec, prevForkSpec, err := FindTargetForkSpec(forkSpecs, height, blockHeader.Time)
+	currentForkSpec, prevForkSpec, err := FindTargetForkSpec(forkSpecs, height, MilliTimestamp(blockHeader))
 	if err != nil {
 		return nil, err
 	}
+	log.GetLogger().Debug("target fork spec", "currentForkSpec", currentForkSpec, "prevForkSpec", prevForkSpec)
 
 	boundaryHeight, err := GetBoundaryHeight(headerFn, height, *currentForkSpec)
 	if err != nil {
 		return nil, err
 	}
+	log.GetLogger().Debug("get boundary height by ", "height", height, "boundaryHeight", boundaryHeight)
 
 	boundaryEpochs, err := boundaryHeight.GetBoundaryEpochs(*currentForkSpec, *prevForkSpec)
 	if err != nil {
 		return nil, err
 	}
+	log.GetLogger().Debug("boundary epoch", "prevLast", boundaryEpochs.PrevLast, "currentFirst", boundaryEpochs.CurrentFirst, "intermediates", boundaryEpochs.Intermediates)
 
 	// Get validator set for verify headers
 	currentEpoch := boundaryEpochs.CurrentEpochBlockNumber(height)
