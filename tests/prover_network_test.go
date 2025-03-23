@@ -96,7 +96,7 @@ func (ts *ProverNetworkTestSuite) TestSuccessCreateInitialLightClientState() {
 	ts.Require().NoError(err)
 	bs, err := module.GetBoundaryHeight(ts.chain.Header, header.Number.Uint64(), *currentForkSpec)
 	ts.Require().NoError(err)
-	be, err := bs.GetBoundaryEpochs(*currentForkSpec, *prevForkSpec)
+	be, err := bs.GetBoundaryEpochs(*prevForkSpec)
 	ts.Require().NoError(err)
 
 	currentEpoch := be.CurrentEpochBlockNumber(header.Number.Uint64())

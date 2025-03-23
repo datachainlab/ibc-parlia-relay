@@ -37,10 +37,10 @@ func shouldSubmitBoundaryTimestampHeader(
 				return nil, 0, err
 			}
 			// Must be right before boundary height
-			if boundaryHeight == 0 {
+			if boundaryHeight.Height == 0 {
 				return nil, 0, fmt.Errorf("boundary height not found")
 			}
-			return &x.Timestamp, uint64(boundaryHeight) - 1, nil
+			return &x.Timestamp, uint64(boundaryHeight.Height) - 1, nil
 		}
 	}
 	return nil, 0, nil
@@ -77,7 +77,7 @@ func setupHeadersForUpdate(
 	if err != nil {
 		return nil, err
 	}
-	trustedBoundaryEpochs, err := trustedBoundaryHeight.GetBoundaryEpochs(*trustedCurrentForkSpec, *trustedPreviousForkSpec)
+	trustedBoundaryEpochs, err := trustedBoundaryHeight.GetBoundaryEpochs(*trustedPreviousForkSpec)
 	if err != nil {
 		return nil, err
 	}

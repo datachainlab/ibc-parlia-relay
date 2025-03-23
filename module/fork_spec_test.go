@@ -20,7 +20,7 @@ func TestForkSpecTestSuite(t *testing.T) {
 
 func (ts *ForkSpecTestSuite) SetupTest() {
 	_ = log.InitLogger("DEBUG", "text", "stdout")
-	boundaryHeightCache = make(map[uint64]BoundaryHeight)
+	boundaryHeightCache = make(map[uint64]uint64)
 }
 
 func (ts *ForkSpecTestSuite) Test_FindTargetForkSpec_ValidHeight() {
@@ -135,7 +135,7 @@ func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_ValidHeight() {
 	boundaryHeight, err := GetBoundaryHeight(headerFn, currentHeight, currentForkSpec)
 
 	ts.NoError(err)
-	ts.Equal(BoundaryHeight(50), boundaryHeight)
+	ts.Equal(uint64(50), boundaryHeight.Height)
 }
 
 func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_ValidTimestamp() {
@@ -148,7 +148,7 @@ func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_ValidTimestamp() {
 	boundaryHeight, err := GetBoundaryHeight(headerFn, currentHeight, currentForkSpec)
 
 	ts.NoError(err)
-	ts.Equal(BoundaryHeight(100), boundaryHeight)
+	ts.Equal(uint64(100), boundaryHeight.Height)
 }
 
 func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_ValidTimestampMultiHeader() {
@@ -161,7 +161,7 @@ func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_ValidTimestampMultiHeader() 
 	boundaryHeight, err := GetBoundaryHeight(headerFn, currentHeight, currentForkSpec)
 
 	ts.NoError(err)
-	ts.Equal(BoundaryHeight(1000), boundaryHeight)
+	ts.Equal(uint64(1000), boundaryHeight.Height)
 }
 
 func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_ValidTimestampMultiHeaderNotJust() {
@@ -174,7 +174,7 @@ func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_ValidTimestampMultiHeaderNot
 	boundaryHeight, err := GetBoundaryHeight(headerFn, currentHeight, currentForkSpec)
 
 	ts.NoError(err)
-	ts.Equal(BoundaryHeight(1000), boundaryHeight)
+	ts.Equal(uint64(1000), boundaryHeight.Height)
 }
 
 func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_TimestampNotFound() {
@@ -187,7 +187,7 @@ func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_TimestampNotFound() {
 	boundaryHeight, err := GetBoundaryHeight(headerFn, currentHeight, currentForkSpec)
 
 	ts.NoError(err)
-	ts.Equal(BoundaryHeight(0), boundaryHeight)
+	ts.Equal(uint64(0), boundaryHeight.Height)
 }
 
 func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_HeaderFnError() {
@@ -197,10 +197,9 @@ func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_HeaderFnError() {
 	currentHeight := uint64(100)
 	currentForkSpec := ForkSpec{HeightOrTimestamp: &ForkSpec_Timestamp{Timestamp: 1000}}
 
-	boundaryHeight, err := GetBoundaryHeight(headerFn, currentHeight, currentForkSpec)
+	_, err := GetBoundaryHeight(headerFn, currentHeight, currentForkSpec)
 
 	ts.Error(err)
-	ts.Equal(BoundaryHeight(0), boundaryHeight)
 }
 
 func (ts *ForkSpecTestSuite) Test_Success_GetBoundaryEpochs() {
@@ -208,31 +207,31 @@ func (ts *ForkSpecTestSuite) Test_Success_GetBoundaryEpochs() {
 		{HeightOrTimestamp: &ForkSpec_Height{Height: 0}, EpochLength: 200},
 		{EpochLength: 500},
 	}
-	epochs, err := BoundaryHeight(1501).GetBoundaryEpochs(*forkSpecs[1], *forkSpecs[0])
+	epochs, err := BoundaryHeight{Height: 1501, CurrentForkSpec: *forkSpecs[1]}.GetBoundaryEpochs(*forkSpecs[0])
 	ts.Require().NoError(err)
 	ts.Require().Equal(epochs.PrevLast, uint64(1400))
 	ts.Require().Equal(epochs.Intermediates, []uint64{1600, 1800})
 	ts.Require().Equal(epochs.CurrentFirst, uint64(2000))
 
-	epochs, err = BoundaryHeight(1600).GetBoundaryEpochs(*forkSpecs[1], *forkSpecs[0])
+	epochs, err = BoundaryHeight{Height: 1600, CurrentForkSpec: *forkSpecs[1]}.GetBoundaryEpochs(*forkSpecs[0])
 	ts.Require().NoError(err)
 	ts.Require().Equal(epochs.PrevLast, uint64(1600))
 	ts.Require().Equal(epochs.Intermediates, []uint64{1800})
 	ts.Require().Equal(epochs.CurrentFirst, uint64(2000))
 
-	epochs, err = BoundaryHeight(1601).GetBoundaryEpochs(*forkSpecs[1], *forkSpecs[0])
+	epochs, err = BoundaryHeight{Height: 1601, CurrentForkSpec: *forkSpecs[1]}.GetBoundaryEpochs(*forkSpecs[0])
 	ts.Require().NoError(err)
 	ts.Require().Equal(epochs.PrevLast, uint64(1600))
 	ts.Require().Equal(epochs.Intermediates, []uint64{1800})
 	ts.Require().Equal(epochs.CurrentFirst, uint64(2000))
 
-	epochs, err = BoundaryHeight(1800).GetBoundaryEpochs(*forkSpecs[1], *forkSpecs[0])
+	epochs, err = BoundaryHeight{Height: 1800, CurrentForkSpec: *forkSpecs[1]}.GetBoundaryEpochs(*forkSpecs[0])
 	ts.Require().NoError(err)
 	ts.Require().Equal(epochs.PrevLast, uint64(1800))
 	ts.Require().Equal(epochs.Intermediates, []uint64{})
 	ts.Require().Equal(epochs.CurrentFirst, uint64(2000))
 
-	epochs, err = BoundaryHeight(2000).GetBoundaryEpochs(*forkSpecs[1], *forkSpecs[0])
+	epochs, err = BoundaryHeight{Height: 2000, CurrentForkSpec: *forkSpecs[1]}.GetBoundaryEpochs(*forkSpecs[0])
 	ts.Require().NoError(err)
 	ts.Require().Equal(epochs.PrevLast, uint64(2000))
 	ts.Require().Equal(epochs.Intermediates, []uint64{})
@@ -244,7 +243,7 @@ func (ts *ForkSpecTestSuite) Test_Success_GetBoundaryEpochs_After_Lorentz() {
 		{HeightOrTimestamp: &ForkSpec_Height{Height: 0}, EpochLength: 200},
 		{EpochLength: 500},
 	}
-	epochs, err := BoundaryHeight(1).GetBoundaryEpochs(*forkSpecs[1], *forkSpecs[0])
+	epochs, err := BoundaryHeight{Height: 1, CurrentForkSpec: *forkSpecs[1]}.GetBoundaryEpochs(*forkSpecs[0])
 	ts.Require().NoError(err)
 	ts.Require().Equal(epochs.PrevLast, uint64(0))
 	ts.Require().Equal(epochs.Intermediates, []uint64{200, 400})
@@ -276,7 +275,7 @@ func (ts *ForkSpecTestSuite) Test_Success_GetBoundaryEpochs_After_Maxwell() {
 		{HeightOrTimestamp: &ForkSpec_Height{Height: 0}, EpochLength: 500},
 		{EpochLength: 1000},
 	}
-	epochs, err := BoundaryHeight(1).GetBoundaryEpochs(*forkSpecs[1], *forkSpecs[0])
+	epochs, err := BoundaryHeight{Height: 1, CurrentForkSpec: *forkSpecs[1]}.GetBoundaryEpochs(*forkSpecs[0])
 	ts.Require().NoError(err)
 	ts.Require().Equal(epochs.PrevLast, uint64(0))
 	ts.Require().Equal(epochs.Intermediates, []uint64{200, 400, 500})

@@ -194,7 +194,7 @@ func withValidators(headerFn getHeaderFn, height uint64, ethHeaders []*ETHHeader
 	}
 	log.GetLogger().Debug("get boundary height by ", "height", height, "boundaryHeight", boundaryHeight)
 
-	boundaryEpochs, err := boundaryHeight.GetBoundaryEpochs(*currentForkSpec, *prevForkSpec)
+	boundaryEpochs, err := boundaryHeight.GetBoundaryEpochs(*prevForkSpec)
 	if err != nil {
 		return nil, err
 	}
