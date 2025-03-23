@@ -248,7 +248,7 @@ func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState
 			return nil, nil, err
 		}
 		if MilliTimestamp(target) >= lastForkSpecTime.Timestamp {
-			return nil, nil, fmt.Errorf("target timestamp is less than the last fork spec timestamp %d, %d", lastForkSpecTime.Timestamp, MilliTimestamp(target))
+			return nil, nil, fmt.Errorf("target timestamp must be less than the last fork spec timestamp to submit height to ELC. %d, %d ", lastForkSpecTime.Timestamp, MilliTimestamp(target))
 		}
 	}
 
