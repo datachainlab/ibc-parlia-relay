@@ -20,6 +20,7 @@ func TestForkSpecTestSuite(t *testing.T) {
 
 func (ts *ForkSpecTestSuite) SetupTest() {
 	_ = log.InitLogger("DEBUG", "text", "stdout")
+	boundaryHeightCache = make(map[uint64]BoundaryHeight)
 }
 
 func (ts *ForkSpecTestSuite) Test_FindTargetForkSpec_ValidHeight() {
@@ -155,7 +156,7 @@ func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_ValidTimestampMultiHeader() 
 		return &types.Header{Number: big.NewInt(int64(height)), Time: height}, nil
 	}
 	currentHeight := uint64(1100)
-	currentForkSpec := ForkSpec{HeightOrTimestamp: &ForkSpec_Timestamp{Timestamp: 1000 * 1000}} // msec
+	currentForkSpec := ForkSpec{HeightOrTimestamp: &ForkSpec_Timestamp{Timestamp: 1000_000}} // msec
 
 	boundaryHeight, err := GetBoundaryHeight(headerFn, currentHeight, currentForkSpec)
 
@@ -236,4 +237,74 @@ func (ts *ForkSpecTestSuite) Test_Success_GetBoundaryEpochs() {
 	ts.Require().Equal(epochs.PrevLast, uint64(2000))
 	ts.Require().Equal(epochs.Intermediates, []uint64{})
 	ts.Require().Equal(epochs.CurrentFirst, uint64(2000))
+}
+
+func (ts *ForkSpecTestSuite) Test_Success_GetBoundaryEpochs_After_Lorentz() {
+	forkSpecs := []*ForkSpec{
+		{HeightOrTimestamp: &ForkSpec_Height{Height: 0}, EpochLength: 200},
+		{EpochLength: 500},
+	}
+	epochs, err := BoundaryHeight(1).GetBoundaryEpochs(*forkSpecs[1], *forkSpecs[0])
+	ts.Require().NoError(err)
+	ts.Require().Equal(epochs.PrevLast, uint64(0))
+	ts.Require().Equal(epochs.Intermediates, []uint64{200, 400})
+	ts.Require().Equal(epochs.CurrentFirst, uint64(500))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(199), uint64(0))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(200), uint64(200))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(399), uint64(200))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(400), uint64(400))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(499), uint64(400))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(500), uint64(500))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(501), uint64(500))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(999), uint64(500))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(1000), uint64(1000))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(1001), uint64(1000))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(1499), uint64(1000))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(1500), uint64(1500))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(1501), uint64(1500))
+
+	ts.Require().Equal(epochs.PreviousEpochBlockNumber(0), uint64(0))
+	ts.Require().Equal(epochs.PreviousEpochBlockNumber(200), uint64(0))
+	ts.Require().Equal(epochs.PreviousEpochBlockNumber(400), uint64(200))
+	ts.Require().Equal(epochs.PreviousEpochBlockNumber(500), uint64(400))
+	ts.Require().Equal(epochs.PreviousEpochBlockNumber(1000), uint64(500))
+	ts.Require().Equal(epochs.PreviousEpochBlockNumber(1500), uint64(1000))
+}
+
+func (ts *ForkSpecTestSuite) Test_Success_GetBoundaryEpochs_After_Maxwell() {
+	forkSpecs := []*ForkSpec{
+		{HeightOrTimestamp: &ForkSpec_Height{Height: 0}, EpochLength: 500},
+		{EpochLength: 1000},
+	}
+	epochs, err := BoundaryHeight(1).GetBoundaryEpochs(*forkSpecs[1], *forkSpecs[0])
+	ts.Require().NoError(err)
+	ts.Require().Equal(epochs.PrevLast, uint64(0))
+	ts.Require().Equal(epochs.Intermediates, []uint64{200, 400, 500})
+	ts.Require().Equal(epochs.CurrentFirst, uint64(1000))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(199), uint64(0))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(200), uint64(200))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(399), uint64(200))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(400), uint64(400))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(499), uint64(400))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(500), uint64(500))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(501), uint64(500))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(999), uint64(500))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(1000), uint64(1000))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(1001), uint64(1000))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(1499), uint64(1000))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(1500), uint64(1000))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(1501), uint64(1000))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(1999), uint64(1000))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(2000), uint64(2000))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(2001), uint64(2000))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(2999), uint64(2000))
+	ts.Require().Equal(epochs.CurrentEpochBlockNumber(3000), uint64(3000))
+
+	ts.Require().Equal(epochs.PreviousEpochBlockNumber(0), uint64(0))
+	ts.Require().Equal(epochs.PreviousEpochBlockNumber(200), uint64(0))
+	ts.Require().Equal(epochs.PreviousEpochBlockNumber(400), uint64(200))
+	ts.Require().Equal(epochs.PreviousEpochBlockNumber(500), uint64(400))
+	ts.Require().Equal(epochs.PreviousEpochBlockNumber(1000), uint64(500))
+	ts.Require().Equal(epochs.PreviousEpochBlockNumber(2000), uint64(1000))
+	ts.Require().Equal(epochs.PreviousEpochBlockNumber(3000), uint64(2000))
 }
