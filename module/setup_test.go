@@ -237,7 +237,7 @@ func (ts *SetupTestSuite) Test_makeSubmittingHeights() {
 	)
 	rq.Equal(
 		[]uint64{100, 200, 300, 400, 500},
-		makeSubmittingHeights(501, 101, 100, &msec, 99),
+		makeSubmittingHeights(501, 99, 100, &msec, 99),
 	)
 	rq.Equal(
 		[]uint64{100, 200, 300, 400, 500},
