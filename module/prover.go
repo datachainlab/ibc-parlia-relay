@@ -241,8 +241,8 @@ func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState
 	// Last ForkSpec must have height or CreateClient is less than fork spec timestamp
 	forkSpecs := pr.getForkParameters()
 	lastForkSpec := forkSpecs[len(forkSpecs)-1]
-	lastForkSpecTime := lastForkSpec.GetHeightOrTimestamp().(*ForkSpec_Timestamp)
-	if lastForkSpecTime != nil {
+	lastForkSpecTime, ok := lastForkSpec.GetHeightOrTimestamp().(*ForkSpec_Timestamp)
+	if ok && lastForkSpecTime != nil {
 		target, err := dstHeader.(*Header).Target()
 		if err != nil {
 			return nil, nil, err
