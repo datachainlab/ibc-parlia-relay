@@ -144,7 +144,7 @@ func withTrustedHeight(targetHeaders []core.Header, clientStateLatestHeight expo
 func makeSubmittingHeights(latestFinalizedHeight uint64, savedLatestHeight uint64, firstUnsaved uint64, nextForkBoundaryTs *uint64, nextForkBoundaryHeightMinus1 uint64) []uint64 {
 	var submittingHeights []uint64
 	if latestFinalizedHeight < firstUnsaved {
-		if nextForkBoundaryTs != nil && nextForkBoundaryHeightMinus1 < latestFinalizedHeight {
+		if nextForkBoundaryTs != nil && savedLatestHeight < nextForkBoundaryHeightMinus1 && nextForkBoundaryHeightMinus1 < latestFinalizedHeight {
 			submittingHeights = append(submittingHeights, nextForkBoundaryHeightMinus1)
 		}
 	} else {
