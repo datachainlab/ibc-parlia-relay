@@ -93,12 +93,12 @@ func setupHeadersForUpdate(
 	logger.Info("Must set boundary timestamp", "ts", nextForkBoundaryTs, "nextForkBoundaryHeightMinus1", nextForkBoundaryHeightMinus1)
 
 	firstUnsaved := trustedEpochHeight + skip
-	if firstUnsaved <= savedLatestHeight {
+	for firstUnsaved <= savedLatestHeight {
 		firstUnsaved += skip
 	}
 
 	submittingHeights := makeSubmittingHeights(latestFinalizedHeight, savedLatestHeight, firstUnsaved, nextForkBoundaryTs, nextForkBoundaryHeightMinus1)
-	logger.Debug("submitting heights", "heights", submittingHeights)
+	logger.Debug("submitting heights", "heights", submittingHeights, "trusted height", savedLatestHeight, "trusted epoch", trustedEpochHeight, "first unsaved", firstUnsaved)
 
 	trustedHeight := clientStateLatestHeight.GetRevisionHeight()
 	for _, submittingHeight := range submittingHeights {
