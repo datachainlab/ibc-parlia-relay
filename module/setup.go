@@ -9,8 +9,6 @@ import (
 	"github.com/hyperledger-labs/yui-relayer/log"
 )
 
-const skip = 100
-
 type queryVerifiableNeighboringEpochHeaderFn = func(uint64, uint64) (core.Header, error)
 
 func shouldSubmitBoundaryTimestampHeader(
@@ -92,17 +90,18 @@ func setupHeadersForUpdate(
 	}
 	logger.Info("Must set boundary timestamp", "ts", nextForkBoundaryTs, "nextForkBoundaryHeightMinus1", nextForkBoundaryHeightMinus1)
 
+	skip := getSkip(trustedEpochHeight, forkSpecs)
 	firstUnsaved := trustedEpochHeight + skip
 	if firstUnsaved <= savedLatestHeight {
 		firstUnsaved += skip
 	}
 
-	submittingHeights := makeSubmittingHeights(latestFinalizedHeight, savedLatestHeight, firstUnsaved, nextForkBoundaryTs, nextForkBoundaryHeightMinus1)
+	submittingHeights := makeSubmittingHeights(latestFinalizedHeight, savedLatestHeight, firstUnsaved, nextForkBoundaryTs, nextForkBoundaryHeightMinus1, skip)
 	logger.Debug("submitting heights", "heights", submittingHeights)
 
 	trustedHeight := clientStateLatestHeight.GetRevisionHeight()
 	for _, submittingHeight := range submittingHeights {
-		verifiableHeader, err := setupIntermediateHeader(queryVerifiableNeighboringEpochHeader, submittingHeight, latestHeight)
+		verifiableHeader, err := setupIntermediateHeader(queryVerifiableNeighboringEpochHeader, submittingHeight, latestHeight, skip)
 		if err != nil {
 			return nil, err
 		}
@@ -121,6 +120,7 @@ func setupIntermediateHeader(
 	queryVerifiableHeader queryVerifiableNeighboringEpochHeaderFn,
 	submittingHeight uint64,
 	latestHeight exported.Height,
+	skip uint64,
 ) (core.Header, error) {
 	return queryVerifiableHeader(submittingHeight, minUint64(submittingHeight+skip, latestHeight.GetRevisionHeight()))
 }
@@ -141,7 +141,7 @@ func withTrustedHeight(targetHeaders []core.Header, clientStateLatestHeight expo
 	return targetHeaders
 }
 
-func makeSubmittingHeights(latestFinalizedHeight uint64, savedLatestHeight uint64, firstUnsaved uint64, nextForkBoundaryTs *uint64, nextForkBoundaryHeightMinus1 uint64) []uint64 {
+func makeSubmittingHeights(latestFinalizedHeight uint64, savedLatestHeight uint64, firstUnsaved uint64, nextForkBoundaryTs *uint64, nextForkBoundaryHeightMinus1 uint64, skip uint64) []uint64 {
 	var submittingHeights []uint64
 	if latestFinalizedHeight < firstUnsaved {
 		if nextForkBoundaryTs != nil && nextForkBoundaryHeightMinus1 < latestFinalizedHeight {
@@ -173,4 +173,39 @@ func makeSubmittingHeights(latestFinalizedHeight uint64, savedLatestHeight uint6
 		}
 	}
 	return submittingHeights
+}
+
+// getSkip calculates the skip value based on the trusted height and fork specifications.
+// If no fork specifications are provided, it returns a default skip value of 100.
+// If the latest fork specification defines a height, it calculates the boundary epochs
+// and adjusts the skip value accordingly.
+//
+// Parameters:
+// - trustedHeight: The height of the trusted block.
+// - forkSpecs: A slice of ForkSpec pointers representing the fork specifications.
+//
+// Returns:
+// - The calculated skip value.
+func getSkip(trustedHeight uint64, forkSpecs []*ForkSpec) uint64 {
+	const defaultSkip = 100
+	if len(forkSpecs) == 0 {
+		return defaultSkip
+	}
+	latestForkSpec := forkSpecs[len(forkSpecs)-1]
+	definedHeight := latestForkSpec.GetHeightOrTimestamp().(*ForkSpec_Height)
+	if definedHeight == nil {
+		return defaultSkip
+	}
+	be, err := BoundaryHeight{
+		Height:          definedHeight.Height,
+		CurrentForkSpec: *latestForkSpec,
+	}.GetBoundaryEpochs(*forkSpecs[len(forkSpecs)-2])
+	if err != nil {
+		return defaultSkip
+	}
+	if be.CurrentFirst < trustedHeight {
+		return latestForkSpec.EpochLength
+	}
+	return defaultSkip
+
 }
