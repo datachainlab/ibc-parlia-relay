@@ -2,10 +2,12 @@ package module
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"math/big"
+
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/hyperledger-labs/yui-relayer/core"
-	"math/big"
 
 	"github.com/cosmos/gogoproto/proto"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
@@ -16,8 +18,9 @@ import (
 	"github.com/ethereum/go-ethereum/trie"
 )
 
-func (pr *Prover) getAccountProof(height uint64) ([]byte, common.Hash, error) {
+func (pr *Prover) getAccountProof(ctx context.Context, height uint64) ([]byte, common.Hash, error) {
 	stateProof, err := pr.chain.GetProof(
+		ctx,
 		pr.chain.IBCAddress(),
 		nil,
 		big.NewInt(0).SetUint64(height),
@@ -28,7 +31,7 @@ func (pr *Prover) getAccountProof(height uint64) ([]byte, common.Hash, error) {
 	return stateProof.AccountProofRLP, common.BytesToHash(stateProof.StorageHash[:]), nil
 }
 
-func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) ([]byte, []byte, error) {
+func (pr *Prover) getStateCommitmentProof(ctx context.Context, path []byte, height exported.Height) ([]byte, []byte, error) {
 	// calculate slot for commitment
 	storageKey := crypto.Keccak256Hash(append(
 		crypto.Keccak256Hash(path).Bytes(),
@@ -41,6 +44,7 @@ func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) (
 
 	// call eth_getProof
 	stateProof, err := pr.chain.GetProof(
+		ctx,
 		pr.chain.IBCAddress(),
 		[][]byte{storageKeyHex},
 		big.NewInt(int64(height.GetRevisionHeight())),
@@ -52,8 +56,8 @@ func (pr *Prover) getStateCommitmentProof(path []byte, height exported.Height) (
 	return stateProof.AccountProofRLP, stateProof.StorageProofRLP[0], nil
 }
 
-func (pr *Prover) GetStorageRoot(header *types.Header) (common.Hash, error) {
-	rlpAccountProof, _, err := pr.getAccountProof(header.Number.Uint64())
+func (pr *Prover) GetStorageRoot(ctx context.Context, header *types.Header) (common.Hash, error) {
+	rlpAccountProof, _, err := pr.getAccountProof(ctx, header.Number.Uint64())
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -170,7 +174,7 @@ func verifyAccount(target *types.Header, accountProof []byte, path common.Addres
 	return &account, nil
 }
 
-func withValidators(headerFn getHeaderFn, height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
+func withValidators(ctx context.Context, headerFn getHeaderFn, height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
 
 	header := &Header{
 		Headers: ethHeaders,
@@ -180,14 +184,14 @@ func withValidators(headerFn getHeaderFn, height uint64, ethHeaders []*ETHHeader
 	previousEpoch := getPreviousEpoch(height)
 	var previousTurnLength uint8
 	var err error
-	header.PreviousValidators, previousTurnLength, err = queryValidatorSetAndTurnLength(headerFn, previousEpoch)
+	header.PreviousValidators, previousTurnLength, err = queryValidatorSetAndTurnLength(ctx, headerFn, previousEpoch)
 	header.PreviousTurnLength = uint32(previousTurnLength)
 	if err != nil {
 		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
 	}
 	currentEpoch := getCurrentEpoch(height)
 	var currentTurnLength uint8
-	header.CurrentValidators, currentTurnLength, err = queryValidatorSetAndTurnLength(headerFn, currentEpoch)
+	header.CurrentValidators, currentTurnLength, err = queryValidatorSetAndTurnLength(ctx, headerFn, currentEpoch)
 	header.CurrentTurnLength = uint32(currentTurnLength)
 	if err != nil {
 		return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)

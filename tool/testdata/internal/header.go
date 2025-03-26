@@ -2,13 +2,14 @@ package internal
 
 import (
 	"context"
+	"log"
+
 	"github.com/datachainlab/ibc-parlia-relay/module"
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"log"
 )
 
 type headerModule struct {
@@ -21,7 +22,7 @@ func (m *headerModule) success() *cobra.Command {
 	cmd.AddCommand(&cobra.Command{
 		Use: "latest",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_, chain, err := createProver()
+			_, chain, err := createProver(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -37,7 +38,7 @@ func (m *headerModule) success() *cobra.Command {
 	specified := &cobra.Command{
 		Use: "specified",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_, chain, err := createProver()
+			_, chain, err := createProver(cmd.Context())
 			if err != nil {
 				return err
 			}

@@ -47,7 +47,7 @@ func (ts *ProverNetworkTestSuite) SetupTest() {
 }
 
 func (ts *ProverNetworkTestSuite) TestQueryLatestFinalizedHeader() {
-	header, err := ts.prover.GetLatestFinalizedHeader(context.TODO())
+	header, err := ts.prover.GetLatestFinalizedHeader(context.Background())
 	ts.Require().NoError(err)
 	ts.Require().NoError(header.ValidateBasic())
 	ts.Require().Len(header.(*module.Header).Headers, 3)
@@ -65,9 +65,9 @@ func (ts *ProverNetworkTestSuite) TestSetupHeadersForUpdate() {
 	dst := dstChain{
 		Chain: ts.makeChain("http://localhost:8645", "ibc0"),
 	}
-	header, err := ts.prover.GetLatestFinalizedHeader(context.TODO())
+	header, err := ts.prover.GetLatestFinalizedHeader(context.Background())
 	ts.Require().NoError(err)
-	setupDone, err := ts.prover.SetupHeadersForUpdate(context.TODO(), dst, header)
+	setupDone, err := ts.prover.SetupHeadersForUpdate(context.Background(), dst, header)
 	ts.Require().NoError(err)
 	ts.Require().True(len(setupDone) > 0)
 	for _, h := range setupDone {
@@ -76,7 +76,8 @@ func (ts *ProverNetworkTestSuite) TestSetupHeadersForUpdate() {
 }
 
 func (ts *ProverNetworkTestSuite) TestSuccessCreateInitialLightClientState() {
-	s1, s2, err := ts.prover.CreateInitialLightClientState(context.TODO(), nil)
+	ctx := context.Background()
+	s1, s2, err := ts.prover.CreateInitialLightClientState(ctx, nil)
 	ts.Require().NoError(err)
 
 	cs := s1.(*module.ClientState)
@@ -87,13 +88,13 @@ func (ts *ProverNetworkTestSuite) TestSuccessCreateInitialLightClientState() {
 	ts.Require().Equal(common.Bytes2Hex(cs.IbcStoreAddress), strings.ToLower(ts.chain.IBCAddress().String()[2:]))
 	ts.Require().Equal(common.Bytes2Hex(cs.IbcCommitmentsSlot), common.Bytes2Hex(module.IBCCommitmentsSlot[:]))
 
-	header, err := ts.chain.Header(context.Background(), cs.GetLatestHeight().GetRevisionHeight())
+	header, err := ts.chain.Header(ctx, cs.GetLatestHeight().GetRevisionHeight())
 	ts.Require().NoError(err)
 	ts.Require().Equal(cs.GetLatestHeight().GetRevisionHeight(), header.Number.Uint64())
 
-	cVal, cTurn, err := module.QueryValidatorSetAndTurnLength(ts.chain.Header, module.GetCurrentEpoch(header.Number.Uint64()))
+	cVal, cTurn, err := module.QueryValidatorSetAndTurnLength(ctx, ts.chain.Header, module.GetCurrentEpoch(header.Number.Uint64()))
 	ts.Require().NoError(err)
-	pVal, pTurn, err := module.QueryValidatorSetAndTurnLength(ts.chain.Header, module.GetPreviousEpoch(header.Number.Uint64()))
+	pVal, pTurn, err := module.QueryValidatorSetAndTurnLength(ctx, ts.chain.Header, module.GetPreviousEpoch(header.Number.Uint64()))
 	ts.Require().NoError(err)
 	consState := s2.(*module.ConsensusState)
 	ts.Require().Equal(consState.CurrentValidatorsHash, module.MakeEpochHash(cVal, cTurn))
@@ -109,7 +110,7 @@ func (ts *ProverNetworkTestSuite) makeChain(rpcAddr string, ibcChainID string) m
 	}
 	anySignerConfig, err := codectypes.NewAnyWithValue(signerConfig)
 	ts.Require().NoError(err)
-	chain, err := ethereum.NewChain(ethereum.ChainConfig{
+	chain, err := ethereum.NewChain(context.Background(), ethereum.ChainConfig{
 		EthChainId: 9999,
 		IbcAddress: "0xaa43d337145E8930d01cb4E60Abf6595C692921E",
 		Signer:     anySignerConfig,

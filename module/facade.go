@@ -1,6 +1,10 @@
 package module
 
-import "github.com/ethereum/go-ethereum/core/types"
+import (
+	"context"
+
+	"github.com/ethereum/go-ethereum/core/types"
+)
 
 // Facade for tool modules
 
@@ -12,12 +16,12 @@ func GetCurrentEpoch(v uint64) uint64 {
 	return getCurrentEpoch(v)
 }
 
-func QueryFinalizedHeader(fn getHeaderFn, height uint64, limitHeight uint64) ([]*ETHHeader, error) {
-	return queryFinalizedHeader(fn, height, limitHeight)
+func QueryFinalizedHeader(ctx context.Context, fn getHeaderFn, height uint64, limitHeight uint64) ([]*ETHHeader, error) {
+	return queryFinalizedHeader(ctx, fn, height, limitHeight)
 }
 
-func QueryValidatorSetAndTurnLength(fn getHeaderFn, height uint64) (Validators, uint8, error) {
-	return queryValidatorSetAndTurnLength(fn, height)
+func QueryValidatorSetAndTurnLength(ctx context.Context, fn getHeaderFn, height uint64) (Validators, uint8, error) {
+	return queryValidatorSetAndTurnLength(ctx, fn, height)
 }
 
 func ExtractValidatorSetAndTurnLength(h *types.Header) (Validators, uint8, error) {
