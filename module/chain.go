@@ -16,7 +16,7 @@ type Chain interface {
 	Header(ctx context.Context, height uint64) (*types.Header, error)
 	IBCAddress() common.Address
 	CanonicalChainID(ctx context.Context) (uint64, error)
-	GetProof(address common.Address, storageKeys [][]byte, blockNumber *big.Int) (*client.StateProof, error)
+	GetProof(ctx context.Context, address common.Address, storageKeys [][]byte, blockNumber *big.Int) (*client.StateProof, error)
 }
 
 type ethChain struct {
@@ -47,6 +47,6 @@ func (c *ethChain) CanonicalChainID(ctx context.Context) (uint64, error) {
 	return chainID.Uint64(), nil
 }
 
-func (c *ethChain) GetProof(address common.Address, storageKeys [][]byte, blockNumber *big.Int) (*client.StateProof, error) {
-	return c.Client().GetProof(address, storageKeys, blockNumber)
+func (c *ethChain) GetProof(ctx context.Context, address common.Address, storageKeys [][]byte, blockNumber *big.Int) (*client.StateProof, error) {
+	return c.Client().GetProof(ctx, address, storageKeys, blockNumber)
 }

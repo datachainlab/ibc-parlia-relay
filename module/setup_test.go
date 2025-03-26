@@ -2,14 +2,15 @@ package module
 
 import (
 	"context"
+	"math/big"
+	"testing"
+
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	types2 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/hyperledger-labs/yui-relayer/core"
 	"github.com/hyperledger-labs/yui-relayer/log"
 	"github.com/stretchr/testify/suite"
-	"math/big"
-	"testing"
 )
 
 type SetupTestSuite struct {
@@ -38,7 +39,7 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_neighboringEpoch() {
 			CurrentValidators:  [][]byte{{1}},
 			PreviousValidators: [][]byte{{1}},
 		}
-		neighborFn := func(height uint64, _ uint64) (core.Header, error) {
+		neighborFn := func(_ context.Context, height uint64, _ uint64) (core.Header, error) {
 			h, e := newETHHeader(&types2.Header{
 				Number: big.NewInt(int64(height)),
 			})
@@ -53,7 +54,7 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_neighboringEpoch() {
 			}, nil
 		}
 
-		targets, err := setupHeadersForUpdate(neighborFn, headerFn, clientStateLatestHeight, latestFinalizedHeader, clienttypes.NewHeight(0, 100000))
+		targets, err := setupHeadersForUpdate(context.Background(), neighborFn, headerFn, clientStateLatestHeight, latestFinalizedHeader, clienttypes.NewHeight(0, 100000))
 		ts.Require().NoError(err)
 		ts.Require().Len(targets, expected)
 		for i, h := range targets {
@@ -101,7 +102,7 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_allEmpty() {
 		latestFinalizedHeader := &Header{
 			Headers: []*ETHHeader{target},
 		}
-		neighboringEpochFn := func(height uint64, _ uint64) (core.Header, error) {
+		neighboringEpochFn := func(_ context.Context, height uint64, _ uint64) (core.Header, error) {
 			// insufficient vote attestation
 			return nil, nil
 		}
@@ -111,7 +112,7 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_allEmpty() {
 				Extra:  epochHeader().Extra,
 			}, nil
 		}
-		targets, err := setupHeadersForUpdate(neighboringEpochFn, headerFn, clientStateLatestHeight, latestFinalizedHeader, clienttypes.NewHeight(0, 1000000))
+		targets, err := setupHeadersForUpdate(context.Background(), neighboringEpochFn, headerFn, clientStateLatestHeight, latestFinalizedHeader, clienttypes.NewHeight(0, 1000000))
 		ts.Require().NoError(err)
 		ts.Require().Len(targets, expected)
 	}
@@ -144,7 +145,7 @@ func (ts *SetupTestSuite) TestSuccess_setupNeighboringEpochHeader() {
 	epochHeight := constant.BlocksPerEpoch * 2
 	trustedEpochHeight := constant.BlocksPerEpoch
 
-	neighboringEpochFn := func(height uint64, limit uint64) (core.Header, error) {
+	neighboringEpochFn := func(_ context.Context, height uint64, limit uint64) (core.Header, error) {
 		target, err := newETHHeader(&types2.Header{
 			Number: big.NewInt(int64(limit)),
 		})
@@ -156,7 +157,7 @@ func (ts *SetupTestSuite) TestSuccess_setupNeighboringEpochHeader() {
 	headerFn := func(_ context.Context, height uint64) (*types2.Header, error) {
 		return headerByHeight(int64(height)), nil
 	}
-	hs, err := setupNeighboringEpochHeader(headerFn, neighboringEpochFn, epochHeight, trustedEpochHeight, clienttypes.NewHeight(0, 10000))
+	hs, err := setupNeighboringEpochHeader(context.Background(), headerFn, neighboringEpochFn, epochHeight, trustedEpochHeight, clienttypes.NewHeight(0, 10000))
 	ts.Require().NoError(err)
 	target, err := hs.(*Header).Target()
 	ts.Require().NoError(err)
