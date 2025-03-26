@@ -40,6 +40,7 @@ func GetForkParameters(network Network) []*ForkSpec {
 				HeightOrTimestamp:         &ForkSpec_Height{Height: 0},
 				AdditionalHeaderItemCount: 1,
 				EpochLength:               200,
+				MaxTurnLength:             9,
 			},
 			// Lorentz HF
 			{
@@ -47,6 +48,7 @@ func GetForkParameters(network Network) []*ForkSpec {
 				HeightOrTimestamp:         localLorentzHF,
 				AdditionalHeaderItemCount: 1,
 				EpochLength:               500,
+				MaxTurnLength:             64,
 			},
 		}
 	case Testnet:
@@ -56,11 +58,13 @@ func GetForkParameters(network Network) []*ForkSpec {
 				HeightOrTimestamp:         &ForkSpec_Height{Height: 48576786},
 				AdditionalHeaderItemCount: 1,
 				EpochLength:               200,
+				MaxTurnLength:             9,
 			},
 			{
 				HeightOrTimestamp:         &ForkSpec_Timestamp{Timestamp: math.MaxUint64},
 				AdditionalHeaderItemCount: 1,
 				EpochLength:               500,
+				MaxTurnLength:             64,
 			},
 		}
 	case Mainnet:
@@ -71,11 +75,13 @@ func GetForkParameters(network Network) []*ForkSpec {
 				HeightOrTimestamp:         &ForkSpec_Height{Height: 47618307},
 				AdditionalHeaderItemCount: 1,
 				EpochLength:               200,
+				MaxTurnLength:             9,
 			},
 			{
 				HeightOrTimestamp:         &ForkSpec_Timestamp{Timestamp: math.MaxUint64},
 				AdditionalHeaderItemCount: 1,
 				EpochLength:               500,
+				MaxTurnLength:             64,
 			},
 		}
 	}

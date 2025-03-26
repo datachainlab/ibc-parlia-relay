@@ -153,6 +153,8 @@ func (ts *ProverNetworkTestSuite) makeProver(chain module.Chain) *module.Prover 
 			Numerator:   3,
 			Denominator: 2,
 		},
+		Network: string(module.Localnet),
 	}
+	ts.Require().NoError(config.Validate())
 	return module.NewProver(chain, &config).(*module.Prover)
 }
