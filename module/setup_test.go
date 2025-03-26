@@ -85,9 +85,9 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_neighboringEpoch() {
 	verify(skip, 10*skip, 9)
 	verify(skip, 10*skip+1, 10)
 	verify(skip+1, skip+1, 0)
-	verify(skip+1, 10*skip-1, 10)
-	verify(skip+1, 10*skip, 10)
-	verify(skip+1, 10*skip+1, 11)
+	verify(skip+1, 10*skip-1, 9)
+	verify(skip+1, 10*skip, 9)
+	verify(skip+1, 10*skip+1, 10)
 
 }
 
@@ -220,9 +220,9 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_withHFBoundary() {
 	verify(skip, 10*skip, 9+1)
 	verify(skip, 10*skip+1, 10+1)
 	verify(skip+1, skip+1, 0)
-	verify(skip+1, 10*skip-1, 10+1)
-	verify(skip+1, 10*skip, 10+1)
-	verify(skip+1, 10*skip+1, 11+1)
+	verify(skip+1, 10*skip-1, 9+1)
+	verify(skip+1, 10*skip, 9+1)
+	verify(skip+1, 10*skip+1, 10+1)
 
 }
 
