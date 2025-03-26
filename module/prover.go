@@ -3,12 +3,11 @@ package module
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/hyperledger-labs/yui-relayer/log"
-
-	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
@@ -52,15 +51,15 @@ func (pr *Prover) SetupForRelay(ctx context.Context) error {
 // These states will be submitted to the counterparty chain as MsgCreateClient.
 // If `height` is nil, the latest finalized height is selected automatically.
 func (pr *Prover) CreateInitialLightClientState(ctx context.Context, height exported.Height) (exported.ClientState, exported.ConsensusState, error) {
-	latestHeight, err := pr.chain.LatestHeight(context.TODO())
+	latestHeight, err := pr.chain.LatestHeight(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
 	var finalizedHeader []*ETHHeader
 	if height == nil {
-		_, finalizedHeader, err = queryLatestFinalizedHeader(pr.chain.Header, latestHeight.GetRevisionHeight())
+		_, finalizedHeader, err = queryLatestFinalizedHeader(ctx, pr.chain.Header, latestHeight.GetRevisionHeight())
 	} else {
-		finalizedHeader, err = queryFinalizedHeader(pr.chain.Header, height.GetRevisionHeight(), latestHeight.GetRevisionHeight())
+		finalizedHeader, err = queryFinalizedHeader(ctx, pr.chain.Header, height.GetRevisionHeight(), latestHeight.GetRevisionHeight())
 	}
 	if err != nil {
 		return nil, nil, err
@@ -69,18 +68,18 @@ func (pr *Prover) CreateInitialLightClientState(ctx context.Context, height expo
 		return nil, nil, fmt.Errorf("no finalized headers were found up to %d", latestHeight.GetRevisionHeight())
 	}
 	//Header should be Finalized, not necessarily Verifiable.
-	return pr.buildInitialState(&Header{
+	return pr.buildInitialState(ctx, &Header{
 		Headers: finalizedHeader,
 	})
 }
 
 // GetLatestFinalizedHeader returns the latest finalized header from the chain
 func (pr *Prover) GetLatestFinalizedHeader(ctx context.Context) (out core.Header, err error) {
-	latestHeight, err := pr.chain.LatestHeight(context.TODO())
+	latestHeight, err := pr.chain.LatestHeight(ctx)
 	if err != nil {
 		return nil, err
 	}
-	header, err := pr.GetLatestFinalizedHeaderByLatestHeight(context.TODO(), latestHeight.GetRevisionHeight())
+	header, err := pr.GetLatestFinalizedHeaderByLatestHeight(ctx, latestHeight.GetRevisionHeight())
 	if err != nil {
 		return nil, err
 	}
@@ -90,23 +89,23 @@ func (pr *Prover) GetLatestFinalizedHeader(ctx context.Context) (out core.Header
 
 // GetLatestFinalizedHeaderByLatestHeight returns the latest finalized verifiable header from the chain
 func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(ctx context.Context, latestBlockNumber uint64) (core.Header, error) {
-	height, finalizedHeader, err := queryLatestFinalizedHeader(pr.chain.Header, latestBlockNumber)
+	height, finalizedHeader, err := queryLatestFinalizedHeader(ctx, pr.chain.Header, latestBlockNumber)
 	if err != nil {
 		return nil, err
 	}
 	// Make headers verifiable
-	return pr.withValidators(height, finalizedHeader)
+	return pr.withValidators(ctx, height, finalizedHeader)
 }
 
 // SetupHeadersForUpdate creates a new header based on a given header
 func (pr *Prover) SetupHeadersForUpdate(ctx context.Context, counterparty core.FinalityAwareChain, latestFinalizedHeader core.Header) ([]core.Header, error) {
 	header := latestFinalizedHeader.(*Header)
 	// LCP doesn't need height / EVM needs latest height
-	latestHeightOnDstChain, err := counterparty.LatestHeight(context.TODO())
+	latestHeightOnDstChain, err := counterparty.LatestHeight(ctx)
 	if err != nil {
 		return nil, err
 	}
-	csRes, err := counterparty.QueryClientState(core.NewQueryContext(context.TODO(), latestHeightOnDstChain))
+	csRes, err := counterparty.QueryClientState(core.NewQueryContext(ctx, latestHeightOnDstChain))
 	if err != nil {
 		return nil, fmt.Errorf("no client state found : SetupHeadersForUpdate: height = %d, %+v", latestHeightOnDstChain.GetRevisionHeight(), err)
 	}
@@ -114,12 +113,12 @@ func (pr *Prover) SetupHeadersForUpdate(ctx context.Context, counterparty core.F
 	if err = pr.chain.Codec().UnpackAny(csRes.ClientState, &cs); err != nil {
 		return nil, err
 	}
-	return pr.SetupHeadersForUpdateByLatestHeight(context.TODO(), cs.GetLatestHeight(), header)
+	return pr.SetupHeadersForUpdateByLatestHeight(ctx, cs.GetLatestHeight(), header)
 }
 
 func (pr *Prover) SetupHeadersForUpdateByLatestHeight(ctx context.Context, clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
-	queryVerifiableNeighboringEpochHeader := func(height uint64, limitHeight uint64) (core.Header, error) {
-		ethHeaders, err := queryFinalizedHeader(pr.chain.Header, height, limitHeight)
+	queryVerifiableNeighboringEpochHeader := func(ctx context.Context, height uint64, limitHeight uint64) (core.Header, error) {
+		ethHeaders, err := queryFinalizedHeader(ctx, pr.chain.Header, height, limitHeight)
 		if err != nil {
 			return nil, err
 		}
@@ -127,13 +126,14 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(ctx context.Context, clien
 		if ethHeaders == nil {
 			return nil, nil
 		}
-		return pr.withValidators(height, ethHeaders)
+		return pr.withValidators(ctx, height, ethHeaders)
 	}
-	latestHeight, err := pr.chain.LatestHeight(context.TODO())
+	latestHeight, err := pr.chain.LatestHeight(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return setupHeadersForUpdate(
+		ctx,
 		queryVerifiableNeighboringEpochHeader,
 		pr.chain.Header,
 		clientStateLatestHeight,
@@ -145,7 +145,7 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(ctx context.Context, clien
 
 func (pr *Prover) ProveState(ctx core.QueryContext, path string, value []byte) ([]byte, clienttypes.Height, error) {
 	proofHeight := toHeight(ctx.Height())
-	accountProof, commitmentProof, err := pr.getStateCommitmentProof([]byte(path), proofHeight)
+	accountProof, commitmentProof, err := pr.getStateCommitmentProof(ctx.Context(), []byte(path), proofHeight)
 	if err != nil {
 		return nil, proofHeight, err
 	}
@@ -162,11 +162,11 @@ func (pr *Prover) ProveState(ctx core.QueryContext, path string, value []byte) (
 }
 
 func (pr *Prover) CheckRefreshRequired(ctx context.Context, counterparty core.ChainInfoICS02Querier) (bool, error) {
-	cpQueryHeight, err := counterparty.LatestHeight(context.TODO())
+	cpQueryHeight, err := counterparty.LatestHeight(ctx)
 	if err != nil {
 		return false, fmt.Errorf("failed to get the latest height of the counterparty chain: %+v", err)
 	}
-	cpQueryCtx := core.NewQueryContext(context.TODO(), cpQueryHeight)
+	cpQueryCtx := core.NewQueryContext(ctx, cpQueryHeight)
 
 	resCs, err := counterparty.QueryClientState(cpQueryCtx)
 	if err != nil {
@@ -189,12 +189,12 @@ func (pr *Prover) CheckRefreshRequired(ctx context.Context, counterparty core.Ch
 	}
 	lcLastTimestamp := time.Unix(0, int64(cons.GetTimestamp()))
 
-	selfQueryHeight, err := pr.chain.LatestHeight(context.TODO())
+	selfQueryHeight, err := pr.chain.LatestHeight(ctx)
 	if err != nil {
 		return false, fmt.Errorf("failed to get the latest height of the self chain: %+v", err)
 	}
 
-	selfTimestamp, err := pr.chain.Timestamp(context.TODO(), selfQueryHeight)
+	selfTimestamp, err := pr.chain.Timestamp(ctx, selfQueryHeight)
 	if err != nil {
 		return false, fmt.Errorf("failed to get timestamp of the self chain: %+v", err)
 	}
@@ -228,15 +228,15 @@ func (pr *Prover) CheckRefreshRequired(ctx context.Context, counterparty core.Ch
 
 }
 
-func (pr *Prover) withValidators(height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
-	return withValidators(pr.chain.Header, height, ethHeaders, pr.getForkParameters())
+func (pr *Prover) withValidators(ctx context.Context, height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
+	return withValidators(ctx, pr.chain.Header, height, ethHeaders, pr.getForkParameters())
 }
 
 func (pr *Prover) getForkParameters() []*ForkSpec {
 	return GetForkParameters(Network(pr.config.Network))
 }
 
-func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState, exported.ConsensusState, error) {
+func (pr *Prover) buildInitialState(ctx context.Context, dstHeader core.Header) (exported.ClientState, exported.ConsensusState, error) {
 
 	// Last ForkSpec must have height or CreateClient is less than fork spec timestamp
 	forkSpecs := pr.getForkParameters()
@@ -252,18 +252,19 @@ func (pr *Prover) buildInitialState(dstHeader core.Header) (exported.ClientState
 		}
 	}
 
-	dstHeader, err := pr.withValidators(dstHeader.GetHeight().GetRevisionHeight(), dstHeader.(*Header).Headers)
+	dstHeader, err := pr.withValidators(ctx, dstHeader.GetHeight().GetRevisionHeight(), dstHeader.(*Header).Headers)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	downcast := dstHeader.(*Header)
 	header, err := downcast.Target()
+
 	if err != nil {
 		return nil, nil, err
 	}
 
-	chainID, err := pr.chain.CanonicalChainID(context.TODO())
+	chainID, err := pr.chain.CanonicalChainID(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

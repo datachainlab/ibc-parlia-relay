@@ -2,6 +2,7 @@ package module
 
 import (
 	"context"
+
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	types2 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/hyperledger-labs/yui-relayer/core"
@@ -38,7 +39,7 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_neighboringEpoch() {
 			CurrentValidators:  [][]byte{{1}},
 			PreviousValidators: [][]byte{{1}},
 		}
-		neighborFn := func(height uint64, _ uint64) (core.Header, error) {
+		neighborFn := func(_ context.Context, height uint64, _ uint64) (core.Header, error) {
 			h, e := newETHHeader(&types2.Header{
 				Number: big.NewInt(int64(height)),
 			})
@@ -53,7 +54,7 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_neighboringEpoch() {
 			}, nil
 		}
 
-		targets, err := setupHeadersForUpdate(neighborFn, headerFn, clientStateLatestHeight, latestFinalizedHeader, clienttypes.NewHeight(0, 100000), GetForkParameters(Localnet))
+		targets, err := setupHeadersForUpdate(context.Background(), neighborFn, headerFn, clientStateLatestHeight, latestFinalizedHeader, clienttypes.NewHeight(0, 100000), GetForkParameters(Localnet))
 		ts.Require().NoError(err)
 		ts.Require().Len(targets, expected)
 		for i, h := range targets {
@@ -101,7 +102,7 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_allEmpty() {
 		latestFinalizedHeader := &Header{
 			Headers: []*ETHHeader{target},
 		}
-		neighboringEpochFn := func(height uint64, _ uint64) (core.Header, error) {
+		neighboringEpochFn := func(_ context.Context, height uint64, _ uint64) (core.Header, error) {
 			// insufficient vote attestation
 			return nil, nil
 		}
@@ -111,7 +112,7 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_allEmpty() {
 				Extra:  epochHeader().Extra,
 			}, nil
 		}
-		targets, err := setupHeadersForUpdate(neighboringEpochFn, headerFn, clientStateLatestHeight, latestFinalizedHeader,
+		targets, err := setupHeadersForUpdate(context.Background(), neighboringEpochFn, headerFn, clientStateLatestHeight, latestFinalizedHeader,
 			clienttypes.NewHeight(0,
 				1000000), GetForkParameters(Localnet))
 		ts.Require().NoError(err)
@@ -174,7 +175,7 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_withHFBoundary() {
 			CurrentValidators:  [][]byte{{1}},
 			PreviousValidators: [][]byte{{1}},
 		}
-		neighborFn := func(height uint64, _ uint64) (core.Header, error) {
+		neighborFn := func(ctx context.Context, height uint64, _ uint64) (core.Header, error) {
 			h, e := newETHHeader(&types2.Header{
 				Number: big.NewInt(int64(height)),
 				Time:   uint64(getTime(height).Unix()),
@@ -191,7 +192,7 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_withHFBoundary() {
 			}, nil
 		}
 
-		targets, err := setupHeadersForUpdate(neighborFn, headerFn, clientStateLatestHeight, latestFinalizedHeader, clienttypes.NewHeight(0, 100000), forkSpecs)
+		targets, err := setupHeadersForUpdate(context.Background(), neighborFn, headerFn, clientStateLatestHeight, latestFinalizedHeader, clienttypes.NewHeight(0, 100000), forkSpecs)
 		ts.Require().NoError(err)
 		ts.Require().Len(targets, expected)
 		for i, h := range targets {
@@ -280,5 +281,4 @@ func (ts *SetupTestSuite) Test_makeSubmittingHeights() {
 		[]uint64{100, 200, 300, 400, 500},
 		makeSubmittingHeights(502, 0, 100, nil, 501),
 	)
-
 }

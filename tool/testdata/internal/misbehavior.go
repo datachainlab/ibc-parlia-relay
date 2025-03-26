@@ -3,6 +3,9 @@ package internal
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
+
 	"github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
 	"github.com/datachainlab/ibc-parlia-relay/module"
@@ -10,8 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
-	"log"
-	"os"
 )
 
 type misbehaviorModule struct {
@@ -22,11 +23,11 @@ func (m *misbehaviorModule) success() *cobra.Command {
 		Use: "success",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			chainID := uint64(9999)
-			targetHeight, header1, err := m.getLocalHeader(chainID, 8645, 0, 1)
+			targetHeight, header1, err := m.getLocalHeader(cmd.Context(), chainID, 8645, 0, 1)
 			if err != nil {
 				log.Panic(err)
 			}
-			_, header2, err := m.getLocalHeader(chainID, 8545, targetHeight, 2)
+			_, header2, err := m.getLocalHeader(cmd.Context(), chainID, 8545, targetHeight, 2)
 			if err != nil {
 				log.Panic(err)
 			}
@@ -54,7 +55,7 @@ func (m *misbehaviorModule) error() *cobra.Command {
 	return &cobra.Command{
 		Use: "error",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			prover, chain, err := createProver()
+			prover, chain, err := createProver(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -111,8 +112,8 @@ func (m *misbehaviorModule) error() *cobra.Command {
 	}
 }
 
-func (m *misbehaviorModule) getLocalHeader(chainID uint64, port int64, targetHeight uint64, trustedDiff uint64) (uint64, *module.Header, error) {
-	chain, err := ethereum.NewChain(ethereum.ChainConfig{
+func (m *misbehaviorModule) getLocalHeader(ctx context.Context, chainID uint64, port int64, targetHeight uint64, trustedDiff uint64) (uint64, *module.Header, error) {
+	chain, err := ethereum.NewChain(ctx, ethereum.ChainConfig{
 		EthChainId: chainID,
 		RpcAddr:    fmt.Sprintf("http://localhost:%d", port),
 		Signer:     CreateSignerConfig(),
@@ -122,7 +123,7 @@ func (m *misbehaviorModule) getLocalHeader(chainID uint64, port int64, targetHei
 		return targetHeight, nil, err
 	}
 	if targetHeight == 0 {
-		latest, err := chain.LatestHeight(context.Background())
+		latest, err := chain.LatestHeight(ctx)
 		if err != nil {
 			return targetHeight, nil, err
 		}
@@ -134,7 +135,7 @@ func (m *misbehaviorModule) getLocalHeader(chainID uint64, port int64, targetHei
 	// Get Finalized header
 	latestHeight := types.NewHeight(0, targetHeight)
 	latest := latestHeight.GetRevisionHeight()
-	iHeader, err := prover.GetLatestFinalizedHeaderByLatestHeight(context.Background(), latest)
+	iHeader, err := prover.GetLatestFinalizedHeaderByLatestHeight(ctx, latest)
 	if err != nil {
 		return latest, nil, err
 	}

@@ -3,6 +3,7 @@ package module
 import (
 	"context"
 	"fmt"
+
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
 	"github.com/hyperledger-labs/yui-relayer/core"
@@ -11,7 +12,7 @@ import (
 
 const skip = 100
 
-type queryVerifiableNeighboringEpochHeaderFn = func(uint64, uint64) (core.Header, error)
+type queryVerifiableNeighboringEpochHeaderFn = func(context.Context, uint64, uint64) (core.Header, error)
 
 func shouldSubmitBoundaryTimestampHeader(
 	getHeader getHeaderFn,
@@ -47,6 +48,7 @@ func shouldSubmitBoundaryTimestampHeader(
 }
 
 func setupHeadersForUpdate(
+	ctx context.Context,
 	queryVerifiableNeighboringEpochHeader queryVerifiableNeighboringEpochHeaderFn,
 	getHeader getHeaderFn,
 	clientStateLatestHeight exported.Height,
@@ -102,7 +104,7 @@ func setupHeadersForUpdate(
 
 	trustedHeight := clientStateLatestHeight.GetRevisionHeight()
 	for _, submittingHeight := range submittingHeights {
-		verifiableHeader, err := setupIntermediateHeader(queryVerifiableNeighboringEpochHeader, submittingHeight, latestHeight)
+		verifiableHeader, err := setupIntermediateHeader(ctx, queryVerifiableNeighboringEpochHeader, submittingHeight, latestHeight)
 		if err != nil {
 			return nil, err
 		}
@@ -118,11 +120,12 @@ func setupHeadersForUpdate(
 }
 
 func setupIntermediateHeader(
+	ctx context.Context,
 	queryVerifiableHeader queryVerifiableNeighboringEpochHeaderFn,
 	submittingHeight uint64,
 	latestHeight exported.Height,
 ) (core.Header, error) {
-	return queryVerifiableHeader(submittingHeight, minUint64(submittingHeight+skip, latestHeight.GetRevisionHeight()))
+	return queryVerifiableHeader(ctx, submittingHeight, minUint64(submittingHeight+skip, latestHeight.GetRevisionHeight()))
 }
 
 func withTrustedHeight(targetHeaders []core.Header, clientStateLatestHeight exported.Height) []core.Header {
