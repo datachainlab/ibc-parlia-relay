@@ -9,7 +9,6 @@ import (
 	"github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
 	"github.com/datachainlab/ibc-parlia-relay/module"
-	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/spf13/cobra"
@@ -105,8 +104,21 @@ func (m *misbehaviorModule) error() *cobra.Command {
 			log.Println("Invalid block: current_validator_hash", common.Bytes2Hex(module.MakeEpochHash(header.(*module.Header).CurrentValidators, uint8(header.(*module.Header).CurrentTurnLength))))
 			log.Println("Invalid block: previous_validator_hash", common.Bytes2Hex(module.MakeEpochHash(header.(*module.Header).PreviousValidators, uint8(header.(*module.Header).PreviousTurnLength))))
 			log.Println("Invalid block: trusted_height", updating[0].(*module.Header).TrustedHeight)
-			epochCount := header.GetHeight().GetRevisionHeight() / constant.BlocksPerEpoch
-			log.Println("Invalid block: currentEpoch", epochCount*constant.BlocksPerEpoch)
+
+			forkSpec, prev, err := module.FindTargetForkSpec(module.GetForkParameters(module.Localnet), header.GetHeight().GetRevisionHeight(), module.MilliTimestamp(target2))
+			if err != nil {
+				return err
+			}
+			bh, err := module.GetBoundaryHeight(chain.Header, header.GetHeight().GetRevisionHeight(), *forkSpec)
+			if err != nil {
+				return err
+			}
+			be, err := bh.GetBoundaryEpochs(*prev)
+			if err != nil {
+				return err
+			}
+			currentEpochBlockNumber := be.CurrentEpochBlockNumber(header.GetHeight().GetRevisionHeight())
+			log.Println("Invalid block: currentEpoch", currentEpochBlockNumber)
 			return nil
 		},
 	}

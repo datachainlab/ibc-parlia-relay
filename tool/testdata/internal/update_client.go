@@ -6,7 +6,6 @@ import (
 
 	"github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/datachainlab/ibc-parlia-relay/module"
-	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -47,8 +46,12 @@ func (m *updateClientModule) success() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			epochCount := latest.GetRevisionHeight() / constant.BlocksPerEpoch
-			return m.printHeader(cmd.Context(), prover, chain, epochCount*constant.BlocksPerEpoch+2)
+			be, err := m.GetBoundaryEpoch(chain, latest.GetRevisionHeight())
+			if err != nil {
+				return err
+			}
+			epoch := be.CurrentEpochBlockNumber(latest.GetRevisionHeight())
+			return m.printHeader(cmd.Context(), prover, chain, epoch+2)
 		},
 	})
 	var num uint64
@@ -60,8 +63,12 @@ func (m *updateClientModule) success() *cobra.Command {
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			currentEpoch := module.GetCurrentEpoch(num)
-			previousEpoch := module.GetPreviousEpoch(num)
+			be, err := m.GetBoundaryEpoch(chain, num)
+			if err != nil {
+				return err
+			}
+			currentEpoch := be.CurrentEpochBlockNumber(num)
+			previousEpoch := be.PreviousEpochBlockNumber(currentEpoch)
 			validator, turnLength, err := module.QueryValidatorSetAndTurnLength(cmd.Context(), chain.Header, previousEpoch)
 			if err != nil {
 				return errors.WithStack(err)
@@ -109,18 +116,24 @@ func (m *updateClientModule) error() *cobra.Command {
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			epoch := module.GetCurrentEpoch(latest.GetRevisionHeight())
+			be, err := m.GetBoundaryEpoch(chain, latest.GetRevisionHeight())
+			if err != nil {
+				return errors.WithStack(err)
+			}
+			epoch := be.CurrentEpochBlockNumber(latest.GetRevisionHeight())
+			prevEpoch := be.PreviousEpochBlockNumber(epoch)
 			header, err := prover.GetLatestFinalizedHeaderByLatestHeight(cmd.Context(), epoch+2)
 			if err != nil {
 				return errors.WithStack(err)
 			}
-			updating, err := prover.SetupHeadersForUpdateByLatestHeight(cmd.Context(), types.NewHeight(0, header.GetHeight().GetRevisionNumber()-constant.BlocksPerEpoch), header.(*module.Header))
+			updating, err := prover.SetupHeadersForUpdateByLatestHeight(cmd.Context(), types.NewHeight(0, prevEpoch), header.(*module.Header))
 			if err != nil {
 				return errors.WithStack(err)
 			}
 
 			// non neighboring epoch
-			newTrustedHeight := types.NewHeight(0, header.GetHeight().GetRevisionHeight()-2*constant.BlocksPerEpoch)
+			prevPrevEpoch := be.PreviousEpochBlockNumber(prevEpoch)
+			newTrustedHeight := types.NewHeight(0, prevPrevEpoch)
 			updating[0].(*module.Header).TrustedHeight = &newTrustedHeight
 			pack, err := types.PackClientMessage(updating[0])
 			if err != nil {
@@ -168,11 +181,17 @@ func (m *updateClientModule) printHeader(ctx context.Context, prover *module.Pro
 	}
 
 	trustedHeight := updating[0].(*module.Header).TrustedHeight.GetRevisionHeight()
-	currentValidatorSetOfTrustedHeight, currentTurnLengthOfTrustedHeight, err := module.QueryValidatorSetAndTurnLength(ctx, chain.Header, module.GetCurrentEpoch(trustedHeight))
+	trustedBe, err := m.GetBoundaryEpoch(chain, trustedHeight)
 	if err != nil {
 		return err
 	}
-	previousValidatorSetOfTrustedHeight, previousTurnLengthOfTrustedHeight, err := module.QueryValidatorSetAndTurnLength(ctx, chain.Header, module.GetPreviousEpoch(trustedHeight))
+	currentEpoch := trustedBe.CurrentEpochBlockNumber(trustedHeight)
+	currentValidatorSetOfTrustedHeight, currentTurnLengthOfTrustedHeight, err := module.QueryValidatorSetAndTurnLength(ctx, chain.Header, currentEpoch)
+	if err != nil {
+		return err
+	}
+	previousEpoch := trustedBe.PreviousEpochBlockNumber(currentEpoch)
+	previousValidatorSetOfTrustedHeight, previousTurnLengthOfTrustedHeight, err := module.QueryValidatorSetAndTurnLength(ctx, chain.Header, previousEpoch)
 	if err != nil {
 		return err
 	}
@@ -181,17 +200,30 @@ func (m *updateClientModule) printHeader(ctx context.Context, prover *module.Pro
 	log.Println("trustedHeight", trustedHeight)
 	log.Println("currentEpochHashOfTrustedHeight", common.Bytes2Hex(module.MakeEpochHash(currentValidatorSetOfTrustedHeight, currentTurnLengthOfTrustedHeight)))
 	log.Println("previousEpochHashOfTrustedHeight", common.Bytes2Hex(module.MakeEpochHash(previousValidatorSetOfTrustedHeight, previousTurnLengthOfTrustedHeight)))
-	if target.Number.Uint64()%constant.BlocksPerEpoch == 0 {
-		newValidators, newTurnLength, err := module.ExtractValidatorSetAndTurnLength(target)
-		if err != nil {
-			return err
-		}
-		log.Println("newCurrentEpochHash", common.Bytes2Hex(module.MakeEpochHash(newValidators, newTurnLength)))
-	} else {
+	newValidators, newTurnLength, err := module.ExtractValidatorSetAndTurnLength(target)
+	if err != nil {
 		log.Println("newCurrentEpochHash", common.Bytes2Hex(module.MakeEpochHash(header.CurrentValidators, uint8(header.CurrentTurnLength))))
+	} else {
+		log.Println("newCurrentEpochHash", common.Bytes2Hex(module.MakeEpochHash(newValidators, newTurnLength)))
 	}
 	log.Println("newPreviousEpochHash", common.Bytes2Hex(module.MakeEpochHash(header.PreviousValidators, uint8(header.PreviousTurnLength))))
 	return nil
+}
+
+func (m *updateClientModule) GetBoundaryEpoch(chain module.Chain, height uint64) (*module.BoundaryEpochs, error) {
+	header, err := chain.Header(context.Background(), height)
+	if err != nil {
+		return nil, err
+	}
+	forkSpec, prev, err := module.FindTargetForkSpec(module.GetForkParameters(module.Localnet), header.Number.Uint64(), module.MilliTimestamp(header))
+	if err != nil {
+		return nil, err
+	}
+	bh, err := module.GetBoundaryHeight(chain.Header, header.Number.Uint64(), *forkSpec)
+	if err != nil {
+		return nil, err
+	}
+	return bh.GetBoundaryEpochs(*prev)
 }
 
 func CreateUpdateClient() *cobra.Command {

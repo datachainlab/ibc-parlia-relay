@@ -41,7 +41,10 @@ func shouldSubmitBoundaryTimestampHeader(
 			if boundaryHeight.Height == 0 {
 				return nil, 0, fmt.Errorf("boundary height not found")
 			}
-			return &x.Timestamp, uint64(boundaryHeight.Height) - 1, nil
+
+			nextForkBoundaryHeightMinus1 := uint64(boundaryHeight.Height) - 1
+			log.GetLogger().Info("ForkSpec height required", "ts", x.Timestamp, "height", boundaryHeight, "nextForkBoundaryHeightMinus1", nextForkBoundaryHeightMinus1)
+			return &x.Timestamp, nextForkBoundaryHeightMinus1, nil
 		}
 	}
 	return nil, 0, nil
@@ -92,7 +95,6 @@ func setupHeadersForUpdate(
 	if err != nil {
 		return nil, err
 	}
-	logger.Info("Must set boundary timestamp", "ts", nextForkBoundaryTs, "nextForkBoundaryHeightMinus1", nextForkBoundaryHeightMinus1)
 
 	firstUnsaved := trustedEpochHeight + skip
 	for firstUnsaved <= savedLatestHeight {
