@@ -61,7 +61,7 @@ func GetForkParameters(network Network) []*ForkSpec {
 				MaxTurnLength:             9,
 			},
 			{
-				HeightOrTimestamp:         &ForkSpec_Timestamp{Timestamp: math.MaxUint64},
+				HeightOrTimestamp:         &ForkSpec_Timestamp{Timestamp: 1744097580 * 1000},
 				AdditionalHeaderItemCount: 1,
 				EpochLength:               500,
 				MaxTurnLength:             64,

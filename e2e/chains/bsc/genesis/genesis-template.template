@@ -46,11 +46,6 @@
         "target": 6,
         "max": 9,
         "baseFeeUpdateFraction": 5007716
-      },
-      "lorentz": {
-        "target": 6,
-        "max": 9,
-        "baseFeeUpdateFraction": 5007716
       }
     },
     "parlia": {
