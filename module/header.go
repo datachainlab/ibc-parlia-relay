@@ -2,6 +2,8 @@ package module
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/holiman/uint256"
 	"log"
 
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
@@ -69,4 +71,12 @@ func (h *Header) Last() (*types.Header, error) {
 		return nil, fmt.Errorf("invalid header length")
 	}
 	return decodedHeaders[len(decodedHeaders)-1], nil
+}
+
+func MilliTimestamp(h *types.Header) uint64 {
+	milliseconds := uint64(0)
+	if h.MixDigest != (common.Hash{}) {
+		milliseconds = uint256.NewInt(0).SetBytes32(h.MixDigest[:]).Uint64()
+	}
+	return h.Time*1000 + milliseconds
 }

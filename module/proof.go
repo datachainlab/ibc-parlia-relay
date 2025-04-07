@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math/big"
 
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	"github.com/hyperledger-labs/yui-relayer/core"
+	"github.com/hyperledger-labs/yui-relayer/log"
+	"math/big"
 
 	"github.com/cosmos/gogoproto/proto"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
@@ -174,27 +175,48 @@ func verifyAccount(target *types.Header, accountProof []byte, path common.Addres
 	return &account, nil
 }
 
-func withValidators(ctx context.Context, headerFn getHeaderFn, height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
-
+func withValidators(ctx context.Context, headerFn getHeaderFn, height uint64, ethHeaders []*ETHHeader, forkSpecs []*ForkSpec) (core.Header, error) {
 	header := &Header{
 		Headers: ethHeaders,
 	}
 
-	// Get validator set for verify headers
-	previousEpoch := getPreviousEpoch(height)
-	var previousTurnLength uint8
-	var err error
-	header.PreviousValidators, previousTurnLength, err = queryValidatorSetAndTurnLength(ctx, headerFn, previousEpoch)
-	header.PreviousTurnLength = uint32(previousTurnLength)
+	blockHeader, err := headerFn(ctx, height)
 	if err != nil {
-		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
+		return nil, fmt.Errorf("failed to get block header : number = %d : %+v", height, err)
 	}
-	currentEpoch := getCurrentEpoch(height)
+	currentForkSpec, prevForkSpec, err := FindTargetForkSpec(forkSpecs, height, MilliTimestamp(blockHeader))
+	if err != nil {
+		return nil, err
+	}
+	log.GetLogger().Debug("target fork spec", "currentForkSpec", currentForkSpec, "prevForkSpec", prevForkSpec)
+
+	boundaryHeight, err := GetBoundaryHeight(headerFn, height, *currentForkSpec)
+	if err != nil {
+		return nil, err
+	}
+	log.GetLogger().Debug("get boundary height by ", "height", height, "boundaryHeight", boundaryHeight)
+
+	boundaryEpochs, err := boundaryHeight.GetBoundaryEpochs(*prevForkSpec)
+	if err != nil {
+		return nil, err
+	}
+	log.GetLogger().Debug("boundary epoch", "prevLast", boundaryEpochs.PrevLast, "currentFirst", boundaryEpochs.CurrentFirst, "intermediates", boundaryEpochs.Intermediates)
+
+	// Get validator set for verify headers
+	currentEpoch := boundaryEpochs.CurrentEpochBlockNumber(height)
 	var currentTurnLength uint8
 	header.CurrentValidators, currentTurnLength, err = queryValidatorSetAndTurnLength(ctx, headerFn, currentEpoch)
 	header.CurrentTurnLength = uint32(currentTurnLength)
 	if err != nil {
 		return nil, fmt.Errorf("ValidatorSet was not found in current epoch : number= %d : %+v", currentEpoch, err)
+	}
+
+	previousEpoch := boundaryEpochs.PreviousEpochBlockNumber(currentEpoch)
+	var previousTurnLength uint8
+	header.PreviousValidators, previousTurnLength, err = queryValidatorSetAndTurnLength(ctx, headerFn, previousEpoch)
+	header.PreviousTurnLength = uint32(previousTurnLength)
+	if err != nil {
+		return nil, fmt.Errorf("ValidatorSet was not found in previous epoch : number = %d : %+v", previousEpoch, err)
 	}
 
 	return header, nil

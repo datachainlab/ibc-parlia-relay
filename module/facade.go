@@ -7,15 +7,6 @@ import (
 )
 
 // Facade for tool modules
-
-func GetPreviousEpoch(v uint64) uint64 {
-	return getPreviousEpoch(v)
-}
-
-func GetCurrentEpoch(v uint64) uint64 {
-	return getCurrentEpoch(v)
-}
-
 func QueryFinalizedHeader(ctx context.Context, fn getHeaderFn, height uint64, limitHeight uint64) ([]*ETHHeader, error) {
 	return queryFinalizedHeader(ctx, fn, height, limitHeight)
 }

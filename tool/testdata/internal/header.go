@@ -5,7 +5,6 @@ import (
 	"log"
 
 	"github.com/datachainlab/ibc-parlia-relay/module"
-	"github.com/datachainlab/ibc-parlia-relay/module/constant"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/pkg/errors"
@@ -56,11 +55,9 @@ func (m *headerModule) printHeader(chain module.Chain, height uint64) error {
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	if height%constant.BlocksPerEpoch == 0 {
-		vals, turnLength, err := module.ExtractValidatorSetAndTurnLength(header)
-		if err != nil {
-			return errors.WithStack(err)
-		}
+
+	vals, turnLength, err := module.ExtractValidatorSetAndTurnLength(header)
+	if err == nil {
 		log.Println("validators = ")
 		for _, val := range vals {
 			log.Println(common.Bytes2Hex(val))
