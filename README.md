@@ -3,8 +3,8 @@
 ![CI](https://github.com/datachainlab/ibc-parlia-relay/workflows/CI/badge.svg?branch=main)
 
 ## Supported Versions
-- [yui-relayer v0.5.3](https://github.com/hyperledger-labs/yui-relayer/releases/tag/v0.5.3)
-- [ethereum-ibc-relay-chain v0.3.4](https://github.com/datachainlab/ethereum-ibc-relay-chain/releases/tag/v0.3.4)
+- [yui-relayer v0.5.11](https://github.com/hyperledger-labs/yui-relayer/releases/tag/v0.5.11)
+- [ethereum-ibc-relay-chain v0.3.16](https://github.com/datachainlab/ethereum-ibc-relay-chain/releases/tag/v0.3.6)
 
 ## Setup Relayer
 
@@ -29,14 +29,6 @@ func main() {
 }
 ```
 
-## Change blocks per epoch 
-
-* You can change blocks per epoch by build arguments.
-* This is only for local net.
-```
-go build -tags dev -ldflags="-X github.com/datachainlab/ibc-parlia-relay/module/constant.blocksPerEpoch=20" -o testrly .
-```
-
 ## Development
 
 Generate proto buf with protobuf definition of [parlia-elc](https://github.com/datachainlab/parlia-elc).
@@ -48,3 +40,12 @@ cd ibc-parlia-relay
 make proto-import
 make proto-gen
 ```
+
+## About ForkSpec
+
+1. Set HF height as soon as possible
+As soon as the HF height is determined, please modify the timestamp in the ForkSpec to the height as soon as possible.
+HF height is calculated from timestamp, but the further away from the HF, the longer it takes to calculate.
+
+2. Limitation of the CreateClient
+When the latest HF height is not set it is impossible to create client if the latest finalize header is after latest HF timestamp

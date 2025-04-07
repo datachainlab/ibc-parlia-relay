@@ -2,10 +2,6 @@ package internal
 
 import (
 	"context"
-	"log"
-	"os"
-	"time"
-
 	"github.com/cometbft/cometbft/libs/json"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
@@ -14,6 +10,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/golang/protobuf/proto"
 	"github.com/spf13/cobra"
+	"log"
+	"os"
+	"time"
 )
 
 type historyModule struct {

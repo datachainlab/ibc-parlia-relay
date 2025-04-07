@@ -35,6 +35,7 @@
     "bohrTime": 0,
     "pascalTime": 0,
     "pragueTime": 0,
+    "lorentzTime": 0,
     "blobSchedule": {
       "cancun": {
         "target": 3,
@@ -48,8 +49,6 @@
       }
     },
     "parlia": {
-      "period": 3,
-      "epoch": {{BLOCKS_PER_EPOCH}}
     }
   },
   "nonce": "0x0",

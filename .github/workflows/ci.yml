@@ -54,7 +54,9 @@ jobs:
         run: |
           make chain
           make contracts
-          sleep 20
+          # epoch is 200, 400, 500, 1000
+          # must wait for 400 block (1.5sec * 400)
+          sleep 600
           make relayer
           make test
       - name: integration-test

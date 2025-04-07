@@ -92,14 +92,23 @@ func (ts *ProverNetworkTestSuite) TestSuccessCreateInitialLightClientState() {
 	ts.Require().NoError(err)
 	ts.Require().Equal(cs.GetLatestHeight().GetRevisionHeight(), header.Number.Uint64())
 
-	cVal, cTurn, err := module.QueryValidatorSetAndTurnLength(ctx, ts.chain.Header, module.GetCurrentEpoch(header.Number.Uint64()))
+	forkParams := module.GetForkParameters(module.Localnet)
+	currentForkSpec, prevForkSpec, err := module.FindTargetForkSpec(forkParams, header.Number.Uint64(), module.MilliTimestamp(header))
 	ts.Require().NoError(err)
-	pVal, pTurn, err := module.QueryValidatorSetAndTurnLength(ctx, ts.chain.Header, module.GetPreviousEpoch(header.Number.Uint64()))
+	bs, err := module.GetBoundaryHeight(ts.chain.Header, header.Number.Uint64(), *currentForkSpec)
+	ts.Require().NoError(err)
+	be, err := bs.GetBoundaryEpochs(*prevForkSpec)
+	ts.Require().NoError(err)
+
+	currentEpoch := be.CurrentEpochBlockNumber(header.Number.Uint64())
+	cVal, cTurn, err := module.QueryValidatorSetAndTurnLength(ctx, ts.chain.Header, currentEpoch)
+	ts.Require().NoError(err)
+	pVal, pTurn, err := module.QueryValidatorSetAndTurnLength(ctx, ts.chain.Header, be.PreviousEpochBlockNumber(currentEpoch))
 	ts.Require().NoError(err)
 	consState := s2.(*module.ConsensusState)
 	ts.Require().Equal(consState.CurrentValidatorsHash, module.MakeEpochHash(cVal, cTurn))
 	ts.Require().Equal(consState.PreviousValidatorsHash, module.MakeEpochHash(pVal, pTurn))
-	ts.Require().Equal(consState.Timestamp, header.Time)
+	ts.Require().Equal(consState.Timestamp, module.MilliTimestamp(header))
 	ts.Require().Equal(common.BytesToHash(consState.StateRoot), header.Root)
 }
 
@@ -144,6 +153,8 @@ func (ts *ProverNetworkTestSuite) makeProver(chain module.Chain) *module.Prover 
 			Numerator:   3,
 			Denominator: 2,
 		},
+		Network: string(module.Localnet),
 	}
+	ts.Require().NoError(config.Validate())
 	return module.NewProver(chain, &config).(*module.Prover)
 }

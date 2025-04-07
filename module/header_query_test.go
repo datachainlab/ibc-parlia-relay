@@ -46,7 +46,7 @@ func (ts *HeaderQueryTestSuite) TestErrorQueryFinalizedHeader() {
 		return &types.Header{Number: big.NewInt(int64(height))}, nil
 	}
 
-	headers, err = queryFinalizedHeader(context.Background(), fn, 360, 400)
+	headers, err = queryFinalizedHeader(context.Background(), fn, 760, 1000)
 	ts.Require().NoError(err)
 	ts.Require().Nil(headers)
 }
@@ -61,9 +61,9 @@ func (ts *HeaderQueryTestSuite) TestSuccessQueryFinalizedHeader() {
 		return &types.Header{Number: big.NewInt(int64(height))}, nil
 	}
 
-	headers, err := queryFinalizedHeader(context.Background(), fn, 360, 402)
+	headers, err := queryFinalizedHeader(context.Background(), fn, 760, 1002)
 	ts.Require().NoError(err)
-	ts.Require().Len(headers, 402-360)
+	ts.Require().Len(headers, 1002-760)
 }
 
 func (ts *HeaderQueryTestSuite) TestSuccessQueryLatestFinalizedHeader() {
@@ -79,9 +79,9 @@ func (ts *HeaderQueryTestSuite) TestSuccessQueryLatestFinalizedHeader() {
 		height, h, err := queryLatestFinalizedHeader(context.Background(), getHeader, latestBlockNumber)
 		ts.Require().NoError(err)
 		ts.Require().Len(h, 3)
-		ts.Require().Equal(int(height), 401)
+		ts.Require().Equal(int(height), 1001)
 	}
-	for i := 403; i < 403+100; i++ {
+	for i := 1003; i < 1003+100; i++ {
 		verify(uint64(i))
 	}
 }
