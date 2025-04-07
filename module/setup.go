@@ -10,6 +10,7 @@ import (
 	"github.com/hyperledger-labs/yui-relayer/log"
 )
 
+// Maximum header interval to be submitted to LCP
 const skip = 100
 
 type queryVerifiableNeighboringEpochHeaderFn = func(context.Context, uint64, uint64) (core.Header, error)
@@ -121,6 +122,7 @@ func setupHeadersForUpdate(
 	return withTrustedHeight(append(targetHeaders, latestFinalizedHeader), clientStateLatestHeight), nil
 }
 
+// Get verifiable headers. This method must be executed at block intervals that do not miss any epochs.
 func setupIntermediateHeader(
 	ctx context.Context,
 	queryVerifiableHeader queryVerifiableNeighboringEpochHeaderFn,
