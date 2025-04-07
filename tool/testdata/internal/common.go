@@ -56,6 +56,7 @@ func createProver(ctx context.Context) (*module.Prover, module.Chain, error) {
 	config := module.ProverConfig{
 		TrustingPeriod: 86400 * time.Second,
 		MaxClockDrift:  1 * time.Millisecond,
+		Network:        string(module.Localnet),
 	}
 	ec := module.NewChain(chain)
 	return module.NewProver(ec, &config).(*module.Prover), ec, nil

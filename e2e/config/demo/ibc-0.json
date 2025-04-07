@@ -31,6 +31,7 @@
       "numerator": 1,
       "denominator": 2
     },
-    "refreshBlockDifferenceThreshold": 1000
+    "refreshBlockDifferenceThreshold": 1000,
+    "network": "localnet"
   }
 }
