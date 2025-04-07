@@ -3,12 +3,11 @@ package module
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/hyperledger-labs/yui-relayer/log"
-
-	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
@@ -139,7 +138,9 @@ func (pr *Prover) SetupHeadersForUpdateByLatestHeight(ctx context.Context, clien
 		pr.chain.Header,
 		clientStateLatestHeight,
 		latestFinalizedHeader,
-		latestHeight)
+		latestHeight,
+		GetForkParameters(Network(pr.config.Network)),
+	)
 }
 
 func (pr *Prover) ProveState(ctx core.QueryContext, path string, value []byte) ([]byte, clienttypes.Height, error) {
@@ -228,22 +229,37 @@ func (pr *Prover) CheckRefreshRequired(ctx context.Context, counterparty core.Ch
 }
 
 func (pr *Prover) withValidators(ctx context.Context, height uint64, ethHeaders []*ETHHeader) (core.Header, error) {
-	return withValidators(ctx, pr.chain.Header, height, ethHeaders)
+	return withValidators(ctx, pr.chain.Header, height, ethHeaders, pr.getForkParameters())
+}
+
+func (pr *Prover) getForkParameters() []*ForkSpec {
+	return GetForkParameters(Network(pr.config.Network))
 }
 
 func (pr *Prover) buildInitialState(ctx context.Context, dstHeader core.Header) (exported.ClientState, exported.ConsensusState, error) {
-	currentEpoch := getCurrentEpoch(dstHeader.GetHeight().GetRevisionHeight())
-	currentValidators, currentTurnLength, err := queryValidatorSetAndTurnLength(ctx, pr.chain.Header, currentEpoch)
+
+	// Last ForkSpec must have height or CreateClient is less than fork spec timestamp
+	forkSpecs := pr.getForkParameters()
+	lastForkSpec := forkSpecs[len(forkSpecs)-1]
+	lastForkSpecTime, ok := lastForkSpec.GetHeightOrTimestamp().(*ForkSpec_Timestamp)
+	if ok && lastForkSpecTime != nil {
+		target, err := dstHeader.(*Header).Target()
+		if err != nil {
+			return nil, nil, err
+		}
+		if MilliTimestamp(target) >= lastForkSpecTime.Timestamp {
+			return nil, nil, fmt.Errorf("target timestamp must be less than the last fork spec timestamp to submit height to ELC. %d, %d ", lastForkSpecTime.Timestamp, MilliTimestamp(target))
+		}
+	}
+
+	dstHeader, err := pr.withValidators(ctx, dstHeader.GetHeight().GetRevisionHeight(), dstHeader.(*Header).Headers)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	previousEpoch := getPreviousEpoch(dstHeader.GetHeight().GetRevisionHeight())
-	previousValidators, previousTurnLength, err := queryValidatorSetAndTurnLength(ctx, pr.chain.Header, previousEpoch)
-	if err != nil {
-		return nil, nil, err
-	}
-	header, err := dstHeader.(*Header).Target()
+	downcast := dstHeader.(*Header)
+	header, err := downcast.Target()
+
 	if err != nil {
 		return nil, nil, err
 	}
@@ -266,8 +282,8 @@ func (pr *Prover) buildInitialState(ctx context.Context, dstHeader core.Header) 
 	}
 	consensusState := ConsensusState{
 		Timestamp:              MilliTimestamp(header),
-		PreviousValidatorsHash: makeEpochHash(previousValidators, previousTurnLength),
-		CurrentValidatorsHash:  makeEpochHash(currentValidators, currentTurnLength),
+		PreviousValidatorsHash: makeEpochHash(downcast.PreviousValidators, uint8(downcast.PreviousTurnLength)),
+		CurrentValidatorsHash:  makeEpochHash(downcast.CurrentValidators, uint8(downcast.CurrentTurnLength)),
 		StateRoot:              header.Root.Bytes(),
 	}
 	return &clientState, &consensusState, nil
