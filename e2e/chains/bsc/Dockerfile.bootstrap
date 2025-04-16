@@ -1,6 +1,6 @@
-FROM ghcr.io/foundry-rs/foundry:nightly-462b2ac6c038dc24b8f38b0c59b664d0740604c2
+FROM ghcr.io/foundry-rs/foundry:v0.3.0
 
-RUN apk add --d --no-cache ca-certificates npm nodejs bash alpine-sdk expect jq curl bash python3
+RUN apk add --d --no-cache npm nodejs bash alpine-sdk expect jq curl bash python3-dev py3-pip
 RUN curl -sSL https://install.python-poetry.org | python3 -
 
 RUN git clone https://github.com/bnb-chain/bsc-genesis-contract -b develop /root/genesis \
