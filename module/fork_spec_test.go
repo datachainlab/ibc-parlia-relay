@@ -19,7 +19,7 @@ func TestForkSpecTestSuite(t *testing.T) {
 }
 
 func (ts *ForkSpecTestSuite) SetupTest() {
-	_ = log.InitLogger("DEBUG", "text", "stdout")
+	_ = log.InitLogger("DEBUG", "text", "stdout", false)
 	boundaryHeightCache = make(map[uint64]uint64)
 }
 

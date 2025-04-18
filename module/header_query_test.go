@@ -21,12 +21,12 @@ func TestHeaderQueryTestSuite(t *testing.T) {
 }
 
 func (ts *HeaderQueryTestSuite) SetupTest() {
-	err := log.InitLogger("DEBUG", "text", "stdout")
+	err := log.InitLogger("DEBUG", "text", "stdout", false)
 	ts.Require().NoError(err)
 }
 
 func (ts *HeaderQueryTestSuite) TestErrorQueryFinalizedHeader() {
-	ts.Require().NoError(log.InitLogger("INFO", "json", "stdout"))
+	ts.Require().NoError(log.InitLogger("INFO", "json", "stdout", false))
 	fn := func(ctx context.Context, height uint64) (*types.Header, error) {
 		return &types.Header{
 			Number: big.NewInt(int64(height)),
@@ -52,7 +52,7 @@ func (ts *HeaderQueryTestSuite) TestErrorQueryFinalizedHeader() {
 }
 
 func (ts *HeaderQueryTestSuite) TestSuccessQueryFinalizedHeader() {
-	ts.Require().NoError(log.InitLogger("INFO", "json", "stdout"))
+	ts.Require().NoError(log.InitLogger("INFO", "json", "stdout", false))
 	fn := func(ctx context.Context, height uint64) (*types.Header, error) {
 		h := headerByHeight(int64(height))
 		if h != nil {

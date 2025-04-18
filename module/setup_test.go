@@ -22,7 +22,7 @@ func TestSetupTestSuite(t *testing.T) {
 }
 
 func (ts *SetupTestSuite) SetupTest() {
-	err := log.InitLogger("DEBUG", "text", "stdout")
+	err := log.InitLogger("DEBUG", "text", "stdout", false)
 	ts.Require().NoError(err)
 }
 
