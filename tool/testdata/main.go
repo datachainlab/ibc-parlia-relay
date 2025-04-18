@@ -14,7 +14,7 @@ func main() {
 	cobra.EnableCommandSorting = false
 	viper.AutomaticEnv()
 
-	if err := ylog.InitLogger("DEBUG", "text", "stdout"); err != nil {
+	if err := ylog.InitLogger("DEBUG", "text", "stdout", false); err != nil {
 		log.Panicf("Failed to run command : %+v", err)
 		return
 	}

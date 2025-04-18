@@ -37,7 +37,7 @@ func TestProverNetworkTestSuite(t *testing.T) {
 }
 
 func (ts *ProverNetworkTestSuite) SetupTest() {
-	err := log.InitLogger("DEBUG", "text", "stdout")
+	err := log.InitLogger("DEBUG", "text", "stdout", false)
 	ts.Require().NoError(err)
 
 	chain := ts.makeChain("http://localhost:8545", "ibc1")
@@ -142,7 +142,7 @@ func (ts *ProverNetworkTestSuite) makeChain(rpcAddr string, ibcChainID string) m
 		Order:        "UNORDERED",
 	}, nil, nil)
 	ts.Require().NoError(err)
-	return module.NewChain(chain)
+	return module.NewChain(chain, chain.Config().IBCAddress(), chain.Client())
 }
 
 func (ts *ProverNetworkTestSuite) makeProver(chain module.Chain) *module.Prover {

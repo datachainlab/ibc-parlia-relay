@@ -80,7 +80,7 @@ func (m *verifyMembershipModule) proveState(ctx context.Context, chainID uint64,
 		return common.Hash{}, nil, types.Height{}, err
 	}
 	config := module.ProverConfig{}
-	prover := module.NewProver(module.NewChain(chain), &config).(*module.Prover)
+	prover := module.NewProver(module.NewChain(chain, chain.Config().IBCAddress(), chain.Client()), &config).(*module.Prover)
 
 	queryCtx := core.NewQueryContext(ctx, latest)
 

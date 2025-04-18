@@ -96,7 +96,7 @@ func TestProverTestSuite(t *testing.T) {
 }
 
 func (ts *ProverTestSuite) SetupTest() {
-	err := log.InitLogger("DEBUG", "text", "stdout")
+	err := log.InitLogger("DEBUG", "text", "stdout", false)
 	ts.Require().NoError(err)
 
 	signerConfig := &hd.SignerConfig{
@@ -135,7 +135,7 @@ func (ts *ProverTestSuite) SetupTest() {
 		Network: string(Localnet),
 	}
 	ts.chain = &mockChain{
-		Chain:                   NewChain(chain),
+		Chain:                   NewChain(chain, chain.Config().IBCAddress(), chain.Client()),
 		consensusStateTimestamp: make(map[exported.Height]uint64),
 		chainTimestamp:          make(map[exported.Height]uint64),
 		latestHeight:            0,
