@@ -95,7 +95,7 @@ func (ts *ProverNetworkTestSuite) TestSuccessCreateInitialLightClientState() {
 	forkParams := module.GetForkParameters(module.Localnet)
 	currentForkSpec, prevForkSpec, err := module.FindTargetForkSpec(forkParams, header.Number.Uint64(), module.MilliTimestamp(header))
 	ts.Require().NoError(err)
-	bs, err := module.GetBoundaryHeight(ts.chain.Header, header.Number.Uint64(), *currentForkSpec)
+	bs, err := module.GetBoundaryHeight(ctx, ts.chain.Header, header.Number.Uint64(), *currentForkSpec)
 	ts.Require().NoError(err)
 	be, err := bs.GetBoundaryEpochs(*prevForkSpec)
 	ts.Require().NoError(err)
