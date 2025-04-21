@@ -244,4 +244,4 @@ require (
 )
 
 // TODO: Delete the following line before making the pull request ready for review
-replace github.com/hyperledger-labs/yui-relayer => github.com/abicky/yui-relayer v0.0.0-20250421060327-579c28694d3e
+replace github.com/hyperledger-labs/yui-relayer => github.com/abicky/yui-relayer v0.0.0-20250522081618-37535fd46281

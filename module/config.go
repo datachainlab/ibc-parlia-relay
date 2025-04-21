@@ -5,14 +5,15 @@ import (
 
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
 	"github.com/hyperledger-labs/yui-relayer/core"
+	"github.com/hyperledger-labs/yui-relayer/coreutil"
 	"github.com/hyperledger-labs/yui-relayer/otelcore"
 )
 
 var _ core.ProverConfig = (*ProverConfig)(nil)
 
 func (c *ProverConfig) Build(chain core.Chain) (core.Prover, error) {
-	var chain_ *ethereum.Chain
-	if err := core.AsChain(chain, &chain_); err != nil {
+	chain_, err := coreutil.UnwrapChain[*ethereum.Chain](chain)
+	if err != nil {
 		return nil, err
 	}
 	// Use chain, not chain_, for the case where the chain is a tracing bridge

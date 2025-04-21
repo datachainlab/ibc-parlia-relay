@@ -240,8 +240,8 @@ github.com/VictoriaMetrics/fastcache v1.12.2 h1:N0y9ASrJ0F6h0QaC3o6uJb3NIZ9VKLjC
 github.com/VictoriaMetrics/fastcache v1.12.2/go.mod h1:AmC+Nzz1+3G2eCPapF6UcsnkThDcMsQicp4xDukwJYI=
 github.com/VividCortex/gohistogram v1.0.0 h1:6+hBz+qvs0JOrrNhhmR7lFxo5sINxBCGXrdtl/UvroE=
 github.com/VividCortex/gohistogram v1.0.0/go.mod h1:Pf5mBqqDxYaXu3hDrrU+w6nw50o/4+TcAqDqk/vUH7g=
-github.com/abicky/yui-relayer v0.0.0-20250421060327-579c28694d3e h1:cGpLvGShzFhbIrBQqi4A/PNt2aL8lqEUaOTmklqStis=
-github.com/abicky/yui-relayer v0.0.0-20250421060327-579c28694d3e/go.mod h1:fyY5rY+lqyAAlr1AsWXsB22Qj5phbw/oszgZBL9UeEM=
+github.com/abicky/yui-relayer v0.0.0-20250522081618-37535fd46281 h1:Dz9qrN/hdQ6cL8EIh9LJlmCLQYAmrKp/QsamH8iPxsI=
+github.com/abicky/yui-relayer v0.0.0-20250522081618-37535fd46281/go.mod h1:fyY5rY+lqyAAlr1AsWXsB22Qj5phbw/oszgZBL9UeEM=
 github.com/adlio/schema v1.3.3 h1:oBJn8I02PyTB466pZO1UZEn1TV5XLlifBSyMrmHl/1I=
 github.com/adlio/schema v1.3.3/go.mod h1:1EsRssiv9/Ce2CMzq5DoL7RiMshhuigQxrR4DMV9fHg=
 github.com/aead/siphash v1.0.1/go.mod h1:Nywa3cDsYNNK3gaciGTWPwHt0wlpNV15vwmswBAUSII=
