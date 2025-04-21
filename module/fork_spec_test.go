@@ -132,7 +132,7 @@ func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_ValidHeight() {
 	currentHeight := uint64(100)
 	currentForkSpec := ForkSpec{HeightOrTimestamp: &ForkSpec_Height{Height: 50}}
 
-	boundaryHeight, err := GetBoundaryHeight(headerFn, currentHeight, currentForkSpec)
+	boundaryHeight, err := GetBoundaryHeight(context.Background(), headerFn, currentHeight, currentForkSpec)
 
 	ts.NoError(err)
 	ts.Equal(uint64(50), boundaryHeight.Height)
@@ -145,7 +145,7 @@ func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_ValidTimestamp() {
 	currentHeight := uint64(100)
 	currentForkSpec := ForkSpec{HeightOrTimestamp: &ForkSpec_Timestamp{Timestamp: 1000 * 1000}} // msec
 
-	boundaryHeight, err := GetBoundaryHeight(headerFn, currentHeight, currentForkSpec)
+	boundaryHeight, err := GetBoundaryHeight(context.Background(), headerFn, currentHeight, currentForkSpec)
 
 	ts.NoError(err)
 	ts.Equal(uint64(100), boundaryHeight.Height)
@@ -158,7 +158,7 @@ func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_ValidTimestampMultiHeader() 
 	currentHeight := uint64(1100)
 	currentForkSpec := ForkSpec{HeightOrTimestamp: &ForkSpec_Timestamp{Timestamp: 1000_000}} // msec
 
-	boundaryHeight, err := GetBoundaryHeight(headerFn, currentHeight, currentForkSpec)
+	boundaryHeight, err := GetBoundaryHeight(context.Background(), headerFn, currentHeight, currentForkSpec)
 
 	ts.NoError(err)
 	ts.Equal(uint64(1000), boundaryHeight.Height)
@@ -171,7 +171,7 @@ func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_ValidTimestampMultiHeaderNot
 	currentHeight := uint64(1100)
 	currentForkSpec := ForkSpec{HeightOrTimestamp: &ForkSpec_Timestamp{Timestamp: 999_999}} // msec
 
-	boundaryHeight, err := GetBoundaryHeight(headerFn, currentHeight, currentForkSpec)
+	boundaryHeight, err := GetBoundaryHeight(context.Background(), headerFn, currentHeight, currentForkSpec)
 
 	ts.NoError(err)
 	ts.Equal(uint64(1000), boundaryHeight.Height)
@@ -184,7 +184,7 @@ func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_TimestampNotFound() {
 	currentHeight := uint64(100)
 	currentForkSpec := ForkSpec{HeightOrTimestamp: &ForkSpec_Timestamp{Timestamp: 1000}}
 
-	boundaryHeight, err := GetBoundaryHeight(headerFn, currentHeight, currentForkSpec)
+	boundaryHeight, err := GetBoundaryHeight(context.Background(), headerFn, currentHeight, currentForkSpec)
 
 	ts.NoError(err)
 	ts.Equal(uint64(0), boundaryHeight.Height)
@@ -197,7 +197,7 @@ func (ts *ForkSpecTestSuite) Test_GetBoundaryHeight_HeaderFnError() {
 	currentHeight := uint64(100)
 	currentForkSpec := ForkSpec{HeightOrTimestamp: &ForkSpec_Timestamp{Timestamp: 1000}}
 
-	_, err := GetBoundaryHeight(headerFn, currentHeight, currentForkSpec)
+	_, err := GetBoundaryHeight(context.Background(), headerFn, currentHeight, currentForkSpec)
 
 	ts.Error(err)
 }
