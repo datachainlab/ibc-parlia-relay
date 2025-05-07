@@ -196,7 +196,7 @@ func withValidators(ctx context.Context, headerFn getHeaderFn, height uint64, et
 	}
 	log.GetLogger().Debug("get boundary height by ", "height", height, "boundaryHeight", boundaryHeight)
 
-	boundaryEpochs, err := boundaryHeight.GetBoundaryEpochs(*prevForkSpec)
+	boundaryEpochs, err := boundaryHeight.GetBoundaryEpochs(prevForkSpec)
 	if err != nil {
 		return nil, err
 	}
