@@ -76,10 +76,10 @@ func GetForkParameters(network Network) []*ForkSpec {
 				EpochLength:               200,
 				MaxTurnLength:             9,
 			},
-			// https://github.com/bnb-chain/bsc/blob/1ded6d7ecfc1a9b71accab03aef99d816eeda446/params/config.go#L192
+			// https://bscscan.com/block/48773576
 			// https://github.com/bnb-chain/bsc/releases/tag/v1.5.10
 			{
-				HeightOrTimestamp:         &ForkSpec_Timestamp{Timestamp: 1745903100 * 1000},
+				HeightOrTimestamp:         &ForkSpec_Height{Height: 48773576},
 				AdditionalHeaderItemCount: 1,
 				EpochLength:               500,
 				MaxTurnLength:             64,
