@@ -27,7 +27,7 @@ func queryLatestFinalizedHeader(ctx context.Context, getHeader getHeaderFn, late
 		}
 		probablyFinalized := vote.Data.SourceNumber
 
-		logger.Debug("Try to seek verifying headers to finalize", "probablyFinalized", probablyFinalized, "latest", latestBlockNumber)
+		logger.DebugContext(ctx, "Try to seek verifying headers to finalize", "probablyFinalized", probablyFinalized, "latest", latestBlockNumber)
 
 		headers, err := queryFinalizedHeader(ctx, getHeader, probablyFinalized, latestBlockNumber)
 		if err != nil {
@@ -36,7 +36,7 @@ func queryLatestFinalizedHeader(ctx context.Context, getHeader getHeaderFn, late
 		if headers != nil {
 			return probablyFinalized, headers, nil
 		}
-		logger.Debug("Failed to seek verifying headers to finalize. So seek previous finalized header.", "probablyFinalized", probablyFinalized, "latest", latestBlockNumber)
+		logger.DebugContext(ctx, "Failed to seek verifying headers to finalize. So seek previous finalized header.", "probablyFinalized", probablyFinalized, "latest", latestBlockNumber)
 	}
 	return 0, nil, fmt.Errorf("no finalized header found: %d", latestBlockNumber)
 }
@@ -67,7 +67,7 @@ func queryFinalizedHeader(ctx context.Context, fn getHeaderFn, height uint64, li
 		}
 		return append(ethHeaders, targetETHHeader, childETHHeader, grandChildETHHeader), nil
 	}
-	log.GetLogger().Debug("Insufficient verifying headers to finalize", "height", height, "limit", limitHeight)
+	log.GetLogger().DebugContext(ctx, "Insufficient verifying headers to finalize", "height", height, "limit", limitHeight)
 	return nil, nil
 }
 
