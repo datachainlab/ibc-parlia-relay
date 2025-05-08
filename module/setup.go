@@ -83,7 +83,7 @@ func setupHeadersForUpdate(
 	if err != nil {
 		return nil, err
 	}
-	trustedBoundaryEpochs, err := trustedBoundaryHeight.GetBoundaryEpochs(*trustedPreviousForkSpec)
+	trustedBoundaryEpochs, err := trustedBoundaryHeight.GetBoundaryEpochs(trustedPreviousForkSpec)
 	if err != nil {
 		return nil, err
 	}
