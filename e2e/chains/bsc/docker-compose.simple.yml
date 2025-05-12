@@ -71,6 +71,10 @@ services:
       - ./scripts:/scripts
       - ./config:/config
     command: ash /scripts/bsc-rpc.sh
+    healthcheck:
+      test: ["CMD", "ash", "/scripts/healthcheck.sh"]
+      interval: "5s"
+      start_period: "10s"
 
   bsc-rpc2: # This is the bootstrap node
     image: bsc-geth:docker-local
@@ -86,6 +90,10 @@ services:
       - ./scripts:/scripts
       - ./config:/config
     command: ash /scripts/bsc-rpc.sh
+    healthcheck:
+      test: ["CMD", "ash", "/scripts/healthcheck.sh"]
+      interval: "5s"
+      start_period: "10s"
 
   bsc-validator1-1:
     image: bsc-geth:docker-local
@@ -216,6 +224,14 @@ services:
       - bsc-validator2-5:/root/.ethereum
       - ./scripts:/scripts
     command: ash /scripts/bsc-validator.sh
+
+  autoheal:
+    restart: always
+    image: willfarrell/autoheal
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=all
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
 
 networks:
   bsc:
