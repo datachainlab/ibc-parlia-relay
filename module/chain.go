@@ -5,7 +5,6 @@ import (
 	"math/big"
 
 	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/client"
-	"github.com/datachainlab/ethereum-ibc-relay-chain/pkg/relay/ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/hyperledger-labs/yui-relayer/core"
@@ -20,15 +19,17 @@ type Chain interface {
 }
 
 type ethChain struct {
-	*ethereum.Chain
+	core.Chain
+	ibcAddress common.Address
+	client     *client.ETHClient
 }
 
-func NewChain(chain *ethereum.Chain) Chain {
-	return &ethChain{Chain: chain}
+func NewChain(chain core.Chain, ibcAddress common.Address, client *client.ETHClient) Chain {
+	return &ethChain{Chain: chain, ibcAddress: ibcAddress, client: client}
 }
 
 func (c *ethChain) Header(ctx context.Context, height uint64) (*types.Header, error) {
-	block, err := c.Client().BlockByNumber(ctx, big.NewInt(int64(height)))
+	block, err := c.client.BlockByNumber(ctx, big.NewInt(int64(height)))
 	if err != nil {
 		return nil, err
 	}
@@ -36,11 +37,11 @@ func (c *ethChain) Header(ctx context.Context, height uint64) (*types.Header, er
 }
 
 func (c *ethChain) IBCAddress() common.Address {
-	return c.Config().IBCAddress()
+	return c.ibcAddress
 }
 
 func (c *ethChain) CanonicalChainID(ctx context.Context) (uint64, error) {
-	chainID, err := c.Client().ChainID(ctx)
+	chainID, err := c.client.ChainID(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -48,5 +49,5 @@ func (c *ethChain) CanonicalChainID(ctx context.Context) (uint64, error) {
 }
 
 func (c *ethChain) GetProof(ctx context.Context, address common.Address, storageKeys [][]byte, blockNumber *big.Int) (*client.StateProof, error) {
-	return c.Client().GetProof(ctx, address, storageKeys, blockNumber)
+	return c.client.GetProof(ctx, address, storageKeys, blockNumber)
 }
