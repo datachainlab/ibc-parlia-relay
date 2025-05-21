@@ -77,7 +77,7 @@ func GetForkParameters(network Network) []*ForkSpec {
 	case Testnet:
 		hardForks[indexPascalHF].HeightOrTimestamp = &ForkSpec_Height{Height: 48576786}
 		hardForks[indexLorentzHF].HeightOrTimestamp = &ForkSpec_Height{Height: 49791365}
-		// https://github.com/bnb-chain/bsc/blob/256d8811f441c29cb0812943dc660ac13192829c/params/config.go#L239
+		// https: //github.com/bnb-chain/bsc/blob/256d8811f441c29cb0812943dc660ac13192829c/params/config.go#L239
 		hardForks[indexLorentzHF].HeightOrTimestamp = &ForkSpec_Timestamp{Timestamp: 1748243100 * 1000}
 		return hardForks
 	case Mainnet:
