@@ -142,7 +142,7 @@ func (m *misbehaviorModule) getLocalHeader(ctx context.Context, chainID uint64, 
 		targetHeight = latest.GetRevisionHeight() - 1
 	}
 	config := module.ProverConfig{}
-	prover := module.NewProver(module.NewChain(chain), &config).(*module.Prover)
+	prover := module.NewProver(module.NewChain(chain, chain.Config().IBCAddress(), chain.Client()), &config).(*module.Prover)
 
 	// Get Finalized header
 	latestHeight := types.NewHeight(0, targetHeight)
