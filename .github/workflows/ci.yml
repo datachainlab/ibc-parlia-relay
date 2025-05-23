@@ -55,7 +55,7 @@ jobs:
           make chain
           make contracts
           # epoch is 200, 400, 500, 1000
-          # must wait for 400 block (1.5sec * 400)
+          # Since we want the previous epoch to be before HF we wait for 800 block (0.75sec * 800)
           sleep 600
           make relayer
           make test

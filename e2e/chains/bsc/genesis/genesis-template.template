@@ -36,6 +36,7 @@
     "pascalTime": 0,
     "pragueTime": 0,
     "lorentzTime": 0,
+    "maxwellTime": 0,
     "blobSchedule": {
       "cancun": {
         "target": 3,
