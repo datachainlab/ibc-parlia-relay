@@ -4,7 +4,7 @@ RUN apk add --d --no-cache npm nodejs bash alpine-sdk expect jq curl bash python
 RUN curl -sSL https://install.python-poetry.org | python3 -
 
 RUN git clone https://github.com/bnb-chain/bsc-genesis-contract -b develop /root/genesis \
-    && cd /root/genesis && git checkout 44ebc6c17a00bd24db3240141a78091528dcebbb && npm ci
+    && cd /root/genesis && git checkout bf3ac733f8aaf93ed88ca0ad2dcddd051166e4e1 && npm ci
 
 RUN cd /root/genesis && /root/.local/bin/poetry install
 RUN cd /root/genesis && forge install --no-git --no-commit foundry-rs/forge-std@v1.7.3

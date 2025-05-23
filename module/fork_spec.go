@@ -18,7 +18,7 @@ const (
 	Mainnet  Network = "mainnet"
 )
 
-var localLatestHF isForkSpec_HeightOrTimestamp = &ForkSpec_Height{Height: 1}
+var localLatestHF isForkSpec_HeightOrTimestamp = &ForkSpec_Height{Height: 2}
 
 func init() {
 	localLatestHFTimestamp := os.Getenv("LOCAL_LATEST_HF_TIMESTAMP")
@@ -34,6 +34,7 @@ func init() {
 const (
 	indexPascalHF  = 0
 	indexLorentzHF = 1
+	indexMaxwellHF = 2
 )
 
 func getForkSpecParams() []*ForkSpec {
@@ -54,6 +55,14 @@ func getForkSpecParams() []*ForkSpec {
 			GasLimitBoundDivider:      1024,
 			EnableHeaderMsec:          true,
 		},
+		// Maxwell HF
+		{
+			AdditionalHeaderItemCount: 1,
+			EpochLength:               1000,
+			MaxTurnLength:             64,
+			GasLimitBoundDivider:      1024,
+			EnableHeaderMsec:          true,
+		},
 	}
 }
 
@@ -62,17 +71,21 @@ func GetForkParameters(network Network) []*ForkSpec {
 	switch network {
 	case Localnet:
 		hardForks[indexPascalHF].HeightOrTimestamp = &ForkSpec_Height{Height: 0}
-		hardForks[indexLorentzHF].HeightOrTimestamp = localLatestHF
+		hardForks[indexLorentzHF].HeightOrTimestamp = &ForkSpec_Height{Height: 1}
+		hardForks[indexMaxwellHF].HeightOrTimestamp = localLatestHF
 		return hardForks
 	case Testnet:
 		hardForks[indexPascalHF].HeightOrTimestamp = &ForkSpec_Height{Height: 48576786}
 		hardForks[indexLorentzHF].HeightOrTimestamp = &ForkSpec_Height{Height: 49791365}
+		// https://github.com/bnb-chain/bsc/blob/256d8811f441c29cb0812943dc660ac13192829c/params/config.go#L239
+		hardForks[indexMaxwellHF].HeightOrTimestamp = &ForkSpec_Timestamp{Timestamp: 1748243100 * 1000}
 		return hardForks
 	case Mainnet:
 		hardForks[indexPascalHF].HeightOrTimestamp = &ForkSpec_Height{Height: 47618307}
 		// https://bscscan.com/block/48773576
 		// https://github.com/bnb-chain/bsc/releases/tag/v1.5.10
 		hardForks[indexLorentzHF].HeightOrTimestamp = &ForkSpec_Height{Height: 48773576}
+		//TODO Maxwell
 		return hardForks
 	}
 	return nil
