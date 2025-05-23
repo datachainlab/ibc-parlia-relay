@@ -56,6 +56,8 @@ function generate_genesis() {
   echo "start generate process"
   /root/.local/bin/poetry run python3 scripts/generate.py dev
 
+  echo "move generate-dev.json to genesis.json"
+  mv genesis-dev.json genesis.json
 }
 
 function init_genesis_data() {
