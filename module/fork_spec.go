@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/cockroachdb/errors"
 	"github.com/hyperledger-labs/yui-relayer/log"
-	"math"
 	"os"
 	"slices"
 	"strconv"
@@ -78,8 +77,7 @@ func GetForkParameters(network Network) []*ForkSpec {
 	case Testnet:
 		hardForks[indexPascalHF].HeightOrTimestamp = &ForkSpec_Height{Height: 48576786}
 		hardForks[indexLorentzHF].HeightOrTimestamp = &ForkSpec_Height{Height: 49791365}
-		//TODO fix height
-		hardForks[indexMaxwellHF].HeightOrTimestamp = &ForkSpec_Height{Height: math.MaxUint64}
+		hardForks[indexMaxwellHF].HeightOrTimestamp = &ForkSpec_Height{Height: 52552978}
 		return hardForks
 	case Mainnet:
 		hardForks[indexPascalHF].HeightOrTimestamp = &ForkSpec_Height{Height: 47618307}
