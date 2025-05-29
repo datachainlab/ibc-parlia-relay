@@ -3,8 +3,10 @@ package module
 import (
 	"context"
 	"fmt"
+	"github.com/cockroachdb/errors"
 	"github.com/hyperledger-labs/yui-relayer/log"
 	"os"
+	"slices"
 	"strconv"
 )
 
@@ -16,75 +18,74 @@ const (
 	Mainnet  Network = "mainnet"
 )
 
-var localLorentzHF isForkSpec_HeightOrTimestamp = &ForkSpec_Height{Height: 1}
+var localLatestHF isForkSpec_HeightOrTimestamp = &ForkSpec_Height{Height: 2}
 
 func init() {
-	localLorentzHFTimestamp := os.Getenv("LOCAL_LORENTZ_HF_TIMESTAMP")
-	if localLorentzHFTimestamp != "" {
-		result, err := strconv.Atoi(localLorentzHFTimestamp)
+	localLatestHFTimestamp := os.Getenv("LOCAL_LATEST_HF_TIMESTAMP")
+	if localLatestHFTimestamp != "" {
+		result, err := strconv.Atoi(localLatestHFTimestamp)
 		if err != nil {
 			panic(err)
 		}
-		localLorentzHF = &ForkSpec_Timestamp{Timestamp: uint64(result)}
+		localLatestHF = &ForkSpec_Timestamp{Timestamp: uint64(result)}
+	}
+}
+
+const (
+	indexPascalHF  = 0
+	indexLorentzHF = 1
+	indexMaxwellHF = 2
+)
+
+func getForkSpecParams() []*ForkSpec {
+	return []*ForkSpec{
+		// Pascal HF
+		{
+			AdditionalHeaderItemCount: 1,
+			EpochLength:               200,
+			MaxTurnLength:             9,
+			GasLimitBoundDivider:      256,
+			EnableHeaderMsec:          false,
+		},
+		// Lorentz HF
+		{
+			AdditionalHeaderItemCount: 1,
+			EpochLength:               500,
+			MaxTurnLength:             64,
+			GasLimitBoundDivider:      1024,
+			EnableHeaderMsec:          true,
+		},
+		// Maxwell HF
+		{
+			AdditionalHeaderItemCount: 1,
+			EpochLength:               1000,
+			MaxTurnLength:             64,
+			GasLimitBoundDivider:      1024,
+			EnableHeaderMsec:          true,
+		},
 	}
 }
 
 func GetForkParameters(network Network) []*ForkSpec {
+	hardForks := getForkSpecParams()
 	switch network {
 	case Localnet:
-		return []*ForkSpec{
-			// Pascal HF
-			{
-				// Must Set Milli timestamp
-				HeightOrTimestamp:         &ForkSpec_Height{Height: 0},
-				AdditionalHeaderItemCount: 1,
-				EpochLength:               200,
-				MaxTurnLength:             9,
-			},
-			// Lorentz HF
-			{
-				// Must Set Milli timestamp
-				HeightOrTimestamp:         localLorentzHF,
-				AdditionalHeaderItemCount: 1,
-				EpochLength:               500,
-				MaxTurnLength:             64,
-			},
-		}
+		hardForks[indexPascalHF].HeightOrTimestamp = &ForkSpec_Height{Height: 0}
+		hardForks[indexLorentzHF].HeightOrTimestamp = &ForkSpec_Height{Height: 1}
+		hardForks[indexMaxwellHF].HeightOrTimestamp = localLatestHF
+		return hardForks
 	case Testnet:
-		return []*ForkSpec{
-			{
-				// https://forum.bnbchain.org/t/bnb-chain-upgrades-testnet/934
-				HeightOrTimestamp:         &ForkSpec_Height{Height: 48576786},
-				AdditionalHeaderItemCount: 1,
-				EpochLength:               200,
-				MaxTurnLength:             9,
-			},
-			{
-				HeightOrTimestamp:         &ForkSpec_Height{Height: 49791365},
-				AdditionalHeaderItemCount: 1,
-				EpochLength:               500,
-				MaxTurnLength:             64,
-			},
-		}
+		hardForks[indexPascalHF].HeightOrTimestamp = &ForkSpec_Height{Height: 48576786}
+		hardForks[indexLorentzHF].HeightOrTimestamp = &ForkSpec_Height{Height: 49791365}
+		hardForks[indexMaxwellHF].HeightOrTimestamp = &ForkSpec_Height{Height: 52552978}
+		return hardForks
 	case Mainnet:
-		return []*ForkSpec{
-			{
-				// https://bscscan.com/block/47618307
-				// https://github.com/bnb-chain/bsc/releases/tag/v1.5.7
-				HeightOrTimestamp:         &ForkSpec_Height{Height: 47618307},
-				AdditionalHeaderItemCount: 1,
-				EpochLength:               200,
-				MaxTurnLength:             9,
-			},
-			// https://bscscan.com/block/48773576
-			// https://github.com/bnb-chain/bsc/releases/tag/v1.5.10
-			{
-				HeightOrTimestamp:         &ForkSpec_Height{Height: 48773576},
-				AdditionalHeaderItemCount: 1,
-				EpochLength:               500,
-				MaxTurnLength:             64,
-			},
-		}
+		hardForks[indexPascalHF].HeightOrTimestamp = &ForkSpec_Height{Height: 47618307}
+		// https://bscscan.com/block/48773576
+		// https://github.com/bnb-chain/bsc/releases/tag/v1.5.10
+		hardForks[indexLorentzHF].HeightOrTimestamp = &ForkSpec_Height{Height: 48773576}
+		//TODO Maxwell
+		return hardForks
 	}
 	return nil
 }
@@ -103,33 +104,45 @@ type BoundaryHeight struct {
 	CurrentForkSpec ForkSpec
 }
 
-func (b BoundaryHeight) GetBoundaryEpochs(prevForkSpec ForkSpec) (*BoundaryEpochs, error) {
+func (b BoundaryHeight) GetBoundaryEpochs(prevForkSpecs []*ForkSpec) (*BoundaryEpochs, error) {
+	if len(prevForkSpecs) == 0 {
+		return nil, errors.New("EmptyPreviousForkSpecs")
+	}
+	prevForkSpec := prevForkSpecs[0]
 	boundaryHeight := b.Height
 	prevLast := boundaryHeight - (boundaryHeight % prevForkSpec.EpochLength)
-	index := uint64(0)
 	currentFirst := uint64(0)
-	for {
-		candidate := boundaryHeight + index
-		if candidate%b.CurrentForkSpec.EpochLength == 0 {
-			currentFirst = candidate
-			break
-		}
-		index++
+	if boundaryHeight%b.CurrentForkSpec.EpochLength == 0 {
+		currentFirst = boundaryHeight
+	} else {
+		currentFirst = boundaryHeight + (b.CurrentForkSpec.EpochLength - boundaryHeight%b.CurrentForkSpec.EpochLength)
 	}
+
 	intermediates := make([]uint64, 0)
-	// starts 0, 200, 400...epoch_length
+
 	if prevLast == 0 {
-		const defaultEpochLength = 200
-		for mid := prevLast + defaultEpochLength; mid < prevForkSpec.EpochLength; mid += defaultEpochLength {
-			intermediates = append(intermediates, mid)
+		epochLengthList := uniqMap(prevForkSpecs, func(item *ForkSpec, index int) uint64 {
+			return item.EpochLength
+		})
+		slices.Reverse(epochLengthList)
+		for i := 0; i < len(epochLengthList)-1; i++ {
+			start, end := epochLengthList[i], epochLengthList[i+1]
+			value := start
+			for value < end {
+				intermediates = append(intermediates, value)
+				value += start
+			}
 		}
 	}
-	for mid := prevLast + prevForkSpec.EpochLength; mid < currentFirst; mid += prevForkSpec.EpochLength {
+
+	mid := prevLast + prevForkSpec.EpochLength
+	for mid < currentFirst {
 		intermediates = append(intermediates, mid)
+		mid += prevForkSpec.EpochLength
 	}
 
 	return &BoundaryEpochs{
-		PreviousForkSpec: prevForkSpec,
+		PreviousForkSpec: *prevForkSpec,
 		CurrentForkSpec:  b.CurrentForkSpec,
 		BoundaryHeight:   boundaryHeight,
 		PrevLast:         prevLast,
@@ -180,27 +193,27 @@ func (be BoundaryEpochs) PreviousEpochBlockNumber(currentEpochBlockNumber uint64
 	return currentEpochBlockNumber - be.CurrentForkSpec.EpochLength
 }
 
-func FindTargetForkSpec(forkSpecs []*ForkSpec, height uint64, timestamp uint64) (*ForkSpec, *ForkSpec, error) {
+func FindTargetForkSpec(forkSpecs []*ForkSpec, height uint64, timestamp uint64) (*ForkSpec, []*ForkSpec, error) {
 	reversed := make([]*ForkSpec, len(forkSpecs))
 	for i, spec := range forkSpecs {
 		reversed[len(forkSpecs)-i-1] = spec
 	}
 
-	getPrev := func(current *ForkSpec, i int) *ForkSpec {
+	getPreviousForkSpecs := func(current *ForkSpec, i int) []*ForkSpec {
 		if i == len(reversed)-1 {
-			return current
+			return []*ForkSpec{current}
 		}
-		return reversed[i+1]
+		return reversed[i+1:]
 	}
 
 	for i, spec := range reversed {
 		if x, ok := spec.GetHeightOrTimestamp().(*ForkSpec_Height); ok {
 			if x.Height <= height {
-				return spec, getPrev(spec, i), nil
+				return spec, getPreviousForkSpecs(spec, i), nil
 			}
 		} else {
 			if spec.GetTimestamp() <= timestamp {
-				return spec, getPrev(spec, i), nil
+				return spec, getPreviousForkSpecs(spec, i), nil
 			}
 		}
 	}

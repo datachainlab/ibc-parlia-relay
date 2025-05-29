@@ -15,3 +15,17 @@ func minUint64(x uint64, y uint64) uint64 {
 	}
 	return x
 }
+
+func uniqMap[T any, R comparable](collection []T, iteratee func(item T, index int) R) []R {
+	result := make([]R, 0, len(collection))
+	seen := make(map[R]struct{}, len(collection))
+
+	for i := range collection {
+		r := iteratee(collection[i], i)
+		if _, ok := seen[r]; !ok {
+			result = append(result, r)
+			seen[r] = struct{}{}
+		}
+	}
+	return result
+}

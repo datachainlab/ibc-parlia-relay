@@ -4,7 +4,8 @@
 
 ## Supported Versions
 - [yui-relayer v0.5.11](https://github.com/hyperledger-labs/yui-relayer/releases/tag/v0.5.11)
-- [ethereum-ibc-relay-chain v0.3.16](https://github.com/datachainlab/ethereum-ibc-relay-chain/releases/tag/v0.3.6)
+- [ethereum-ibc-relay-chain v0.3.17](https://github.com/datachainlab/ethereum-ibc-relay-chain/releases/tag/v0.3.7)
+- [parlia-elc v0.3.10](https://github.com/datachainlab/parlia-elc/releases/tag/v0.3.10)
 
 ## Setup Relayer
 
