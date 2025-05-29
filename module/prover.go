@@ -3,8 +3,9 @@ package module
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
 	"time"
+
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/hyperledger-labs/yui-relayer/log"
@@ -98,7 +99,7 @@ func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(ctx context.Context, la
 }
 
 // SetupHeadersForUpdate creates a new header based on a given header
-func (pr *Prover) SetupHeadersForUpdate(ctx context.Context, counterparty core.FinalityAwareChain, latestFinalizedHeader core.Header) ([]core.Header, error) {
+func (pr *Prover) SetupHeadersForUpdate(ctx context.Context, counterparty core.FinalityAwareChain, latestFinalizedHeader core.Header) (<-chan *core.HeaderOrError, error) {
 	header := latestFinalizedHeader.(*Header)
 	// LCP doesn't need height / EVM needs latest height
 	latestHeightOnDstChain, err := counterparty.LatestHeight(ctx)
@@ -113,7 +114,13 @@ func (pr *Prover) SetupHeadersForUpdate(ctx context.Context, counterparty core.F
 	if err = pr.chain.Codec().UnpackAny(csRes.ClientState, &cs); err != nil {
 		return nil, err
 	}
-	return pr.SetupHeadersForUpdateByLatestHeight(ctx, cs.GetLatestHeight(), header)
+	if headers, err := pr.SetupHeadersForUpdateByLatestHeight(ctx, cs.GetLatestHeight(), header); err != nil {
+		return nil, err
+	} else if headers == nil {
+		return core.MakeHeaderStream(), nil
+	} else {
+		return core.MakeHeaderStream(headers...), nil
+	}
 }
 
 func (pr *Prover) SetupHeadersForUpdateByLatestHeight(ctx context.Context, clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
