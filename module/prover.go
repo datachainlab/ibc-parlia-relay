@@ -99,7 +99,7 @@ func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(ctx context.Context, la
 }
 
 // SetupHeadersForUpdate creates a new header based on a given header
-func (pr *Prover) SetupHeadersForUpdate(ctx context.Context, counterparty core.FinalityAwareChain, latestFinalizedHeader core.Header) (<-chan core.Header, error) {
+func (pr *Prover) SetupHeadersForUpdate(ctx context.Context, counterparty core.FinalityAwareChain, latestFinalizedHeader core.Header) (<-chan *core.HeaderOrError, error) {
 	header := latestFinalizedHeader.(*Header)
 	// LCP doesn't need height / EVM needs latest height
 	latestHeightOnDstChain, err := counterparty.LatestHeight(ctx)
@@ -117,9 +117,9 @@ func (pr *Prover) SetupHeadersForUpdate(ctx context.Context, counterparty core.F
 	if headers, err := pr.SetupHeadersForUpdateByLatestHeight(ctx, cs.GetLatestHeight(), header); err != nil {
 		return nil, err
 	} else if headers == nil {
-		return core.MakeHeadersChan(), nil
+		return core.MakeHeaderStream(), nil
 	} else {
-		return core.MakeHeadersChan(headers...), nil
+		return core.MakeHeaderStream(headers...), nil
 	}
 }
 
