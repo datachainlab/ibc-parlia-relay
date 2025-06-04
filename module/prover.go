@@ -83,7 +83,7 @@ func (pr *Prover) GetLatestFinalizedHeader(ctx context.Context) (out core.Header
 	if err != nil {
 		return nil, err
 	}
-	log.GetLogger().Debug("GetLatestFinalizedHeader", "finalized", header.GetHeight(), "latest", latestHeight)
+	log.GetLogger().DebugContext(ctx, "GetLatestFinalizedHeader", "finalized", header.GetHeight(), "latest", latestHeight)
 	return header, err
 }
 
@@ -207,7 +207,7 @@ func (pr *Prover) CheckRefreshRequired(ctx context.Context, counterparty core.Ch
 	}
 	threshold := durationMulByFraction(pr.config.GetTrustingPeriod(), pr.config.GetRefreshThresholdRate())
 	if elapsedTime > threshold {
-		log.GetLogger().Debug("needs refresh", "elapsedTime", elapsedTime, "threshold", threshold)
+		log.GetLogger().DebugContext(ctx, "needs refresh", "elapsedTime", elapsedTime, "threshold", threshold)
 		return true, nil
 	}
 
@@ -218,7 +218,7 @@ func (pr *Prover) CheckRefreshRequired(ctx context.Context, counterparty core.Ch
 	}
 	blockDiff := selfQueryHeight.GetRevisionHeight() - cs.GetLatestHeight().GetRevisionHeight()
 	if blockDiff > blockDiffThreshold {
-		log.GetLogger().Debug("needs refresh due to block diff",
+		log.GetLogger().DebugContext(ctx, "needs refresh due to block diff",
 			"chain", cpQueryHeight.GetRevisionHeight(),
 			"cs", cs.GetLatestHeight().GetRevisionHeight(),
 			"threshold", blockDiffThreshold)

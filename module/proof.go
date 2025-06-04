@@ -188,19 +188,19 @@ func withValidators(ctx context.Context, headerFn getHeaderFn, height uint64, et
 	if err != nil {
 		return nil, err
 	}
-	log.GetLogger().Debug("target fork spec", "currentForkSpec", currentForkSpec, "prevForkSpec", prevForkSpec)
+	log.GetLogger().DebugContext(ctx, "target fork spec", "currentForkSpec", currentForkSpec, "prevForkSpec", prevForkSpec)
 
-	boundaryHeight, err := GetBoundaryHeight(headerFn, height, *currentForkSpec)
+	boundaryHeight, err := GetBoundaryHeight(ctx, headerFn, height, *currentForkSpec)
 	if err != nil {
 		return nil, err
 	}
-	log.GetLogger().Debug("get boundary height by ", "height", height, "boundaryHeight", boundaryHeight)
+	log.GetLogger().DebugContext(ctx, "get boundary height by ", "height", height, "boundaryHeight", boundaryHeight)
 
 	boundaryEpochs, err := boundaryHeight.GetBoundaryEpochs(prevForkSpec)
 	if err != nil {
 		return nil, err
 	}
-	log.GetLogger().Debug("boundary epoch", "prevLast", boundaryEpochs.PrevLast, "currentFirst", boundaryEpochs.CurrentFirst, "intermediates", boundaryEpochs.Intermediates)
+	log.GetLogger().DebugContext(ctx, "boundary epoch", "prevLast", boundaryEpochs.PrevLast, "currentFirst", boundaryEpochs.CurrentFirst, "intermediates", boundaryEpochs.Intermediates)
 
 	// Get validator set for verify headers
 	currentEpoch := boundaryEpochs.CurrentEpochBlockNumber(height)

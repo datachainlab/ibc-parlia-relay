@@ -58,6 +58,6 @@ func createProver(ctx context.Context) (*module.Prover, module.Chain, error) {
 		MaxClockDrift:  1 * time.Millisecond,
 		Network:        string(module.Localnet),
 	}
-	ec := module.NewChain(chain)
+	ec := module.NewChain(chain, chain.Config().IBCAddress(), chain.Client())
 	return module.NewProver(ec, &config).(*module.Prover), ec, nil
 }

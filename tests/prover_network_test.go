@@ -37,7 +37,7 @@ func TestProverNetworkTestSuite(t *testing.T) {
 }
 
 func (ts *ProverNetworkTestSuite) SetupTest() {
-	err := log.InitLogger("DEBUG", "text", "stdout")
+	err := log.InitLogger("DEBUG", "text", "stdout", false)
 	ts.Require().NoError(err)
 
 	chain := ts.makeChain("http://localhost:8545", "ibc1")
@@ -95,7 +95,7 @@ func (ts *ProverNetworkTestSuite) TestSuccessCreateInitialLightClientState() {
 	forkParams := module.GetForkParameters(module.Localnet)
 	currentForkSpec, prevForkSpec, err := module.FindTargetForkSpec(forkParams, header.Number.Uint64(), module.MilliTimestamp(header))
 	ts.Require().NoError(err)
-	bs, err := module.GetBoundaryHeight(ts.chain.Header, header.Number.Uint64(), *currentForkSpec)
+	bs, err := module.GetBoundaryHeight(ctx, ts.chain.Header, header.Number.Uint64(), *currentForkSpec)
 	ts.Require().NoError(err)
 	be, err := bs.GetBoundaryEpochs(prevForkSpec)
 	ts.Require().NoError(err)
@@ -142,7 +142,7 @@ func (ts *ProverNetworkTestSuite) makeChain(rpcAddr string, ibcChainID string) m
 		Order:        "UNORDERED",
 	}, nil, nil)
 	ts.Require().NoError(err)
-	return module.NewChain(chain)
+	return module.NewChain(chain, chain.Config().IBCAddress(), chain.Client())
 }
 
 func (ts *ProverNetworkTestSuite) makeProver(chain module.Chain) *module.Prover {
