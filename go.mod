@@ -2,7 +2,7 @@ module github.com/datachainlab/ibc-parlia-relay
 
 go 1.22.0
 
-replace github.com/hyperledger-labs/yui-relayer => github.com/hyperledger-labs/yui-relayer v0.5.16-0.20250619021150-982b875f14c0
+replace github.com/hyperledger-labs/yui-relayer => github.com/hyperledger-labs/yui-relayer v0.5.16-0.20250619154329-5abb762c049c
 
 require (
 	cosmossdk.io/store v1.0.2
