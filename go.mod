@@ -2,8 +2,11 @@ module github.com/datachainlab/ibc-parlia-relay
 
 go 1.22.0
 
+replace github.com/hyperledger-labs/yui-relayer => github.com/hyperledger-labs/yui-relayer v0.5.16-0.20250619154329-5abb762c049c
+
 require (
 	cosmossdk.io/store v1.0.2
+	github.com/cockroachdb/errors v1.11.3
 	github.com/cosmos/cosmos-sdk v0.50.5
 	github.com/cosmos/gogoproto v1.4.11
 	github.com/cosmos/ibc-go/v8 v8.2.1
@@ -55,7 +58,6 @@ require (
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
-	github.com/cockroachdb/errors v1.11.3 // indirect
 	github.com/cockroachdb/fifo v0.0.0-20240606204812-0bbfbd93a7ce // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
 	github.com/cockroachdb/pebble v1.1.2 // indirect
