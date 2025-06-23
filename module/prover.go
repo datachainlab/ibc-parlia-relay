@@ -116,8 +116,6 @@ func (pr *Prover) SetupHeadersForUpdate(ctx context.Context, counterparty core.F
 	}
 	if headers, err := pr.SetupHeadersForUpdateByLatestHeight(ctx, cs.GetLatestHeight(), header); err != nil {
 		return nil, err
-	} else if headers == nil {
-		return core.MakeHeaderStream(), nil
 	} else {
 		return core.MakeHeaderStream(headers...), nil
 	}
