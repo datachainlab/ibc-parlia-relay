@@ -4,6 +4,7 @@ go 1.22.0
 
 require (
 	cosmossdk.io/store v1.0.2
+	github.com/cockroachdb/errors v1.11.3
 	github.com/cosmos/cosmos-sdk v0.50.5
 	github.com/cosmos/gogoproto v1.4.11
 	github.com/cosmos/ibc-go/v8 v8.2.1
@@ -11,7 +12,7 @@ require (
 	github.com/datachainlab/ibc-hd-signer v0.1.2
 	github.com/ethereum/go-ethereum v1.15.0
 	github.com/holiman/uint256 v1.3.2
-	github.com/hyperledger-labs/yui-relayer v0.5.15
+	github.com/hyperledger-labs/yui-relayer v0.5.16
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/otel v1.35.0
@@ -55,7 +56,6 @@ require (
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chzyer/readline v1.5.1 // indirect
-	github.com/cockroachdb/errors v1.11.3 // indirect
 	github.com/cockroachdb/fifo v0.0.0-20240606204812-0bbfbd93a7ce // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
 	github.com/cockroachdb/pebble v1.1.2 // indirect

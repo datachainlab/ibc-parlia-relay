@@ -70,8 +70,9 @@ func (ts *ProverNetworkTestSuite) TestSetupHeadersForUpdate() {
 	setupDone, err := ts.prover.SetupHeadersForUpdate(context.Background(), dst, header)
 	ts.Require().NoError(err)
 	ts.Require().True(len(setupDone) > 0)
-	for _, h := range setupDone {
-		ts.Require().Len(h.(*module.Header).Headers, 3)
+	for h := range setupDone {
+		ts.Require().NoError(h.Error)
+		ts.Require().Len(h.Header.(*module.Header).Headers, 3)
 	}
 }
 
