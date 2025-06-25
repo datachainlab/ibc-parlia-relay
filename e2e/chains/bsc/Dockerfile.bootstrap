@@ -1,13 +1,29 @@
-FROM ghcr.io/foundry-rs/foundry:v0.3.0
+FROM ghcr.io/foundry-rs/foundry:v1.2.3
 
-RUN apk add --d --no-cache npm nodejs bash alpine-sdk expect jq curl bash python3-dev py3-pip
+USER root
+
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --no-install-recommends -y \
+  curl \
+  expect \
+  jq \
+  python3 \
+  && rm -rf /var/cache/apt/*
+
+# Manually install poetry because the apt version (1.1.12) is too old
+# and causes "The Poetry configuration is invalid" errors
 RUN curl -sSL https://install.python-poetry.org | python3 -
+
+# Manually install Node.js because the apt version (v12.22.9) is too old
+# and causes "Error: Cannot find module 'node:crypto'" errors
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x nodesource_setup.sh | bash \
+  && apt-get install --no-install-recommends -y nodejs \
+  && rm -rf /var/cache/apt/*
 
 RUN git clone https://github.com/bnb-chain/bsc-genesis-contract -b develop /root/genesis \
     && cd /root/genesis && git checkout bf3ac733f8aaf93ed88ca0ad2dcddd051166e4e1 && npm ci
 
 RUN cd /root/genesis && /root/.local/bin/poetry install
-RUN cd /root/genesis && forge install --no-git --no-commit foundry-rs/forge-std@v1.7.3
+RUN cd /root/genesis && forge install --no-git foundry-rs/forge-std@v1.7.3
 
 # override resources
 COPY genesis/ /root/genesis/

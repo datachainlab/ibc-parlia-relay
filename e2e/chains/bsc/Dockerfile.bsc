@@ -1,9 +1,11 @@
-FROM golang:1.23-alpine
+FROM golang:1.23
 
 ARG GIT_SOURCE
 ARG GIT_CHECKOUT_BRANCH
 
-RUN apk add --no-cache make cmake gcc musl-dev linux-headers git bash build-base libc-dev jq
+RUN apt-get update && apt-get install --no-install-recommends -y \
+    netcat-openbsd \
+    && rm -rf /var/cache/apt/*
 
 ENV CGO_CFLAGS="-O -D__BLST_PORTABLE__"
 ENV CGO_CFLAGS_ALLOW="-O -D__BLST_PORTABLE__"
