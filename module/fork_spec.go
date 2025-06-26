@@ -3,11 +3,15 @@ package module
 import (
 	"context"
 	"fmt"
-	"github.com/cockroachdb/errors"
-	"github.com/hyperledger-labs/yui-relayer/log"
+	math "math"
+	"math/big"
 	"os"
 	"slices"
 	"strconv"
+
+	"github.com/cockroachdb/errors"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/hyperledger-labs/yui-relayer/log"
 )
 
 type Network string
@@ -224,6 +228,7 @@ func FindTargetForkSpec(forkSpecs []*ForkSpec, height uint64, timestamp uint64) 
 var boundaryHeightCache = make(map[uint64]uint64)
 
 func GetBoundaryHeight(ctx context.Context, headerFn getHeaderFn, currentHeight uint64, currentForkSpec ForkSpec) (*BoundaryHeight, error) {
+	var err error
 	logger := log.GetLogger()
 	boundaryHeight := uint64(0)
 	if condition, ok := currentForkSpec.GetHeightOrTimestamp().(*ForkSpec_Height); ok {
@@ -234,27 +239,139 @@ func GetBoundaryHeight(ctx context.Context, headerFn getHeaderFn, currentHeight 
 			boundaryHeight = v
 		} else {
 			logger.DebugContext(ctx, "seek fork height", "currentHeight", currentHeight, "ts", ts)
-			for i := int64(currentHeight); i >= 0; i-- {
-				h, err := headerFn(ctx, uint64(i))
-				if err != nil {
-					return nil, err
-				}
-				if MilliTimestamp(h) == ts {
-					boundaryHeight = h.Number.Uint64()
-					logger.DebugContext(ctx, "seek fork height found", "currentHeight", currentHeight, "ts", ts, "boundaryHeight", boundaryHeight)
-					boundaryHeightCache[ts] = boundaryHeight
-					break
-				} else if MilliTimestamp(h) < ts {
-					boundaryHeight = h.Number.Uint64() + 1
-					logger.DebugContext(ctx, "seek fork height found", "currentHeight", currentHeight, "ts", ts, "boundaryHeight", boundaryHeight)
-					boundaryHeightCache[ts] = boundaryHeight
-					break
-				}
+			boundaryHeight, err = searchBoundaryHeight(ctx, currentHeight, ts, headerFn)
+			if err != nil {
+				return nil, err
 			}
+			boundaryHeightCache[ts] = boundaryHeight
 		}
 	}
 	return &BoundaryHeight{
 		Height:          boundaryHeight,
 		CurrentForkSpec: currentForkSpec,
 	}, nil
+}
+
+func searchBoundaryHeight(ctx context.Context, currentHeight uint64, targetTs uint64, headerFn getHeaderFn) (uint64, error) {
+	// There are potentially many blocks between the boundary and the current
+	// blocks. Also, finding the timestamp for a particular block is expensive
+	// as it requires an RPC call to a node.
+	//
+	// Thus, this implementation aims to prune a large number of blocks from the
+	// search space by estimating the distance between the boundary and the
+	// current block (based on the average rate of block production) and jumping
+	// directly to a candidate block at that distance. In case of a miss, all
+	// blocks on one side of the candidate can be discarded, and a new attempt
+	// can be made by re-estimating the new distance and jumping to a candidate
+	// on the other side.
+	//
+	// Theoretical worst-case performance is O(N), but since the rate of block
+	// production can be predicted with high accuracy, this implementation is
+	// expected to be faster than binary search in practice.
+	var (
+		position       uint64        = currentHeight     // candidate block number currently under consideration
+		low            uint64        = 0                 // inclusive lower bound of the current search range
+		high           uint64        = currentHeight + 1 // exclusive upper bound of the current seach range
+		previousHeader *types.Header                     // header of the block seen in the previous iteration
+	)
+
+	// Loop invariant:
+	//
+	//     0 <= low <= position < high <= currentHeight + 1
+	//     &&
+	//     low <= result < high
+	//
+	// Bound function (decreases in each iteration, and is always >= 0):
+	//
+	//      high - low
+	for low < high {
+		currentHeader, err := headerFn(ctx, uint64(position))
+		if err != nil {
+			return 0, err
+		}
+
+		currentTs := MilliTimestamp(currentHeader)
+		if currentTs == targetTs {
+			return currentHeader.Number.Uint64(), nil
+		}
+
+		distance := estimateDistance(previousHeader, currentHeader, targetTs)
+
+		if currentTs > targetTs {
+			// Jump to a lower block.
+			high = position
+
+			// Since these are unsigned, position-distance might underflow.
+			if low+distance > position {
+				position = low
+			} else {
+				position = position - distance
+			}
+		} else {
+			// Jump to a higher block.
+			low = position + 1
+
+			position = position + distance
+
+			if position >= high {
+				position = high - 1
+			}
+		}
+
+		previousHeader = currentHeader
+	}
+
+	// If no block with an exact timestamp match was found, then we want the
+	// earliest block that's _after_ the target timestamp.
+	return low, nil
+}
+
+// estimateDistance returns the estimated number of blocks between the block indicated by currentHeader
+// and the boundary block nearest to targetTs. It assumes that previousHeader either is nil, or refers to
+// a different block than currentHeader.
+func estimateDistance(previousHeader, currentHeader *types.Header, targetTs uint64) uint64 {
+	if previousHeader == nil {
+		return 1
+	}
+
+	var (
+		timeDiffPrevCur   uint64 // milliseconds between the previous and current blocks
+		timeDiffTargetCur uint64 // milliseconds between the current block and target timestamp
+	)
+
+	currentTs := MilliTimestamp(currentHeader)
+	previousTs := MilliTimestamp(previousHeader)
+
+	blockCountPrevCurBig := new(big.Int).Sub(previousHeader.Number, currentHeader.Number)
+	blockCountPrevCurBig = blockCountPrevCurBig.Abs(blockCountPrevCurBig)
+	blockCountPrevCur, _ := blockCountPrevCurBig.Float64()
+
+	if currentTs > previousTs {
+		timeDiffPrevCur = currentTs - previousTs
+	} else {
+		timeDiffPrevCur = previousTs - currentTs
+	}
+
+	if timeDiffPrevCur == 0 {
+		// Found two different blocks with the same timestamp. The distance
+		// should be at least 1 to avoid getting stuck in the current block.
+		return 1
+	}
+
+	if currentTs > targetTs {
+		timeDiffTargetCur = currentTs - targetTs
+	} else {
+		timeDiffTargetCur = targetTs - currentTs
+	}
+
+	avgBlocksPerMs := blockCountPrevCur / float64(timeDiffPrevCur)
+
+	if avgBlocksPerMs <= 0 {
+		// Blocks are being produced so slowly that the current block is still expected
+		// to be the latest block at any future timestamp. Return 1 to avoid getting stuck
+		// in the current block.
+		return 1
+	}
+
+	return uint64(math.Ceil(avgBlocksPerMs * float64(timeDiffTargetCur)))
 }
