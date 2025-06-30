@@ -3,7 +3,7 @@ package module
 import (
 	"context"
 	"fmt"
-	math "math"
+	"math"
 	"math/big"
 	"os"
 	"slices"
