@@ -271,7 +271,7 @@ func searchBoundaryHeight(ctx context.Context, currentHeight uint64, targetTs ui
 	var (
 		position       uint64        = currentHeight     // candidate block number currently under consideration
 		low            uint64        = 0                 // inclusive lower bound of the current search range
-		high           uint64        = currentHeight + 1 // exclusive upper bound of the current seach range
+		high           uint64        = currentHeight + 1 // exclusive upper bound of the current search range
 		previousHeader *types.Header                     // header of the block seen in the previous iteration
 	)
 
