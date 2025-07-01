@@ -366,12 +366,12 @@ func estimateDistance(previousHeader, currentHeader *types.Header, targetTs uint
 
 	avgBlocksPerMs := blockCountPrevCur / float64(timeDiffPrevCur)
 
-	if avgBlocksPerMs <= 0 {
-		// Blocks are being produced so slowly that the current block is still expected
-		// to be the latest block at any future timestamp. Return 1 to avoid getting stuck
-		// in the current block.
-		return 1
+	if avgBlocksPerMs > 0 {
+		return uint64(math.Ceil(avgBlocksPerMs * float64(timeDiffTargetCur)))
 	}
 
-	return uint64(math.Ceil(avgBlocksPerMs * float64(timeDiffTargetCur)))
+	// Blocks are being produced so slowly that the current block is still expected
+	// to be the latest block at any future timestamp. Return 1 to avoid getting stuck
+	// in the current block.
+	return 1
 }
