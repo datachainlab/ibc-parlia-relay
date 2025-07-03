@@ -475,3 +475,52 @@ func (ts *ForkSpecTestSuite) Test_Success_GetBoundaryEpochs_After_Maxwell_2() {
 	ts.Require().Equal(epochs.PreviousEpochBlockNumber(2000), uint64(1000))
 	ts.Require().Equal(epochs.PreviousEpochBlockNumber(3000), uint64(1000))
 }
+
+func (ts *ForkSpecTestSuite) Test_estimateDistance_NoPrevious() {
+	currentHeader := &types.Header{Number: big.NewInt(int64(123)), Time: 123_456}
+	targetTs := 123_456
+	distance := estimateDistance(nil, currentHeader, uint64(targetTs))
+	ts.Require().Equal(uint64(1), distance)
+}
+
+func (ts *ForkSpecTestSuite) Test_estimateDistance_MoveLowAfterLow() {
+	previousHeader := &types.Header{Number: big.NewInt(int64(200)), Time: 60_000}
+	currentHeader := &types.Header{Number: big.NewInt(int64(100)), Time: 20_000}
+	distance := estimateDistance(previousHeader, currentHeader, 10_987_000)
+	ts.Require().Equal(uint64(23), distance)
+}
+
+func (ts *ForkSpecTestSuite) Test_estimateDistance_MoveHighAfterLow() {
+	previousHeader := &types.Header{Number: big.NewInt(int64(200)), Time: 60_000}
+	currentHeader := &types.Header{Number: big.NewInt(int64(100)), Time: 20_000}
+	distance := estimateDistance(previousHeader, currentHeader, 20_720_000)
+	ts.Require().Equal(uint64(2), distance)
+}
+
+func (ts *ForkSpecTestSuite) Test_estimateDistance_MoveLowAfterHigh() {
+	previousHeader := &types.Header{Number: big.NewInt(int64(100)), Time: 85_000}
+	currentHeader := &types.Header{Number: big.NewInt(int64(200)), Time: 90_000}
+	distance := estimateDistance(previousHeader, currentHeader, 97_123_000)
+	ts.Require().Equal(uint64(143), distance)
+}
+
+func (ts *ForkSpecTestSuite) Test_estimateDistance_MoveHighAfterHigh() {
+	previousHeader := &types.Header{Number: big.NewInt(int64(100)), Time: 85_000}
+	currentHeader := &types.Header{Number: big.NewInt(int64(200)), Time: 90_000}
+	distance := estimateDistance(previousHeader, currentHeader, 87_123_000)
+	ts.Require().Equal(uint64(58), distance)
+}
+
+func (ts *ForkSpecTestSuite) Test_estimateDistance_SameTimestamp() {
+	previousHeader := &types.Header{Number: big.NewInt(int64(100)), Time: 99_900}
+	currentHeader := &types.Header{Number: big.NewInt(int64(200)), Time: 99_900}
+	distance := estimateDistance(previousHeader, currentHeader, 50_000)
+	ts.Require().Equal(uint64(1), distance)
+}
+
+func (ts *ForkSpecTestSuite) Test_estimateDistance_MinimumRate() {
+	previousHeader := &types.Header{Number: big.NewInt(17), Time: math.MaxUint64}
+	currentHeader := &types.Header{Number: big.NewInt(16), Time: 0}
+	distance := estimateDistance(previousHeader, currentHeader, 50_000)
+	ts.Require().Equal(uint64(1), distance)
+}
