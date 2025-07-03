@@ -531,7 +531,7 @@ func (ts *ForkSpecTestSuite) Test_estimateDistance_MoveHighAfterHigh() {
 	ts.Require().Equal(uint64(143), distance)
 }
 
-func (ts *ForkSpecTestSuite) Test_estimateDistance_MoveHighAfterHigh() {
+func (ts *ForkSpecTestSuite) Test_estimateDistance_MoveLowAfterHigh() {
 	previousHeader := &types.Header{Number: big.NewInt(int64(100)), Time: 85_000}
 	currentHeader := &types.Header{Number: big.NewInt(int64(200)), Time: 90_000}
 	distance := estimateDistance(previousHeader, currentHeader, 87_123_000)
