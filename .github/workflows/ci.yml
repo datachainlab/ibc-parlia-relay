@@ -54,10 +54,9 @@ jobs:
         run: |
           make chain
           make contracts
-          # epoch is 200, 400, 500, 1000
-          # Since we want the previous epoch to be before HF we wait for 800 block (0.75sec * 800)
-          sleep 600
+          # Wait for Maxwell HF to be enabled (0.75sec * 2000)
+          sleep 1500
           make relayer
           make test
       - name: integration-test
-        run: go test -v ./tests -tags dev -ldflags="-X github.com/datachainlab/ibc-parlia-relay/module/constant.blocksPerEpoch=20"
+        run: go test -v ./tests
