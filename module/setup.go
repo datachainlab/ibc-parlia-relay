@@ -11,7 +11,8 @@ import (
 )
 
 // Maximum header interval to be submitted to LCP
-const skip = 100
+// Supports after Maxwell HF only
+const skip = 1000
 
 type queryVerifiableNeighboringEpochHeaderFn = func(context.Context, uint64, uint64) (core.Header, error)
 

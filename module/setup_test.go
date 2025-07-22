@@ -26,6 +26,15 @@ func (ts *SetupTestSuite) SetupTest() {
 	ts.Require().NoError(err)
 }
 
+var forkSpecsAfterMaxwell = []*ForkSpec{
+	{
+		// Must Set Milli timestamp
+		HeightOrTimestamp:         &ForkSpec_Height{Height: 0},
+		AdditionalHeaderItemCount: 1,
+		EpochLength:               1000,
+	},
+}
+
 func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_neighboringEpoch() {
 
 	verify := func(trustedHeight, nextHeight uint64, expected int) {
@@ -54,7 +63,7 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_neighboringEpoch() {
 			}, nil
 		}
 
-		targets, err := setupHeadersForUpdate(context.Background(), neighborFn, headerFn, clientStateLatestHeight, latestFinalizedHeader, clienttypes.NewHeight(0, 100000), GetForkParameters(Localnet))
+		targets, err := setupHeadersForUpdate(context.Background(), neighborFn, headerFn, clientStateLatestHeight, latestFinalizedHeader, clienttypes.NewHeight(0, 100000), forkSpecsAfterMaxwell)
 		ts.Require().NoError(err)
 		ts.Require().Len(targets, expected)
 		for i, h := range targets {
@@ -114,7 +123,7 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_allEmpty() {
 		}
 		targets, err := setupHeadersForUpdate(context.Background(), neighboringEpochFn, headerFn, clientStateLatestHeight, latestFinalizedHeader,
 			clienttypes.NewHeight(0,
-				1000000), GetForkParameters(Localnet))
+				1000000), forkSpecsAfterMaxwell)
 		ts.Require().NoError(err)
 		ts.Require().Len(targets, expected)
 	}
@@ -151,19 +160,11 @@ func (ts *SetupTestSuite) TestSuccess_setupHeadersForUpdate_withHFBoundary() {
 		}
 
 		hftime := now.Add(time.Duration(trustedHeight+(nextHeight-trustedHeight)/2) * time.Second).Unix()
-		forkSpecs := []*ForkSpec{
-			{
-				// Must Set Milli timestamp
-				HeightOrTimestamp:         &ForkSpec_Height{Height: 0},
-				AdditionalHeaderItemCount: 1,
-				EpochLength:               200,
-			},
-			{
-				HeightOrTimestamp:         &ForkSpec_Timestamp{Timestamp: uint64(hftime * 1000)},
-				AdditionalHeaderItemCount: 1,
-				EpochLength:               500,
-			},
-		}
+		forkSpecs := append(forkSpecsAfterMaxwell, &ForkSpec{
+			HeightOrTimestamp:         &ForkSpec_Timestamp{Timestamp: uint64(hftime * 1000)},
+			AdditionalHeaderItemCount: 1,
+			EpochLength:               2000,
+		})
 		clientStateLatestHeight := clienttypes.NewHeight(0, trustedHeight)
 		target, err := newETHHeader(&types2.Header{
 			Number: big.NewInt(int64(nextHeight)),
@@ -234,51 +235,51 @@ func (ts *SetupTestSuite) Test_makeSubmittingHeights() {
 	rq.Len(makeSubmittingHeights(10, 1, 11, &msec, 9), 1)
 	rq.Len(makeSubmittingHeights(10, 9, 11, &msec, 9), 0)
 	rq.Equal(
-		[]uint64{99, 100, 200, 300, 400, 500},
-		makeSubmittingHeights(501, 0, 100, &msec, 99),
+		[]uint64{skip - 1, skip, 2 * skip, 3 * skip, 4 * skip, 5 * skip},
+		makeSubmittingHeights(5*skip+1, 0, skip, &msec, skip-1),
 	)
 	rq.Equal(
-		[]uint64{100, 200, 300, 400, 500},
-		makeSubmittingHeights(501, 99, 100, &msec, 99),
+		[]uint64{skip, 2 * skip, 3 * skip, 4 * skip, 5 * skip},
+		makeSubmittingHeights(5*skip+1, skip-1, skip, &msec, skip-1),
 	)
 	rq.Equal(
-		[]uint64{100, 200, 300, 400, 500},
-		makeSubmittingHeights(501, 0, 100, &msec, 100),
+		[]uint64{skip, 2 * skip, 3 * skip, 4 * skip, 5 * skip},
+		makeSubmittingHeights(5*skip+1, 0, skip, &msec, skip),
 	)
 	rq.Equal(
-		[]uint64{100, 101, 200, 300, 400, 500},
-		makeSubmittingHeights(501, 0, 100, &msec, 101),
+		[]uint64{skip, skip + 1, 2 * skip, 3 * skip, 4 * skip, 5 * skip},
+		makeSubmittingHeights(5*skip+1, 0, skip, &msec, skip+1),
 	)
 	rq.Equal(
-		[]uint64{100, 200, 300, 400, 500},
-		makeSubmittingHeights(501, 0, 100, nil, 101),
+		[]uint64{skip, 2 * skip, 3 * skip, 4 * skip, 5 * skip},
+		makeSubmittingHeights(5*skip+1, 0, skip, nil, skip+1),
 	)
 	rq.Equal(
-		[]uint64{100, 200, 201, 300, 400, 500},
-		makeSubmittingHeights(501, 0, 100, &msec, 201),
+		[]uint64{skip, 2 * skip, 2*skip + 1, 3 * skip, 4 * skip, 5 * skip},
+		makeSubmittingHeights(5*skip+1, 0, skip, &msec, 2*skip+1),
 	)
 	rq.Equal(
-		[]uint64{100, 200, 300, 301, 400, 500},
-		makeSubmittingHeights(501, 0, 100, &msec, 301),
+		[]uint64{skip, 2 * skip, 3 * skip, 3*skip + 1, 4 * skip, 5 * skip},
+		makeSubmittingHeights(5*skip+1, 0, skip, &msec, 3*skip+1),
 	)
 	rq.Equal(
-		[]uint64{100, 200, 300, 400, 401, 500},
-		makeSubmittingHeights(501, 0, 100, &msec, 401),
+		[]uint64{skip, 2 * skip, 3 * skip, 4 * skip, 4*skip + 1, 5 * skip},
+		makeSubmittingHeights(5*skip+1, 0, skip, &msec, 4*skip+1),
 	)
 	rq.Equal(
-		[]uint64{100, 200, 300, 400, 500},
-		makeSubmittingHeights(501, 0, 100, nil, 401),
+		[]uint64{skip, 2 * skip, 3 * skip, 4 * skip, 5 * skip},
+		makeSubmittingHeights(5*skip+1, 0, skip, nil, 4*skip+1),
 	)
 	rq.Equal(
-		[]uint64{100, 200, 300, 400, 500},
-		makeSubmittingHeights(501, 0, 100, &msec, 501),
+		[]uint64{skip, 2 * skip, 3 * skip, 4 * skip, 5 * skip},
+		makeSubmittingHeights(5*skip+1, 0, skip, &msec, 5*skip+1),
 	)
 	rq.Equal(
-		[]uint64{100, 200, 300, 400, 500, 501},
-		makeSubmittingHeights(502, 0, 100, &msec, 501),
+		[]uint64{skip, 2 * skip, 3 * skip, 4 * skip, 5 * skip, 5*skip + 1},
+		makeSubmittingHeights(5*skip+2, 0, skip, &msec, 5*skip+1),
 	)
 	rq.Equal(
-		[]uint64{100, 200, 300, 400, 500},
-		makeSubmittingHeights(502, 0, 100, nil, 501),
+		[]uint64{skip, 2 * skip, 3 * skip, 4 * skip, 5 * skip},
+		makeSubmittingHeights(5*skip+2, 0, skip, nil, 5*skip+1),
 	)
 }
