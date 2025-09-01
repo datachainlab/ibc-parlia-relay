@@ -6,8 +6,8 @@ async function main() {
 
   try {
 
-    const bank = await util.readContract("ICS20Bank");
-    const bobAmount = await bank.balanceOf(bob, `transfer/channel-0/simple_erc_20_token_for_test`)
+    const transfer = await util.readContract("ICS20Transfer");
+    const bobAmount = await transfer.balanceOf(bob, `transfer/channel-0/simple_erc_20_token_for_test`)
     console.log("received = ", bobAmount.toString())
     if (parseInt(bobAmount.toString(), 10) !== 20) {
       throw new Error("bob amount error");

@@ -69,12 +69,8 @@ async function main() {
 
     // deploy ERC20 token
     await deploy(deployer, "ERC20Token", ["simple_erc_20_token_for_test", "simple_erc_20_token_for_test", 1000000]);
-    const ibc20Bank = await deploy(deployer, "ICS20Bank");
-    const ics20TransferBank = await deploy(deployer, "ICS20TransferBank", [ibcHandler.target, ibc20Bank.target]);
-    await ibcHandler.bindPort(PortTransfer, ics20TransferBank.target).then(tx => tx.wait());
-    const accounts = await hre.ethers.getSigners();
-    await ibc20Bank.setOperator(ics20TransferBank.target).then(tx => tx.wait());
-    await ibc20Bank.setOperator(accounts[0].address).then(tx => tx.wait());
+    const ics20Transfer = await deploy(deployer, "ICS20Transfer", [ibcHandler.target, PortTransfer]);
+    await ibcHandler.bindPort(PortTransfer, ics20Transfer.target).then(tx => tx.wait());
 }
 
 if (require.main === module) {
