@@ -7,12 +7,12 @@ deploy:
 .PHONY:test
 test:
 	npx hardhat run ./scripts/send.js --network bsc_local2
-	sleep 60
+	sleep 10
 	../testrly tx relay ibc01 --home ../.testrly
-	sleep 20
+	sleep 10
 	npx hardhat run ./scripts/recv.js --network bsc_local1
-	sleep 20
+	sleep 10
 	../testrly query unrelayed-packets ibc01 --home ../.testrly | grep '{"src":\[\],"dst":\[\]}'
 	../testrly tx relay-acknowledgements ibc01 --home ../.testrly
-	sleep 20
+	sleep 10
 	../testrly query unrelayed-acknowledgements ibc01 --home ../.testrly | grep '{"src":\[\],"dst":\[\]}'
