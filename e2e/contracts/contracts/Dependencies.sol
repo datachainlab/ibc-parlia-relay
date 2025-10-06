@@ -16,6 +16,5 @@ import {
 import {IIBCHandler} from "@hyperledger-labs/yui-ibc-solidity/contracts/core/25-handler/IIBCHandler.sol";
 import {OwnableIBCHandler} from "@hyperledger-labs/yui-ibc-solidity/contracts/core/25-handler/OwnableIBCHandler.sol";
 import {ERC20Token} from "@hyperledger-labs/yui-ibc-solidity/contracts/apps/20-transfer/ERC20Token.sol";
-import {ICS20TransferBank} from "@hyperledger-labs/yui-ibc-solidity/contracts/apps/20-transfer/ICS20TransferBank.sol";
-import {ICS20Bank} from "@hyperledger-labs/yui-ibc-solidity/contracts/apps/20-transfer/ICS20Bank.sol";
+import {ICS20Transfer} from "@hyperledger-labs/yui-ibc-solidity/contracts/apps/20-transfer/ICS20Transfer.sol";
 

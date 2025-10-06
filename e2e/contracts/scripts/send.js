@@ -4,41 +4,36 @@ async function main() {
   const accounts = await hre.ethers.getSigners();
   const alice = accounts[0].address;
   const bob = accounts[1].address;
-
-  const port = "transfer";
-  const channel = "channel-0";
-  const timeoutHeight = 10000000;
-  const mintAmount = 100;
-  const sendingAmount = 20
-
+  const timeoutHeight = [[1, 10000000],0];
   try {
-    // Mint
-    const bank = await util.readContract("ICS20Bank");
-    const mintResult = await bank.mint(alice, "simple_erc_20_token_for_test", mintAmount, {
-      from: alice
-    });
-    const mintReceipt = await mintResult.wait()
-    console.log("mint success", mintReceipt.hash);
+    const token = await util.readContract("ERC20Token");
+    const transfer = await util.readContract("ICS20Transfer");
 
-    // Send to counterparty chain
-    const transfer = await util.readContract("ICS20TransferBank");
-    const transferResult = await transfer.sendTransfer("simple_erc_20_token_for_test", sendingAmount, bob, port, channel, timeoutHeight, {
-      from: alice,
-    });
-    const transferReceipt = await transferResult.wait()
-    console.log("send success", transferReceipt.hash);
+    const before= await token.balanceOf(alice)
+    console.log("before = ", before.toString())
+
+    const escrowBefore= await token.balanceOf(transfer.target)
+    console.log("escrow before = ", escrowBefore.toString())
+
+    // Deposit and SendTransfer
+    await token.approve(transfer.target, util.config.amount, { from: alice }).then(tx => tx.wait());
+    const depositResult = await transfer.depositSendTransfer(util.config.channel, token.target, util.config.amount, bob, timeoutHeight, {
+      from: alice
+    })
+    const depositReceipt = await depositResult.wait()
+    console.log("depositSendTransfer success", depositReceipt.hash);
 
     // Check reduced amount
-    const aliceAmount = await bank.balanceOf(alice, "simple_erc_20_token_for_test")
-    console.log("after = ", aliceAmount.toString())
-    if (parseInt(aliceAmount.toString(), 10) !== mintAmount - sendingAmount) {
+    const after= await token.balanceOf(alice)
+    console.log("after = ", after.toString())
+    if (parseInt(after.toString(), 10) !== Number(before) - util.config.amount) {
       throw new Error("alice amount error");
     }
 
     // Check escrow balance
-    const escrowAmount = await bank.balanceOf(transfer.target, "simple_erc_20_token_for_test")
-    console.log("escrow = ", escrowAmount.toString())
-    if (parseInt(escrowAmount.toString(), 10) !== sendingAmount) {
+    const escrowAfter= await token.balanceOf(transfer.target)
+    console.log("escrow after = ", escrowAfter.toString())
+    if (parseInt(escrowAfter.toString(), 10) !== Number(escrowBefore) + util.config.amount) {
       throw new Error("escrow amount error");
     }
 

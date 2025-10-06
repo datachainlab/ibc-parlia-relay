@@ -7,6 +7,12 @@ async function readContract(contractName) {
     return await hre.ethers.getContractAt(contractName, address);
 }
 
+const config = {
+    channel:"channel-0",
+    amount: 20
+}
+
 module.exports = {
-    readContract
+    readContract,
+    config
 };
