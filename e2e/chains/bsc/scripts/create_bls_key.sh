@@ -1,12 +1,3 @@
-#!/usr/bin/expect
-# 10 characters at least wanted
-set wallet_password 1234567890
+#!/usr/bin/bash
 
-set timeout 5
-sleep 10
-spawn geth bls account new --datadir [lindex $argv 0]
-expect "*assword:*"
-send "$wallet_password\r"
-expect "*assword:*"
-send "$wallet_password\r"
-expect EOF
+geth bls account new --datadir $1 --blspassword $2
