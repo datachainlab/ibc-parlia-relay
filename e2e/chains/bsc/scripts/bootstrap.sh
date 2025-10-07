@@ -25,7 +25,8 @@ function init_validator() {
   echo ${validatorAddr} >${workspace}/storage/${node_id}/address
 
   # create new BLS vote address
-  expect ${workspace}/scripts/create_bls_key.sh ${workspace}/storage/${node_id}
+  ${workspace}/scripts/create_bls_key.sh ${workspace}/storage/${node_id}
+  ls -ltr ${workspace}/storage/${node_id}
   voteAddr=0x$(jq -r .pubkey ${workspace}/storage/${node_id}/bls/keystore/*json)
   echo $voteAddr
 
