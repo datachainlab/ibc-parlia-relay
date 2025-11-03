@@ -19,8 +19,9 @@ RUN curl -fsSL https://deb.nodesource.com/setup_lts.x nodesource_setup.sh | bash
   && apt-get install --no-install-recommends -y nodejs \
   && rm -rf /var/cache/apt/*
 
+# https://github.com/bnb-chain/bsc/blob/v1.6.2/core/systemcontracts/upgrade.go#L1031C20-L1031C117
 RUN git clone https://github.com/bnb-chain/bsc-genesis-contract -b develop /root/genesis \
-    && cd /root/genesis && git checkout bf3ac733f8aaf93ed88ca0ad2dcddd051166e4e1 && npm ci
+    && cd /root/genesis && git checkout 34618f607f8356cf147dde6a69fae150bd53d5bf && npm ci
 
 RUN cd /root/genesis && /root/.local/bin/poetry install
 RUN cd /root/genesis && forge install --no-git foundry-rs/forge-std@v1.7.3
