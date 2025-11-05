@@ -39,6 +39,7 @@ const (
 	indexPascalHF  = 0
 	indexLorentzHF = 1
 	indexMaxwellHF = 2
+	indexFermiHF   = 3
 )
 
 func getForkSpecParams() []*ForkSpec {
@@ -50,6 +51,7 @@ func getForkSpecParams() []*ForkSpec {
 			MaxTurnLength:             9,
 			GasLimitBoundDivider:      256,
 			EnableHeaderMsec:          false,
+			KAncestorGenerationDepth:  1,
 		},
 		// Lorentz HF
 		{
@@ -58,6 +60,7 @@ func getForkSpecParams() []*ForkSpec {
 			MaxTurnLength:             64,
 			GasLimitBoundDivider:      1024,
 			EnableHeaderMsec:          true,
+			KAncestorGenerationDepth:  1,
 		},
 		// Maxwell HF
 		{
@@ -66,6 +69,16 @@ func getForkSpecParams() []*ForkSpec {
 			MaxTurnLength:             64,
 			GasLimitBoundDivider:      1024,
 			EnableHeaderMsec:          true,
+			KAncestorGenerationDepth:  1,
+		},
+		// Fermi HF
+		{
+			AdditionalHeaderItemCount: 1,
+			EpochLength:               1000,
+			MaxTurnLength:             64,
+			GasLimitBoundDivider:      1024,
+			EnableHeaderMsec:          true,
+			KAncestorGenerationDepth:  3,
 		},
 	}
 }
@@ -76,12 +89,15 @@ func GetForkParameters(network Network) []*ForkSpec {
 	case Localnet:
 		hardForks[indexPascalHF].HeightOrTimestamp = &ForkSpec_Height{Height: 0}
 		hardForks[indexLorentzHF].HeightOrTimestamp = &ForkSpec_Height{Height: 1}
-		hardForks[indexMaxwellHF].HeightOrTimestamp = localLatestHF
+		hardForks[indexMaxwellHF].HeightOrTimestamp = &ForkSpec_Height{Height: 2}
+		hardForks[indexFermiHF].HeightOrTimestamp = localLatestHF
 		return hardForks
 	case Testnet:
 		hardForks[indexPascalHF].HeightOrTimestamp = &ForkSpec_Height{Height: 48576786}
 		hardForks[indexLorentzHF].HeightOrTimestamp = &ForkSpec_Height{Height: 49791365}
 		hardForks[indexMaxwellHF].HeightOrTimestamp = &ForkSpec_Height{Height: 52552978}
+		// TODO Set Fixed height after Fermi HF
+		hardForks[indexFermiHF].HeightOrTimestamp = &ForkSpec_Timestamp{Timestamp: 1762741500_000}
 		return hardForks
 	case Mainnet:
 		hardForks[indexPascalHF].HeightOrTimestamp = &ForkSpec_Height{Height: 47618307}
@@ -91,6 +107,7 @@ func GetForkParameters(network Network) []*ForkSpec {
 		// https://bscscan.com/block/52337091
 		// https://github.com/bnb-chain/bsc/releases/tag/v1.5.16
 		hardForks[indexMaxwellHF].HeightOrTimestamp = &ForkSpec_Height{Height: 52337091}
+		// TODO
 		return hardForks
 	}
 	return nil
