@@ -14,6 +14,7 @@ import (
 
 type HeaderQueryTestSuite struct {
 	suite.Suite
+	forkSpecs []*ForkSpec
 }
 
 func TestHeaderQueryTestSuite(t *testing.T) {
@@ -23,9 +24,16 @@ func TestHeaderQueryTestSuite(t *testing.T) {
 func (ts *HeaderQueryTestSuite) SetupTest() {
 	err := log.InitLogger("DEBUG", "text", "stdout", false)
 	ts.Require().NoError(err)
+	ts.forkSpecs = []*ForkSpec{
+		{
+			HeightOrTimestamp:        &ForkSpec_Height{Height: 0},
+			KAncestorGenerationDepth: 1,
+		},
+	}
 }
 
 func (ts *HeaderQueryTestSuite) TestErrorQueryFinalizedHeader() {
+
 	ts.Require().NoError(log.InitLogger("INFO", "json", "stdout", false))
 	fn := func(ctx context.Context, height uint64) (*types.Header, error) {
 		return &types.Header{
@@ -34,7 +42,7 @@ func (ts *HeaderQueryTestSuite) TestErrorQueryFinalizedHeader() {
 	}
 
 	// No finalized header found
-	headers, err := queryFinalizedHeader(context.Background(), fn, 1, 10)
+	headers, err := queryFinalizedHeader(context.Background(), fn, 1, 10, ts.forkSpecs)
 	ts.Require().NoError(err)
 	ts.Require().Nil(headers)
 
@@ -46,7 +54,7 @@ func (ts *HeaderQueryTestSuite) TestErrorQueryFinalizedHeader() {
 		return &types.Header{Number: big.NewInt(int64(height))}, nil
 	}
 
-	headers, err = queryFinalizedHeader(context.Background(), fn, 760, 1000)
+	headers, err = queryFinalizedHeader(context.Background(), fn, 760, 1000, ts.forkSpecs)
 	ts.Require().NoError(err)
 	ts.Require().Nil(headers)
 }
@@ -61,9 +69,9 @@ func (ts *HeaderQueryTestSuite) TestSuccessQueryFinalizedHeader() {
 		return &types.Header{Number: big.NewInt(int64(height))}, nil
 	}
 
-	headers, err := queryFinalizedHeader(context.Background(), fn, 760, 1002)
+	headers, err := queryFinalizedHeader(context.Background(), fn, 760, 1002, ts.forkSpecs)
 	ts.Require().NoError(err)
-	ts.Require().Len(headers, 1002-760)
+	ts.Require().Len(headers, 1002-760, len(headers))
 }
 
 func (ts *HeaderQueryTestSuite) TestSuccessQueryLatestFinalizedHeader() {
@@ -76,7 +84,7 @@ func (ts *HeaderQueryTestSuite) TestSuccessQueryLatestFinalizedHeader() {
 			}
 			return &types.Header{Number: big.NewInt(int64(height))}, nil
 		}
-		height, h, err := queryLatestFinalizedHeader(context.Background(), getHeader, latestBlockNumber)
+		height, h, err := queryLatestFinalizedHeader(context.Background(), getHeader, latestBlockNumber, ts.forkSpecs)
 		ts.Require().NoError(err)
 		ts.Require().Len(h, 3)
 		ts.Require().Equal(int(height), 1001)
@@ -95,7 +103,7 @@ func (ts *HeaderQueryTestSuite) TestErrorQueryLatestFinalizedHeader_NoVote() {
 				Extra:  extra,
 			}, nil
 		}
-		_, _, err := queryLatestFinalizedHeader(context.Background(), getHeader, latestBlockNumber)
+		_, _, err := queryLatestFinalizedHeader(context.Background(), getHeader, latestBlockNumber, ts.forkSpecs)
 		ts.Require().True(strings.Contains(err.Error(), "no finalized header found"))
 	}
 

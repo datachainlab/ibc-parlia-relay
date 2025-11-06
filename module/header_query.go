@@ -57,12 +57,14 @@ func queryFinalizedHeader(ctx context.Context, fn getHeaderFn, height uint64, li
 		if err != nil {
 			return nil, err
 		}
+
+		// Check descendant headers
 		var descendants []*ETHHeader
 		for j := uint64(0); j < uint64(currentForkSpec.KAncestorGenerationDepth); j++ {
 			descendantIndex := i + 2 + j
 			if descendantIndex > limitHeight {
 				log.GetLogger().DebugContext(ctx, "Insufficient verifying headers to finalize. no valid descendant found for target.", "height", height, "limit", limitHeight, "target", targetBlock.Number)
-				return nil, nil
+				break
 			}
 
 			_, descendantHeader, descendantVote, err := queryETHHeader(ctx, fn, descendantIndex)
@@ -70,13 +72,13 @@ func queryFinalizedHeader(ctx context.Context, fn getHeaderFn, height uint64, li
 				return nil, err
 			}
 
+			descendants = append(descendants, descendantHeader)
+
 			// Ensure valida vote relation
 			if childVote == nil || descendantVote == nil ||
 				descendantVote.Data.SourceNumber != targetBlock.Number.Uint64() ||
 				descendantVote.Data.SourceNumber != childVote.Data.TargetNumber ||
 				descendantVote.Data.TargetNumber != childBlock.Number.Uint64() {
-				// Append to verify header sequence
-				descendants = append(ethHeaders, descendantHeader)
 				continue
 			}
 			return append(append(ethHeaders, targetETHHeader, childETHHeader), descendants...), nil
