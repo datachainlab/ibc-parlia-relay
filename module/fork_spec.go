@@ -22,7 +22,7 @@ const (
 	Mainnet  Network = "mainnet"
 )
 
-var localLatestHF isForkSpec_HeightOrTimestamp = &ForkSpec_Height{Height: 2}
+var localLatestHF isForkSpec_HeightOrTimestamp = &ForkSpec_Height{Height: 3}
 
 func init() {
 	localLatestHFTimestamp := os.Getenv("LOCAL_LATEST_HF_TIMESTAMP")
