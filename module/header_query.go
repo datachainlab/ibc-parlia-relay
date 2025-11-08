@@ -57,15 +57,10 @@ func queryFinalizedHeader(ctx context.Context, fn getHeaderFn, height uint64, li
 		}
 		ethHeaders = append(ethHeaders, finalizedETHHeader)
 
-		currentForkSpec, _, err := FindTargetForkSpec(forkSpecs, finalizedBlock.Number.Uint64(), MilliTimestamp(finalizedBlock))
-		if err != nil {
-			return nil, err
-		}
-
-		// child: descendant whose vote.TargetNumber == finalizedBlock.Number
+		// child: descendant whose vote.TargetNumber == finalized.Number
 		var childList []*ETHHeader
 		for j := i + 1; j+1 <= limitHeight; j++ {
-			childBlock, childETHHeader, childVote, err := queryETHHeader(ctx, fn, i+1)
+			childHeader, childETHHeader, childVote, err := queryETHHeader(ctx, fn, j)
 			if err != nil {
 				return nil, err
 			}
@@ -77,25 +72,31 @@ func queryFinalizedHeader(ctx context.Context, fn getHeaderFn, height uint64, li
 				continue
 			}
 
-			// grandChild: descendant whose vote.TargetNumber == mid.Number and vote.SourceNumber == finalizedBlock.Number
+			// grandChild: descendant whose vote.TargetNumber == child.Number and vote.SourceNumber == child.TargetNumber
 			var grandChildList []*ETHHeader
-			for k := uint64(1); k <= uint64(currentForkSpec.KAncestorGenerationDepth); k++ {
-				grandChildIndex := j + k
-				if grandChildIndex > limitHeight {
-					break
-				}
-				_, grandChildETHHeader, grandChildVote, err := queryETHHeader(ctx, fn, grandChildIndex)
+			for k := j + 1; k <= limitHeight; k++ {
+				grandChildHeader, grandChildETHHeader, grandChildVote, err := queryETHHeader(ctx, fn, k)
 				if err != nil {
 					return nil, err
 				}
+
+				// Ensure distance is less than or equal to k_ancestor_generation_depth
+				currentForkSpec, _, err := FindTargetForkSpec(forkSpecs, grandChildHeader.Number.Uint64(), MilliTimestamp(grandChildHeader))
+				if err != nil {
+					return nil, err
+				}
+				if k-j > uint64(currentForkSpec.KAncestorGenerationDepth) {
+					break
+				}
+
 				grandChildList = append(grandChildList, grandChildETHHeader)
 				if grandChildVote == nil {
 					continue
 				}
-				if grandChildVote.Data.SourceNumber == finalizedBlock.Number.Uint64() ||
-					grandChildVote.Data.TargetNumber == childBlock.Number.Uint64() {
+				if grandChildVote.Data.SourceNumber == childVote.Data.TargetNumber &&
+					grandChildVote.Data.TargetNumber == childHeader.Number.Uint64() {
 					// Found headers.
-					// ELC Requires all sequential headers from starting header
+					// ELC Requires all sequential headers from the starting header
 					return append(append(ethHeaders, childList...), grandChildList...), nil
 				}
 			}
