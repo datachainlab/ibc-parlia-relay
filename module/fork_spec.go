@@ -96,8 +96,7 @@ func GetForkParameters(network Network) []*ForkSpec {
 		hardForks[indexPascalHF].HeightOrTimestamp = &ForkSpec_Height{Height: 48576786}
 		hardForks[indexLorentzHF].HeightOrTimestamp = &ForkSpec_Height{Height: 49791365}
 		hardForks[indexMaxwellHF].HeightOrTimestamp = &ForkSpec_Height{Height: 52552978}
-		// TODO Set Fixed height after Fermi HF
-		hardForks[indexFermiHF].HeightOrTimestamp = &ForkSpec_Timestamp{Timestamp: 1762741500_000}
+		hardForks[indexFermiHF].HeightOrTimestamp = &ForkSpec_Height{Height: 71859053}
 		return hardForks
 	case Mainnet:
 		hardForks[indexPascalHF].HeightOrTimestamp = &ForkSpec_Height{Height: 47618307}
