@@ -54,8 +54,8 @@ jobs:
         run: |
           make chain
           make contracts
-          # Wait for Maxwell HF to be enabled (0.75sec * 2000)
-          sleep 1500
+          # Wait for Latest HF to be enabled (0.45sec * 2000)
+          sleep 900
           make relayer
           make test
       - name: integration-test

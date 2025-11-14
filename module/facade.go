@@ -7,10 +7,6 @@ import (
 )
 
 // Facade for tool modules
-func QueryFinalizedHeader(ctx context.Context, fn getHeaderFn, height uint64, limitHeight uint64) ([]*ETHHeader, error) {
-	return queryFinalizedHeader(ctx, fn, height, limitHeight)
-}
-
 func QueryValidatorSetAndTurnLength(ctx context.Context, fn getHeaderFn, height uint64) (Validators, uint8, error) {
 	return queryValidatorSetAndTurnLength(ctx, fn, height)
 }

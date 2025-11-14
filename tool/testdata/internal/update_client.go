@@ -219,11 +219,11 @@ func (m *updateClientModule) GetBoundaryEpoch(chain module.Chain, height uint64)
 	if err != nil {
 		return nil, err
 	}
-	bh, err := module.GetBoundaryHeight(chain.Header, header.Number.Uint64(), *forkSpec)
+	bh, err := module.GetBoundaryHeight(context.Background(), chain.Header, header.Number.Uint64(), *forkSpec)
 	if err != nil {
 		return nil, err
 	}
-	return bh.GetBoundaryEpochs(*prev)
+	return bh.GetBoundaryEpochs(prev)
 }
 
 func CreateUpdateClient() *cobra.Command {

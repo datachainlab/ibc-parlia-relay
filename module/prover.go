@@ -58,9 +58,9 @@ func (pr *Prover) CreateInitialLightClientState(ctx context.Context, height expo
 	}
 	var finalizedHeader []*ETHHeader
 	if height == nil {
-		_, finalizedHeader, err = queryLatestFinalizedHeader(ctx, pr.chain.Header, latestHeight.GetRevisionHeight())
+		_, finalizedHeader, err = queryLatestFinalizedHeader(ctx, pr.chain.Header, latestHeight.GetRevisionHeight(), pr.getForkParameters())
 	} else {
-		finalizedHeader, err = queryFinalizedHeader(ctx, pr.chain.Header, height.GetRevisionHeight(), latestHeight.GetRevisionHeight())
+		finalizedHeader, err = queryFinalizedHeader(ctx, pr.chain.Header, height.GetRevisionHeight(), latestHeight.GetRevisionHeight(), pr.getForkParameters())
 	}
 	if err != nil {
 		return nil, nil, err
@@ -90,7 +90,7 @@ func (pr *Prover) GetLatestFinalizedHeader(ctx context.Context) (out core.Header
 
 // GetLatestFinalizedHeaderByLatestHeight returns the latest finalized verifiable header from the chain
 func (pr *Prover) GetLatestFinalizedHeaderByLatestHeight(ctx context.Context, latestBlockNumber uint64) (core.Header, error) {
-	height, finalizedHeader, err := queryLatestFinalizedHeader(ctx, pr.chain.Header, latestBlockNumber)
+	height, finalizedHeader, err := queryLatestFinalizedHeader(ctx, pr.chain.Header, latestBlockNumber, pr.getForkParameters())
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func (pr *Prover) SetupHeadersForUpdate(ctx context.Context, counterparty core.F
 
 func (pr *Prover) SetupHeadersForUpdateByLatestHeight(ctx context.Context, clientStateLatestHeight exported.Height, latestFinalizedHeader *Header) ([]core.Header, error) {
 	queryVerifiableNeighboringEpochHeader := func(ctx context.Context, height uint64, limitHeight uint64) (core.Header, error) {
-		ethHeaders, err := queryFinalizedHeader(ctx, pr.chain.Header, height, limitHeight)
+		ethHeaders, err := queryFinalizedHeader(ctx, pr.chain.Header, height, limitHeight, pr.getForkParameters())
 		if err != nil {
 			return nil, err
 		}
