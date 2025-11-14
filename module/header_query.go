@@ -43,11 +43,14 @@ func queryLatestFinalizedHeader(ctx context.Context, getHeader getHeaderFn, late
 
 // queryFinalizedHeader returns finalized header sequence
 // ex)
-// 302 -> target -> 301 -> target -> 300
-// 302 -> source ------------------> 300
+// 72486611 -> target 72486610 -> target 72486608
+// 72486611 --------------------> source 72486608
 //
-// 302 -> target -> 300 -> target -> 298
-// 302 -> source ------------------> 298
+// 72486610 -> target 72486608 -> target 72486607
+// 72486610 --------------------> source 72486607
+//
+// 72476712 -> target 72476710 -> target 72476708
+// 72476712 --------------------> source 72476708
 func queryFinalizedHeader(ctx context.Context, fn getHeaderFn, height uint64, limitHeight uint64, forkSpecs []*ForkSpec) ([]*ETHHeader, error) {
 	var ethHeaders []*ETHHeader
 	for i := height; i+2 <= limitHeight; i++ {
@@ -68,7 +71,7 @@ func queryFinalizedHeader(ctx context.Context, fn getHeaderFn, height uint64, li
 			if childVote == nil {
 				continue
 			}
-			if childVote.Data.TargetNumber != finalizedBlock.Number.Uint64() {
+			if childVote.Data.TargetNumber != finalizedBlock.Number.Uint64() || childVote.Data.TargetHash != finalizedBlock.Hash() {
 				continue
 			}
 
@@ -94,7 +97,9 @@ func queryFinalizedHeader(ctx context.Context, fn getHeaderFn, height uint64, li
 					continue
 				}
 				if grandChildVote.Data.SourceNumber == childVote.Data.TargetNumber &&
-					grandChildVote.Data.TargetNumber == childHeader.Number.Uint64() {
+					grandChildVote.Data.SourceHash == childVote.Data.TargetHash &&
+					grandChildVote.Data.TargetNumber == childHeader.Number.Uint64() &&
+					grandChildVote.Data.TargetHash == childHeader.Hash() {
 					// Found headers.
 					// ELC Requires all sequential headers from the starting header
 					return append(append(ethHeaders, childList...), grandChildList...), nil
