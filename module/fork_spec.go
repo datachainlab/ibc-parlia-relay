@@ -106,7 +106,8 @@ func GetForkParameters(network Network) []*ForkSpec {
 		// https://bscscan.com/block/52337091
 		// https://github.com/bnb-chain/bsc/releases/tag/v1.5.16
 		hardForks[indexMaxwellHF].HeightOrTimestamp = &ForkSpec_Height{Height: 52337091}
-		// TODO
+		// https://github.com/bnb-chain/bsc/pull/3466/files
+		hardForks[indexFermiHF].HeightOrTimestamp = &ForkSpec_Timestamp{Timestamp: 1768357800 * 1000}
 		return hardForks
 	}
 	return nil
