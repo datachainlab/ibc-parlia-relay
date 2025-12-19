@@ -109,11 +109,11 @@ func (m *misbehaviorModule) error() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			bh, err := module.GetBoundaryHeight(chain.Header, header.GetHeight().GetRevisionHeight(), *forkSpec)
+			bh, err := module.GetBoundaryHeight(cmd.Context(), chain.Header, header.GetHeight().GetRevisionHeight(), *forkSpec)
 			if err != nil {
 				return err
 			}
-			be, err := bh.GetBoundaryEpochs(*prev)
+			be, err := bh.GetBoundaryEpochs(prev)
 			if err != nil {
 				return err
 			}
